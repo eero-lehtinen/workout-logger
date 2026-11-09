@@ -40,12 +40,13 @@ in the design docs.
 1. **RestTimer plugin.** A minimal Capacitor app with a Kotlin plugin: an exact alarm, a `USAGE_ALARM` sound, and a vibrator.
    - Test matrix on your phone: music playing (Spotify), silent mode, DND, screen locked, app swiped away, exact-alarm permission revoked.
    - Exit: all pass, or the failures are documented with a workaround.
-2. **SQLite WASM storage.** The official build with the OPFS SAH-pool VFS in a worker. Test in Chrome, Firefox, and the Android WebView inside the Capacitor app:
+2. **SQLite WASM storage** [done]. The official build with the OPFS SAH-pool VFS in a worker. Test in Chrome, Firefox, and the Android WebView inside the Capacitor app:
    - persistence across reload, app restart, and app update;
    - `navigator.storage.persist()`;
    - Web Lock tab ownership;
    - the "don't wipe on init failure" option.
    - Exit: the [architecture.md](architecture.md#client-runtime) assumptions are confirmed, or the native-plugin fallback is chosen.
+   - Result: confirmed, no native fallback. Findings are in [architecture.md](architecture.md#client-runtime).
 3. **FitNotes schema** [done]. Dump your `.fitnotes` backup's tables and columns, and fill in the mapping in [fitnotes-import.md](fitnotes-import.md).
 
 Health Connect and charting spikes are deferred to their phases; they are lower risk.
@@ -84,7 +85,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 
 ## Phase 3: Logging slice, web (M–L)
 
-- DB worker in the web app, Web Lock tab ownership, the TanStack Query table-tag invalidation.
+- DB worker in the web app with the VFS options and Web Lock tab ownership from [architecture.md](architecture.md#client-runtime), and the TanStack Query table-tag invalidation.
 - Component library choice (Radix-based).
 - Screens:
   - start session: routine preselect, day highlight, ad hoc;
@@ -111,7 +112,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 
 ## Phase 5: Android app (M)
 
-- `apps/android`: Capacitor shell over the web build, with a fixed scheme and hostname.
+- `apps/android`: Capacitor shell over the web build, with the scheme, hostname, and app id fixed as in [architecture.md](architecture.md#storage-durability).
 - RestTimer plugin, productionized from the spike: start/adjust/cancel, permission check on resume. The foreground-service countdown can wait for P1.
 - Keep-awake toggle, on-device snapshots after each session, `allowBackup=false`.
 - CI: APK build on tags, attached to the GitHub release; an in-app update check.

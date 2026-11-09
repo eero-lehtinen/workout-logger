@@ -47,7 +47,7 @@ Breaking these causes data loss or leaks. Don't take shortcuts here.
    - Released migrations are never edited.
    - Cross-row changes are data fixes, not migrations.
 10. **The server is a single instance with one SQLite writer.** Pull correctness depends on it ([docs/sync.md](docs/sync.md#server-side)). Don't scale out or switch databases without redesigning `seq`.
-11. **The Capacitor scheme and hostname never change.** Changing them changes the WebView origin and orphans every user's local database.
+11. **The Capacitor scheme (`https`) and hostname (`localhost`), the app id, and the SAH-pool VFS directory never change.** Changing any of them orphans every user's local database ([docs/architecture.md](docs/architecture.md#client-runtime)).
 12. **Auth tokens on Android live only in secure storage**, never in `localStorage` or WebView storage. Android Auto Backup stays disabled.
 
 ## Private data

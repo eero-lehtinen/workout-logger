@@ -49,7 +49,7 @@ Principles:
 | Lint/format | Biome | One fast tool for both. |
 | Tests | Vitest | Shares Vite's config and transforms. |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
-| Local DB | Official SQLite WASM build with the OPFS SAH-pool VFS (*candidate*), on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. OPFS in the Android WebView is verified in the first spike. |
+| Local DB | Official SQLite WASM build (`@sqlite.org/sqlite-wasm`, pinned; verified on 3.54.1-build1) with the OPFS SAH-pool VFS, on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. Verified in Chrome, Firefox, and the Android WebView; see [client runtime](#client-runtime). |
 | Query layer | Kysely | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
 | Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#client-runtime). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
@@ -139,14 +139,34 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 ### Database worker and tabs
 
-- SQLite runs in a dedicated worker. All queries go through it. Writes are short transactions. Heavy analytics queries are indexed, and split if they would delay set logging noticeably (target: logging a set under 100 ms).
-- The SAH-pool VFS allows one connection per database, so only one tab can open it. The tab holding a Web Lock owns the database. Other tabs show "open in another tab", with a "use here" button that takes the lock over. Proxying queries between tabs is not worth it.
-- Configure the VFS so that it does **not** delete its storage when initialization fails. Recent SQLite versions have an option for this; pin a version that has it and verify the option name.
+- SQLite runs in a dedicated module worker. All queries go through it. Writes are short transactions. Heavy analytics queries are indexed, and split if they would delay set logging noticeably (target: logging a set under 100 ms).
+- Vite setup: exclude `@sqlite.org/sqlite-wasm` from `optimizeDeps`, and create the worker with `new Worker(new URL("./db.worker.ts", import.meta.url), { type: "module" })`. This works in dev and in the production build. The build also emits the library's unused `sqlite3-worker1` and `sqlite3-opfs-async-proxy` scripts (about 250 KB). Keep them out of the PWA precache.
+- VFS init takes about 50-70 ms on desktop and on the phone, and up to 200 ms on the first run on the phone.
+
+### VFS configuration
+
+`installOpfsSAHPoolVfs` options:
+
+- `preserveOnInitFailure: true`. This is required. The default is `false`, and then any init failure calls `removeVfs()`, which recursively deletes the pool directory and the database with it. With the option set, a failed init releases its handles and leaves the files alone. Verified with injected handle-acquisition failures in Chrome, Firefox, and the Android WebView.
+- `directory` is set explicitly (`.opfs-sahpool`, the current default), so a changed library default can't move it. Changing it orphans the database, like a Capacitor origin change.
+- Never `clearOnInit`.
+- A failed init is cached for that JS context. Retry by starting a fresh worker, not with `forceReinitIfPreviouslyFailed`.
+
+### Tab ownership
+
+- The SAH-pool VFS holds a sync access handle on every pool file, so only one context can open the database. A second open fails with `NoModificationAllowedError`.
+- The tab holding the Web Lock `workout-logger-db` owns the database. Other tabs get the lock with `ifAvailable: true`, see that it's taken, and show "open in another tab" with a "use here" button. Proxying queries between tabs is not worth it.
+- "Use here" requests the lock with `steal: true`. The old tab's lock request rejects with `AbortError`. It then terminates its worker, which releases the handles, and shows "open in another tab". The new tab opens the database with a fresh worker, retrying on failure. In Chrome and Firefox the first attempt succeeded, in about 50 ms.
+- A worker terminated mid-transaction leaves a rollback journal, which SQLite recovers on the next open.
 
 ### Storage durability
 
-- **Web:** call `navigator.storage.persist()` on first run and show the result next to the backup status. Without it, the browser may evict the database.
-- **Android:** the Capacitor scheme and hostname are fixed forever. Changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md).
+- **Web:** call `navigator.storage.persist()` on first run and show the result next to the backup status. Without it, the browser may evict the database under storage pressure.
+  - Chrome grants it based on engagement or PWA install, without a prompt. A fresh profile gets `false`.
+  - Firefox shows a permission prompt.
+- **Android:** the database lives in the app's private WebView storage. It survives reload, process kill, force stop, and an update installed over the top with a higher versionCode (tested on Android 16, WebView 157). Uninstalling deletes it.
+  - `persist()` always returns `false` in the WebView: there is no grant path. Whether the WebView can evict storage under disk pressure is not documented. The on-device snapshots and server sync are the protection.
+- **Android origin:** `server.androidScheme: "https"` and `server.hostname: "localhost"`, set explicitly in the Capacitor config, so the origin is `https://localhost`. These are Capacitor 8's defaults, and `https` gives a secure context, which OPFS and Web Locks require. They never change: changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md). The `appId` is chosen once in phase 5 and is equally permanent.
 
 ### Client migrations
 
