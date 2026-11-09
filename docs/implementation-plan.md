@@ -20,14 +20,14 @@ L ≈ several weeks.
 | **M2: FitNotes replaced** | 6 | Android app with a reliable rest timer, sync between phone and web, server backups running. |
 | **M3: other users invited** | 10 | Multi-user hardening, quotas, admin, restore rehearsal. |
 
-## Phase 0: Scaffolding (S)
+## Phase 0: Scaffolding (S) [done]
 
 - pnpm workspace with the layout from [architecture.md](architecture.md#repository-layout-planned).
 - TypeScript strict, ESM, a shared `tsconfig`.
-- Lint/format: Biome (*candidate*: one fast tool instead of ESLint + Prettier).
+- Lint/format: Biome.
 - Tests: Vitest.
-- GitHub Actions: install, lint, typecheck, test on every push and PR.
-- `apps/web`: Vite + React "hello" page. Styling approach decided here (*candidate*: Tailwind).
+- GitHub Actions: install, lint, typecheck, test, build on every push and PR.
+- `apps/web`: Vite + React + Tailwind + TanStack Router "hello" page.
 - AGENTS.md: fill in the Commands section.
 
 **Exit:** CI green on `main`. `pnpm dev` serves the web app.
@@ -85,7 +85,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 ## Phase 3: Logging slice, web (M–L)
 
 - DB worker in the web app, Web Lock tab ownership, the TanStack Query table-tag invalidation.
-- Routing: TanStack Router (*candidate*) or React Router.
+- Component library choice (Radix-based).
 - Screens:
   - start session: routine preselect, day highlight, ad hoc;
   - session view: exercise list, done state, add/remove/reorder, session timer;
