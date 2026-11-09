@@ -43,7 +43,11 @@ Principles:
 | Language | TypeScript everywhere | One language for UI, core, server, CLI. Shared types for the sync protocol. |
 | Repo | pnpm workspace monorepo | Shared `core` package. |
 | UI | React + Vite | Largest ecosystem for components and charts. |
-| Components | Radix-based headless components (*candidate*) | Accessible primitives; styling is our own. |
+| Styling | Tailwind CSS | Utility classes, no separate stylesheet architecture to maintain. |
+| Routing | TanStack Router, file-based routes | Type-safe routes and search params. |
+| Components | Radix-based headless components (*candidate*), decided when the phase 3 screens need them | Accessible primitives; styling is our own. |
+| Lint/format | Biome | One fast tool for both. |
+| Tests | Vitest | Shares Vite's config and transforms. |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
 | Local DB | Official SQLite WASM build with the OPFS SAH-pool VFS (*candidate*), on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. OPFS in the Android WebView is verified in the first spike. |
 | Query layer | Kysely | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |

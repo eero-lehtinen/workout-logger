@@ -3,3 +3,6 @@ dist/
 data/
 *.fitnotes
 .env*
+.tanstack/
+.vitest/
+*.tsbuildinfo
