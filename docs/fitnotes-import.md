@@ -191,14 +191,18 @@ section unless it was prefilled from a predefined set.
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
-| `Routine` | `routine` | `position` by `_id`. `Routine.notes` goes in the report: `routine` has no notes column. |
+| `Routine` | `routine` | `archived = 1`, `position` by `_id`. `Routine.notes` goes in the report: `routine` has no notes column. |
 | `RoutineSection` | `routine_day` | `position` by `(sort_order, _id)`. Empty sections become empty days. |
 | `RoutineSectionExercise` | `slot` | `position` by `(sort_order, _id)`. No alternatives. |
 | `RoutineSectionExerciseSet` | `slot.note` | As text, e.g. `FitNotes sets: 3 × 8 @ 60 kg`. Slots have no set targets. |
 
-Imported sessions have no routine day, so per-day stats and "next day" start
-empty after cutover. Optionally, infer the day by matching a session's
-exercises against the routine days.
+Routines are imported archived. FitNotes sections are often lists of
+exercises per body part, picked from by hand each workout, not a cycle of
+workout days. As active routines they would drive routine preselection and
+"next day" from cycles that never existed. They stay available as a
+reference, and the user unarchives one that really was a cycle.
+
+Imported sessions are ad hoc: no routine, no day, no slot.
 
 ### Body tracker
 
