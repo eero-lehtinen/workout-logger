@@ -162,7 +162,7 @@ section unless it was prefilled from a predefined set.
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
-| `exercise` | `exercise` | Via the [exercise mapping file](#exercise-mapping-file): matched to a built-in exercise or created as a custom exercise. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults; the report counts them. |
+| `exercise` | `exercise` | Via the [exercise mapping file](#exercise-mapping-file): matched to a built-in exercise or created as a custom exercise, renamed, merged, or split by date. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults; the report counts them. |
 | `exercise_type_id` 0 | `weight_reps` or `bodyweight_reps` | The mapping file decides. For `bodyweight_reps`, `metric_weight` is the added weight. |
 | `exercise_type_id` 1 | `distance_time` | |
 | `exercise_type_id` 3 | `time` | |
@@ -179,7 +179,7 @@ section unless it was prefilled from a predefined set.
 | `WorkoutTime` | `session.started_at`, `ended_at` | `end_reason = 'manual'`. Times are kept as recorded; sessions longer than 5 h or shorter than 5 min are listed in the report so they can be fixed by hand. |
 | Date without `WorkoutTime` | `session` | `started_at` = local noon of the date, `ended_at = started_at`, `end_reason = 'unknown'`. Excluded from duration stats. |
 | (none) | `session.tz` | The import takes an IANA zone, defaulting to the device zone. Local noon uses it. A `WorkoutTime` offset that doesn't match the zone at that instant (travel) is listed in the report; the instant is kept. |
-| Distinct `(date, exercise_id)` | `session_exercise` | Positioned by the first set's `_id`. Alternating sets of A and B merge into one session exercise each. `slot_id` stays null. |
+| Distinct `(date, target exercise)` | `session_exercise` | The target is our exercise after the mapping file, so merged duplicates logged on one date become one session exercise. Positioned by the first set's `_id`. Alternating sets of A and B merge into one session exercise each. `slot_id` stays null. |
 | `training_log` row | `set_log` | `position` by `_id`. Columns by exercise type: `weight_kg = metric_weight` and `reps` for the two rep types; `distance_m` and `duration_s` for `distance_time`; `duration_s` for `time`. |
 | (none) | `set_log.logged_at` | Synthetic: spread evenly over `[started_at, ended_at]` in `(date, _id)` order. This keeps the order across alternating exercises. For date-only sessions all sets get `started_at`. Not real set times. |
 | `Comment` on a `training_log` row | `session_exercise.notes` | Appended as `Set 2: <comment>`. We have no per-set notes. |
@@ -231,9 +231,9 @@ UUIDv5 of these keys:
 
 | Ours | Key |
 | --- | --- |
-| `exercise` (custom) | `exercise:<_id>` |
+| `exercise` (custom) | `custom:<name>`, the `create.name` from the mapping file. Duplicates mapped to the same name share one exercise. |
 | `session` | `session:<date>` |
-| `session_exercise` | `session_exercise:<date>:<exercise _id>` |
+| `session_exercise` | `session_exercise:<date>:<target exercise id>` |
 | `set_log` | `training_log:<_id>` |
 | `routine`, `routine_day`, `slot` | `Routine:<_id>`, `RoutineSection:<_id>`, `RoutineSectionExercise:<_id>` |
 | `metric` (custom) | `Measurement:<_id>`, or `BodyWeight:body_fat` |
@@ -267,10 +267,40 @@ never real backups.
 
 A JSON file maps FitNotes exercise names to our exercises, or to "create
 custom". New custom exercises also get muscle targets and an exercise type
-(`weight_reps` or `bodyweight_reps` for FitNotes type 0). The file is
-generated with best guesses from the name and category, and reviewed by
-hand; this is the step that needs human judgment. It lists only exercises
-that will be imported, and it is reused on re-import.
+(`weight_reps` or `bodyweight_reps` for FitNotes type 0). The importer
+generates the file with best guesses from the name and category when none is
+given. It lists only exercises that will be imported, and it is reused on
+re-import.
+
+Hand-curating the file is the step that needs human judgment. FitNotes
+history often has:
+
+- **Inconsistent names.** A `create` entry sets the name of the new custom exercise.
+- **Duplicates.** Several FitNotes exercises map to the same target.
+- **One FitNotes exercise used for different variants over time**, e.g. a pushdown done with a straight bar and later with a rope. Mixed together, records and progress markers compare different movements. A FitNotes exercise maps to a list of targets, each covering sets up to an `until` date (inclusive); the last entry has no `until` and covers the rest.
+
+Example (synthetic):
+
+```json
+{
+  "exercises": {
+    "Triceps Pushdown": [
+      { "until": "2000-06-30", "create": { "name": "Bar Pushdown", "type": "weight_reps", "muscles": { "triceps": 1 } } },
+      { "builtin": "rope_pushdown" }
+    ],
+    "Flat Bench": [{ "builtin": "barbell_bench_press" }],
+    "Bench Press": [{ "builtin": "barbell_bench_press" }]
+  }
+}
+```
+
+Unmapped FitNotes exercises fail the import; nothing falls back silently.
+Finding where to split is done by hand: chart each exercise's best e1RM per
+session and look for jumps. The importer has no analysis for this.
+
+The file names the user's exercises and the dates they changed technique,
+so it is private data like the backup itself: the owner's copy lives in the
+git-ignored `data/` directory and is never committed.
 
 ## Re-import
 

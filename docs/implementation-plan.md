@@ -103,6 +103,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 ## Phase 4: FitNotes import (S–M)
 
 - Importer in `core`, the exercise mapping file, the import report, re-import rules.
+- Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
 - Settings → Import.
 - Run it on your backup, then spot-check volumes, PRs, and session counts against FitNotes.
 
