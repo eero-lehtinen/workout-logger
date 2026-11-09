@@ -1,6 +1,6 @@
 # Sync
 
-Status: proposed design, open for discussion. Alternatives are at the end.
+Status: decided, custom protocol. The alternatives considered are at the end.
 
 ## Requirements
 
@@ -203,9 +203,8 @@ LWW guarantees convergence, but the converged result can still be wrong. These c
 | **cr-sqlite** | Column-level CRDT as a SQLite extension, which would let us keep plain SQL. | Maintenance activity is unclear, and packaging is split between original and community forks. |
 | **PowerSync / ElectricSQL / Zero** | Mature sync engines. | All require a Postgres backend plus a sync service. Too much infrastructure for one user. |
 
-Recommendation: the custom protocol above. It is small (a clock, an outbox,
-two endpoints) and every part of it can be tested in isolation. The server data
-stays plain JSON rows that the CLI and backups can read directly.
-
-Before writing it, we could do a half-day Evolu spike. If Evolu's encryption
-and API are acceptable, adopting it is the library-first choice.
+Decision: the custom protocol above. It is small (a clock, an outbox, two
+endpoints) and every part of it can be tested in isolation. The server data
+stays plain JSON rows that the CLI, restores, and backups can read directly.
+That matters more here than end-to-end encryption, which is out of scope (see
+[accounts.md](accounts.md#privacy)).

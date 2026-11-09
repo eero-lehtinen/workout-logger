@@ -39,15 +39,15 @@ Principles:
 | --- | --- | --- |
 | Language | TypeScript everywhere | One language for UI, core, server, CLI. Shared types for the sync protocol. |
 | Repo | pnpm workspace monorepo | Shared `core` package. |
-| UI | React + Vite (*candidate*) | Largest ecosystem for components and charts. |
+| UI | React + Vite | Largest ecosystem for components and charts. |
 | Components | Radix-based headless components (*candidate*) | Accessible primitives; styling is our own. |
-| Charts | ECharts or uPlot (*candidate*) | Multi-series time charts with zoom, a shared crosshair, and multiple axes. |
-| Local DB (web) | Official SQLite WASM build with the OPFS SAH-pool VFS (*candidate*) | Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. |
-| Local DB (Android) | Same WASM SQLite inside the WebView, or the native SQLite plugin (open question) | |
+| Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
+| Local DB | Official SQLite WASM build with the OPFS SAH-pool VFS (*candidate*), on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. OPFS in the Android WebView is verified in the first spike. |
 | Query layer | Kysely or Drizzle (*candidate*) | Typed SQL. |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Server | Hono (*candidate*) | Runs on Cloudflare Workers and on Node/Bun, so the hosting decision stays reversible. |
 | Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and D1 support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
+| Hosting | Cloudflare Workers, free plan | Workers Paid ($5/month) if quotas get tight. Hono keeps a move to the VPS possible. |
 | Server storage | Cloudflare D1 | Free-plan limits: 100k rows written/day, 5M rows read/day, 500 MB per database. Per-user quotas keep usage inside these. |
 | Object storage | Cloudflare R2 | Daily snapshots. |
 | CLI | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
@@ -79,7 +79,7 @@ See [sync.md](sync.md). `position` columns are fractional index strings.
 
 ```
 muscle            (id, name, group_name)               -- seeded, effectively static
-exercise          (id, name, type, default_rest_s, notes, archived, builtin_key)
+exercise          (id, name, type, default_rest_s?, weight_increment_kg?, notes, archived, builtin_key)
 exercise_muscle   (id, exercise_id, muscle_id, factor)  -- factor 0..1
 
 routine           (id, name, position, archived)
@@ -90,8 +90,7 @@ slot_alternative  (id, slot_id, exercise_id, position)
 session           (id, routine_id?, day_id?, started_at, ended_at?, end_reason?, notes)
 session_exercise  (id, session_id, slot_id?, exercise_id, position, notes)
 set_log           (id, session_exercise_id, position, logged_at,
-                   weight_kg?, reps?, duration_s?, distance_m?,
-                   is_warmup, rpe?, notes)
+                   weight_kg?, reps?, duration_s?, distance_m?)
 
 metric            (id, name, unit, builtin_key?, position, archived)
 measurement       (id, metric_id, measured_at, value, source, external_id?, note)
@@ -101,12 +100,25 @@ setting           (id = key, value_json)
 
 Notes:
 
-- Weight is stored in kg as REAL. Display rounding and units are a UI concern.
+- Weight is stored in kg as REAL. See [units and rounding](#units-and-rounding).
 - The routine's active day is not stored. It is derived from the latest session that has a `routine_id`, so the derived state cannot get out of sync with the logs.
 - `ended_at` is NULL for a running session. Idle auto-end runs when the app opens or resumes: if `now - last set_log.logged_at > idle_threshold`, set `ended_at = last logged_at` and `end_reason = 'idle'`. No background job is needed.
 - Editing a routine never rewrites past sessions. History queries go by `exercise_id`.
+- The `set_log` columns are deliberately minimal. There are no set types (warm-up, superset, drop set), RPE, or per-set notes.
 - e1RM, set records, PRs, and volume are computed by queries, not stored. If they get slow, cache them in a local table that is not synced.
 - Built-in exercises, muscles, and the body weight metric use UUIDv5 ids derived from their builtin keys, so every device seeds identical rows.
+
+## Units and rounding
+
+The weight unit is a per-user display setting. Storage is always kg.
+
+- **Input.** A value entered in lb is converted with the exact factor (1 lb = 0.45359237 kg) and stored unrounded. Converting it back for display gives the entered value again, e.g. 225 lb → 102.0582 kg → 225 lb.
+- **Display.** Weights are converted to the display unit, rounded to 2 decimals, and trailing zeros are trimmed (`100`, `102.5`, `220.46`). e1RM and other derived values are rounded to 1 decimal.
+- **Increment.**
+  - Defaults: 2.5 kg, or 5 lb when the unit is lb. The value is overridable per exercise (`weight_increment_kg`), e.g. 1 kg for dumbbells.
+  - The +/- buttons snap to the nearest multiple of the increment first, then step. A converted 220.46 lb becomes 225 after +, not 225.46.
+- **Prefill.** The prefilled weight is shown unrounded, in display units. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
+- **Comparisons** for stars and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
 
 ## Sync
 

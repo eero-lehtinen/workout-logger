@@ -33,21 +33,22 @@ previous performance, not by prescribing.
 
 | Term | Meaning |
 | --- | --- |
-| **Session** | One performed workout: a start time, an end time, and the exercises performed. It may reference the routine and day it followed, or be ad hoc. |
+| **Session** | One performed workout: a start time, an end time, and the exercises performed. It may reference the routine and day it followed, or be ad hoc. Sessions are time-based, not date-based; a calendar day can hold several. |
 | **Session exercise** | One exercise performed in a session. It may point to the slot it fills. If its exercise differs from the slot's default, it is a substitution. |
 | **Substitution** | Performing a different exercise in place of a slot's default. Allowed for any exercise, at any time. History is recorded under the exercise actually performed. |
-| **Set** | One logged effort: weight + reps (or time/distance per exercise type), a timestamp, and flags such as warm-up. |
-| **Working set** | A set that is not a warm-up. Only working sets count for stars, PRs, and volume. |
-| **Previous performance** | The working sets of the same exercise in the most recent earlier session. Shown while logging as the target to beat. |
+| **Set** | One logged effort: weight + reps (or time/distance per exercise type) and a timestamp. Nothing else; there are no set types such as warm-up or superset. |
+| **Previous performance** | The sets of the selected exercise in the most recent earlier session that included it. Shown while logging as the target to beat. Only that exact exercise counts, never other exercises from the same slot. |
 
 ## Metrics and records
 
 | Term | Meaning |
 | --- | --- |
 | **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Default formula is Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. The formula is configurable. |
-| **Set record** (dim star) | A working set whose e1RM beats the e1RM of the working set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
-| **PR** (personal record, bright star) | A working set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce the star. |
-| **Volume** | `weight * reps` summed over working sets. |
+| **Set record** (dim star) | A set whose e1RM beats the e1RM of the set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
+| **PR** (personal record, bright star) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce the star. |
+| **Volume** | `weight * reps` summed over sets. |
+| **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |
+| **Weight increment** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. |
 | **Weighted sets** | A set count per muscle, where each set counts by the muscle target factor. 3 sets of rows = 3 lats, 3 upper back, 1.5 biceps, 1.5 rear delts. |
 
 ## Measurements (custom data)

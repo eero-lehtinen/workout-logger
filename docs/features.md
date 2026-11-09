@@ -75,7 +75,7 @@ The app is shared with coworkers, each with their own private data. See
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| List of session exercises; ones with logged working sets are marked done | P0 | |
+| List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. |
 | Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set. Idle auto-end is computed when the app next opens, so no background process is needed. |
@@ -86,11 +86,9 @@ The app is shared with coworkers, each with their own private data. See
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Fast weight and reps entry | P0 | Prefilled from the previous set, or from the same set index of the previous performance. Steppers plus a numeric keypad. One tap to log. |
-| Previous performance shown alongside | P0 | The last session of this exercise. Expandable to the last N sessions. |
+| Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
 | Dim star for set records, bright star for PRs | P0 | Shown on logged sets and in history. |
 | Edit and delete logged sets | P0 | |
-| Warm-up flag | P1 | |
-| Per-set notes, RPE | P2 | |
 | History graph for the exercise | P1 | Metrics: best e1RM per session, e1RM of each set, top weight, volume, reps at a weight. |
 | Records table: best weight for 1..N reps, best e1RM, heaviest weight | P1 | |
 
@@ -98,7 +96,7 @@ The app is shared with coworkers, each with their own private data. See
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default. |
+| Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default (2:00). |
 | Adjust with +/-15 s, skip, restart | P0 | |
 | Vibration and sound on finish, including in the background and over music | P0 (Android) | Web: works only while the page is visible. Web is best effort. |
 | Countdown in a notification or on the lock screen while running | P1 (Android) | |
@@ -117,7 +115,6 @@ A page for tracking body data and other quantities next to training data.
 | Smoothing (moving average) per series | P1 | Daily body weight is noisy. |
 | Scatter plot of series A vs B, e.g. body weight vs bench e1RM, values paired by week | P2 | |
 | Relative strength series (e1RM / body weight) | P2 | |
-| Body weight added to bodyweight-exercise e1RM, e.g. pull-ups | P2 | |
 
 ## Analytics
 
@@ -125,9 +122,19 @@ A page for tracking body data and other quantities next to training data.
 | --- | --- | --- |
 | Per-exercise charts over selectable date ranges | P1 | Same metrics as the history graph. |
 | Weekly weighted sets per muscle and muscle group | P1 | |
-| Session frequency, duration, total volume over time | P1 | |
+| Session duration and total volume over time | P1 | |
 | PR list and recent PRs | P1 | |
-| Calendar view of sessions | P1 | |
+
+## Calendar and frequency
+
+| Feature | Priority | Notes |
+| --- | --- | --- |
+| Month calendar with sessions marked per day | P1 | Several sessions per day are possible. Each mark is labeled and colored by the routine day, or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. |
+| Year heatmap of training days | P2 | |
+| Sessions per week over time, with average | P1 | |
+| Days between sessions: average and distribution | P1 | |
+| Per muscle group: days trained per week | P1 | A day counts for a muscle group if any exercise with a primary muscle in the group was performed. |
+| Per routine day: how often each day was performed, last date performed | P1 | Shows whether the cycle is actually followed. |
 
 The measurements chart and the analytics page share the same charting and
 series code.
@@ -140,12 +147,14 @@ series code.
 | FitNotes import | P0 | See [fitnotes-import.md](fitnotes-import.md). |
 | Backups, with their age visible in settings | P0 | See [backups.md](backups.md). |
 | CLI to fetch data as JSON/CSV | P1 | |
-| Units: kg storage, kg/lb display | P2 | |
+| Weight unit setting (kg/lb), display only | P2 | Storage is always kg. See [architecture.md](architecture.md#units-and-rounding) for the rounding rules. |
 
 ## Non-goals
 
 - Social features, shared routines between users, teams.
 - Public signup and production-grade operations (SLAs, abuse handling beyond quotas).
 - Prescribed weights, reps, or set counts in routines.
+- Set types and extra set data: warm-up sets, supersets, drop sets, RPE, per-set notes. A set is weight × reps (or time/distance for those exercise types).
+- Automatic body weight in bodyweight exercises. Users enter whatever weight they want to track.
 - Coaching, AI-generated programs inside the app. Use the CLI with external tools instead.
 - Nutrition tracking.

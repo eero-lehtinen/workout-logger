@@ -29,6 +29,13 @@ data. The layers below add history and copies outside the sync system.
    - This protects against a corrupted local store, and it works without any server.
    - On the web, use the manual export button. Browsers can't write files silently.
 
+## User-controlled destinations
+
+Future work (P2). These are for users who want backups outside the server, or no account at all:
+
+- Automatic snapshot export to a user-chosen location, e.g. a folder that the user's own cloud drive syncs. The Android Storage Access Framework allows picking any folder once and writing to it later.
+- Manual export to a file and import from a file. This already exists as P0 and works without an account.
+
 ## Snapshot format
 
 - **SQLite file** with the synced tables, using the same schema as the app plus a `meta` table (schema version, created at, source device).

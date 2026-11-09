@@ -1,6 +1,6 @@
 # Accounts and limits
 
-Status: proposed. The target is a handful of coworkers, not the public. The
+Status: decided, apart from the quota numbers. The target is a handful of coworkers, not the public. The
 design should be safe to expose to the internet, but it isn't hardened for
 hostile traffic or scale.
 
@@ -64,8 +64,9 @@ The owner page shows each user's usage.
 
 ## Privacy
 
-- Data is stored unencrypted in D1/R2 on your Cloudflare account. As the owner, you can technically read coworkers' data. Tell them this plainly.
-- End-to-end encryption (encrypting `data` on the client) would hide it. That would complicate the CLI, server-side restores, and password reset (a lost key means lost data), so it is out of scope for now.
+- Data is stored unencrypted in D1/R2 on the owner's Cloudflare account, and the owner can technically read it. Users are told this plainly at signup.
+- There is no end-to-end encryption. It would complicate the CLI, server-side restores, and password reset (a lost key means lost data).
+- Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Account deletion:** a user can delete their account. This hard-deletes their change log, usage counters, and auth rows, and removes their data from future snapshots. Older snapshots expire with retention.
 - **Export:** every user can download a full snapshot of their own data at any time (see [backups.md](backups.md)).
 
