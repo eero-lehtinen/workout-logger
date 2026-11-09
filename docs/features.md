@@ -183,6 +183,8 @@ series code.
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Fully functional without network | P0 | |
+| Undo for deletes and edits ("undone" snackbar) | P1 | Each core write records the previous row version in a local, non-synced undo stack. Undo writes that version back as a new change with a fresh HLC, so it syncs like any edit. Deletes are soft, so undoing one revives the whole subtree. |
+| Multi-step undo/redo history | P2 | |
 | FitNotes import | P0 | See [fitnotes-import.md](fitnotes-import.md). |
 | Backups, with their age visible in settings | P0 | See [backups.md](backups.md). |
 | CLI to fetch data as JSON/CSV | P1 | |

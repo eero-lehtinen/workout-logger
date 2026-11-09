@@ -148,7 +148,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 - Run in the worker, before any other query, in one transaction.
 - Before migrating, copy the database file (OPFS copy on web, plus the regular snapshot on Android), and keep the last copy.
-- Migrations of local tables and upgrades of incoming sync rows with an older `v` share the same functions ([sync.md](sync.md#schema-evolution)).
+- Migrations of local tables and upgrades of incoming sync rows with an older `v` share the same functions. See [migrations.md](migrations.md).
 
 ### Reactive queries
 

@@ -111,14 +111,14 @@ This means:
 ### Push
 
 1. In one read transaction, take up to N outbox entries joined with their current rows. `hlc` comes from the row.
-2. Send `POST /api/sync/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`.
+2. Send `POST /api/sync/v1/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`.
 3. The response has a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`future_clock`, `conflict`, `quota`, `schema_outdated`).
 4. Delete outbox entries that are `ok` and whose row `hlc` still equals the sent `hlc`. If the row was edited during the request, its entry stays and the new version goes in the next push.
 5. Rejected entries stay in the outbox and the UI shows the reason. A `quota` rejection stops the push loop until the next day.
 
 ### Pull
 
-1. Send `GET /api/sync/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`.
+1. Send `GET /api/sync/v1/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`.
 2. If `epoch` differs from the stored `server_epoch`, the server was restored. Run [epoch reset](#server-restore-and-epoch) and stop this pull.
 3. Apply the page in one transaction:
    - Call `clock.receive` with the page's max HLC.
@@ -131,7 +131,7 @@ This means:
 
 ### Bootstrap
 
-A new device (empty `_sync_state`) calls `GET /api/sync/snapshot`. The response
+A new device (empty `_sync_state`) calls `GET /api/sync/v1/snapshot`. The response
 holds the head rows and the max `seq`, both read in one server transaction. The
 device applies them as a pull page and stores that `seq` as its cursor.
 
@@ -264,9 +264,11 @@ changes:
 ## Schema evolution
 
 - Each change carries `v`, the app schema version that wrote it. The server stores `v` and `data` verbatim and never migrates them.
-- A client upgrades incoming rows with an older `v` on apply, using the same migration functions it runs on its local tables.
+- A client upgrades incoming rows with an older `v` on apply, using the same upgrade functions as its local migrations.
 - A client receiving a `v` newer than it understands pauses sync and shows "update the app".
 - The server rejects pushes with a `v` older than the newest `v` it has seen from that user. An outdated APK therefore can't wipe columns written by a newer web app.
+
+Full rules, including data fixes and server migrations: [migrations.md](migrations.md).
 
 ## Semantic conflicts
 
@@ -310,6 +312,7 @@ always beats the version it was made on.
 | **cr-sqlite** | Column-level CRDT as a SQLite extension, which would keep plain SQL. | Maintenance activity is unclear. |
 | **LiveStore** (event sourcing on SQLite) | Intent-preserving events. | Replay cost and migration complexity for no benefit at this scale. |
 | **PowerSync / ElectricSQL / Zero** | Mature sync engines. | All require a Postgres (or similar) backend plus a sync service. |
+| **Linear-style engine** ([reverse-engineered write-up](https://github.com/wzhudev/reverse-linear-sync-engine)) | Server-authoritative total order (`lastSyncId`), operation-based transactions with per-field updates, WebSocket delta packets, an in-memory MobX object pool persisted to IndexedDB, partial and lazy bootstrap. | It is built for shared, permissioned workspaces with mostly-online clients. Arrival order deciding the winner is wrong for us: a phone that was offline for days would overwrite newer edits made elsewhere. A domain-aware server doubles the schema work, and an in-memory graph doesn't help SQL analytics. Borrowed ideas: push notification of new changes (planned), per-field updates (the upgrade path above), and transaction-based undo ([features.md](features.md#data)). |
 
 Decision: the custom protocol. It is small (a clock, an outbox, two endpoints,
 a head table) and every part of it can be tested in isolation. The server data

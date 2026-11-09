@@ -38,7 +38,11 @@ Breaking these causes data loss or leaks. Don't take shortcuts here.
 6. **No foreign key enforcement on synced tables.** Queries must tolerate missing or deleted parents.
 7. **Derived values (e1RM, records, volume) are not stored in synced tables.**
 8. **Weights are stored in kg.** Unit conversion happens only in the UI.
-9. **Schema changes need a migration** for local tables and an upgrade function for incoming sync rows with an older `v`.
+9. **Domain schema changes follow [docs/migrations.md](docs/migrations.md):**
+   - Each change is a new version step with DDL, a pure row `upgrade` function, and fixture tests.
+   - Migrations never stamp HLCs or write outbox entries.
+   - Released migrations are never edited.
+   - Cross-row changes are data fixes, not migrations.
 10. **The server is a single instance with one SQLite writer.** Pull correctness depends on it ([docs/sync.md](docs/sync.md#server-side)). Don't scale out or switch databases without redesigning `seq`.
 11. **The Capacitor scheme and hostname never change.** Changing them changes the WebView origin and orphans every user's local database.
 12. **Auth tokens on Android live only in secure storage**, never in `localStorage` or WebView storage. Android Auto Backup stays disabled.

@@ -61,7 +61,7 @@ discard local data, or merge it into the new account.
 - **Per-IP limits run before auth** on every route. The client IP comes from `X-Forwarded-For` only when the request arrives through Traefik (a trusted proxy setting); otherwise the header is ignored.
 - **Tight limits on auth endpoints:** sign-in, sign-up, invite redemption, and password reset. For example, 5 per minute per IP.
 - **Per-user request rate** applies after auth (quota below).
-- **Body size limit** on `/api/sync/push` (1 MB).
+- **Body size limit** on `/api/sync/v1/push` (1 MB).
 - Implementation: an in-memory limiter, which is enough with a single instance. Candidate: `hono-rate-limiter`. Better Auth's own limiter also covers its routes, and must be explicitly enabled outside development.
 
 ## Quotas
