@@ -17,4 +17,5 @@ Status: design phase. No code yet.
 - [docs/backups.md](docs/backups.md) - backup layers and restore procedures
 - [docs/deployment.md](docs/deployment.md) - VPS/Dokploy deployment and recovery procedures
 - [docs/fitnotes-import.md](docs/fitnotes-import.md) - migrating data from FitNotes
+- [docs/implementation-plan.md](docs/implementation-plan.md) - phases and milestones
 - [docs/open-questions.md](docs/open-questions.md) - undecided items

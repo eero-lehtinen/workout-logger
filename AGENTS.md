@@ -7,7 +7,7 @@ Guidance for coding agents working in this repository.
 A local-first workout logger: React web app + Capacitor Android shell, a Hono
 server on a Dokploy-managed VPS (auth, sync, quotas, snapshots; backups to
 Cloudflare R2), and a CLI. Used by the
-owner and a few invited coworkers. Not a production service, but user data
+owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
 Status: design phase. The docs describe the intended system. Code does not
@@ -24,6 +24,7 @@ exist yet unless you see it.
 
 - When behavior, data model, protocol, or architecture changes, update the relevant doc in the same change.
 - When an item in [docs/open-questions.md](docs/open-questions.md) gets decided, move the decision into the relevant doc and delete the question.
+- Implementation plans live in the repo. The overall plan is [docs/implementation-plan.md](docs/implementation-plan.md); mark phases done and adjust it as work proceeds. Detailed plans for a single phase go in `docs/plans/<phase>.md` and are deleted once the phase is done and its decisions are in the design docs.
 - Docs describe the current design, not its history.
 
 ## Invariants

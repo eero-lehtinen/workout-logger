@@ -1,7 +1,7 @@
 # Accounts and limits
 
 Status: decided, apart from the quota numbers. The target is a handful of
-coworkers, not the public. The design should be safe to expose to the
+invited users, not the public. The design should be safe to expose to the
 internet, but it isn't hardened for hostile traffic or scale.
 
 ## Roles
@@ -9,7 +9,7 @@ internet, but it isn't hardened for hostile traffic or scale.
 | Role | Who | Limits | Extra abilities |
 | --- | --- | --- | --- |
 | `owner` | You | None | Create invites, list users and their usage, change quotas, disable users, issue password reset links, run restores. |
-| `user` | Invited coworkers | Quotas below | None |
+| `user` | Invited users | Quotas below | None |
 
 There are no shared data, teams, or social features. Each account's data is
 isolated.

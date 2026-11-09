@@ -28,7 +28,7 @@ FitNotes gaps that this app addresses:
 
 ## Accounts
 
-The app is shared with coworkers, each with their own private data. See
+The app is shared with a few invited users, each with their own private data. See
 [accounts.md](accounts.md).
 
 | Feature | Priority | Notes |

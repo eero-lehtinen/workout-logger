@@ -34,7 +34,7 @@ Principles:
 - **One UI codebase.** The web build is the product. Android is the same build inside a Capacitor shell, plus a few native plugins.
 - **Server stores data, not domain logic.** The server handles accounts, quotas, and a per-user change log of opaque rows. It never interprets workout data, so app schema changes never need server migrations.
 - **Small data.** Years of training for one user are on the order of 10^4-10^5 sets. Analytics run on-device with plain SQL. No server-side aggregation.
-- **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few coworkers", not the public internet. See [accounts.md](accounts.md).
+- **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few invited users", not the public internet. See [accounts.md](accounts.md).
 
 ## Tech stack
 
@@ -218,7 +218,7 @@ A custom Capacitor plugin in Kotlin, `RestTimer`, is the primary implementation.
 ### Other
 
 - Keep the screen awake during a session (optional toggle).
-- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Coworkers install the same APK.
+- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK.
 
 ## CLI
 

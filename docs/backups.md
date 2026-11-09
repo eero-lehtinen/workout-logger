@@ -28,7 +28,7 @@ data. The layers below add history and copies outside the sync system.
    - The same job runs before every server migration (`pre-migration/<version>.db.gz`).
 4. **Owner's PC copy.** A scheduled task runs `wl backup --all <staging dir>` and then `restic backup <staging dir>`.
    - `wl backup --all` uses the owner key to download each user's live `/snapshot` as SQLite, plus the latest daily DB copy.
-   - restic encrypts and dedups. Its repository can live in a cloud-drive folder, because the files contain coworkers' health data.
+   - restic encrypts and dedups. Its repository can live in a cloud-drive folder, because the files contain other users' health data.
    - This copy is independent of both the VPS and Cloudflare.
 5. **On-device snapshots** (Android). After each session ends, write a snapshot file to a user-visible folder (e.g. `Documents/WorkoutLogger/`). Keep the last 10.
    - This protects against a corrupted local store, and it works without any server.
