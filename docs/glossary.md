@@ -43,9 +43,12 @@ previous performance, not by prescribing.
 
 | Term | Meaning |
 | --- | --- |
-| **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Default formula is Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. The formula is configurable. |
-| **Set record** (dim star) | A set whose e1RM beats the e1RM of the set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
-| **PR** (personal record, bright star) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce the star. |
+| **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. Defined only up to the **e1RM cap** (default 12 reps); above it the estimate is too unreliable. |
+| **Reference set** | The set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
+| **Progress marker** | At most one per set: PR, set record, or weight increase. Full rules in [features.md](features.md#progress-markers). |
+| **PR** (personal record, bright star) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
+| **Set record** (dim star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM cap, at least as much weight and reps with one of them strictly more. |
+| **Weight increase** (up arrow) | A set with more weight than its reference set that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
 | **Volume** | `weight * reps` summed over sets. |
 | **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |
 | **Weight increment** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. |
@@ -83,6 +86,9 @@ See [sync.md](sync.md) and [backups.md](backups.md).
 | **Outbox** | A local table listing rows written on this device that the server hasn't acknowledged yet. |
 | **Change log** | The server's append-only list of all changes ever received. Each entry has an increasing sequence number (`seq`). |
 | **Cursor** | The highest `seq` a device has pulled and applied. |
+| **Head table** | The server's current state per row: the latest change by HLC. Used for snapshots and backups. |
+| **Server epoch** | A random id that changes when the server database is restored. A client that sees a new epoch re-uploads everything and re-pulls. |
+| **Pseudo-node** | A fixed HLC node id (`seed`, `hc`, `fitnotes`, `restore`) used for deterministic writes, so the same import produces identical changes on every device. |
 | **Snapshot** | The full current state of all synced rows as one file. |
 | **Server** | Handles accounts, quotas, and each user's change log. It stores and orders changes; all merging happens on the clients. |
 

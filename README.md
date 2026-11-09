@@ -14,5 +14,6 @@ Status: design phase. No code yet.
 - [docs/sync.md](docs/sync.md) - sync protocol
 - [docs/accounts.md](docs/accounts.md) - login, roles, quotas, privacy
 - [docs/backups.md](docs/backups.md) - backup layers and restore procedures
+- [docs/deployment.md](docs/deployment.md) - VPS/Dokploy deployment and recovery procedures
 - [docs/fitnotes-import.md](docs/fitnotes-import.md) - migrating data from FitNotes
 - [docs/open-questions.md](docs/open-questions.md) - undecided items

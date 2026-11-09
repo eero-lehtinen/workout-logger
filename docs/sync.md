@@ -13,9 +13,7 @@ Status: decided, custom protocol. The alternatives considered are at the end.
 ## Model
 
 Each row of a synced table is one **LWW register**: a value plus an HLC. To
-merge two versions of a row, keep the one with the greater HLC. Devices apply
-only that rule. The server doesn't merge at all; it only stores and orders
-changes.
+merge two versions of a row, keep the one with the greater HLC.
 
 The rule makes sync safe to run in any order:
 
@@ -25,7 +23,11 @@ The rule makes sync safe to run in any order:
 
 Therefore, if every change eventually reaches every device, all devices
 converge to the same state. The protocol only has to deliver every change at
-least once, and that is easy to get right.
+least once.
+
+The server keeps an append-only change log for delivery and history. It also
+keeps a head table with the current state, for snapshots and backups. Clients
+never depend on the head table for correctness.
 
 ### Granularity
 
@@ -37,43 +39,45 @@ Hot paths avoid this by design. Each set, session exercise, and measurement is
 its own row, so logging on two devices at once creates different rows and both
 are kept.
 
-If row granularity ever bites, the fix is per-column HLCs. That is what Evolu
-and cr-sqlite do, and the protocol shape stays the same.
+If row granularity ever bites, the upgrade is per-column HLCs. `data` stays a
+flat JSON object of columns, so a column-to-HLC map can be added later
+without changing the protocol shape.
 
 ### HLC
 
-An HLC is serialized as a fixed-width string that sorts correctly as text:
+Format: a fixed-width string that sorts correctly as text.
 
 ```
-<wall ms, 15 digits>-<counter, 5 digits>-<device id>
-000001762780000000-00000-k3j9x2
+<wall ms, 15 digits>-<counter, 5 digits>-<node id>
+001762780000000-00000-k3j9x2
 ```
 
-The device id is a random string generated at install. It makes every HLC
-unique and breaks ties deterministically.
+- **Node id.** A random device id generated at install, or a fixed *pseudo-node* for deterministic writes: `seed`, `hc` (Health Connect), `fitnotes`, `restore`. Node ids are unique per writer, so HLCs are unique and ties never happen between different writers.
+- **Validation.** The server checks the format with a strict regex and rejects anything else.
 
-Clock rules:
+Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
 
 - **Local write:**
-  - `wall = max(prev.wall, now())`
-  - `counter = (wall == prev.wall) ? prev.counter + 1 : 0`
-- **Receiving a remote HLC `r`:**
-  - `wall = max(prev.wall, r.wall, now())`
-  - Bump the counter the same way.
-
-  This guarantees that a device's next local edit wins over everything it has already seen, even if its own clock is behind.
-- The last issued HLC is persisted, so it survives restarts.
-
-The server rejects changes whose wall time is more than 1 h ahead of server
-time. Without that check, a phone with a badly wrong clock could win every
-conflict for days. The app shows a clock warning when this happens.
+  - `wall = max(l.wall, now)`
+  - `counter = (wall == l.wall) ? l.counter + 1 : 0`
+- **Receive remote `r`:**
+  - `wall = max(l.wall, r.wall, now)`
+  - `counter`:
+    - if `wall` equals both `l.wall` and `r.wall`: `max(l.counter, r.counter) + 1`
+    - if it equals only `l.wall`: `l.counter + 1`
+    - if it equals only `r.wall`: `r.counter + 1`
+    - otherwise: `0`
+- **Counter overflow** (> 99999): advance `wall` by 1 ms and reset the counter to 0.
+- **Persistence.** The clock state (`last_hlc`) is read and updated inside each write transaction, so it survives restarts and can never go backwards.
+- **Write guard.** A local write stamps `max(clock.now(), row.hlc⁺)`, where `x⁺` is `x` with the counter incremented. A local edit therefore always beats the version it edits, even if that version came from a node whose clock was ahead.
+- **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. The app shows a clock warning and offers "repair clock". That resets `last_hlc` to the current time and re-stamps the outbox rows that were not pushed.
 
 ## Client side
 
 Each synced table has these columns:
 
 ```
-id       TEXT PRIMARY KEY   -- UUIDv7, or deterministic UUIDv5 (see "Duplicates")
+id       TEXT PRIMARY KEY   -- UUIDv7, or deterministic UUIDv5 (see "Deterministic writes")
 hlc      TEXT NOT NULL
 deleted  INTEGER NOT NULL DEFAULT 0
 ...domain columns
@@ -82,36 +86,54 @@ deleted  INTEGER NOT NULL DEFAULT 0
 Two internal tables are local only and never synced:
 
 ```
-_outbox      (table_name, id, hlc, PRIMARY KEY (table_name, id))
-_sync_state  (key PRIMARY KEY, value)   -- device_id, cursor, last_hlc, last_sync_at
+_outbox      (table_name, id, PRIMARY KEY (table_name, id))
+_sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, last_sync_at
 ```
+
+`_sync_state` must never be restored onto another device. Android Auto Backup
+is disabled (`allowBackup=false`) so that a device id can't be cloned.
 
 ### Write path
 
 Writes always go through `core`. In one SQLite transaction:
 
-1. `hlc = clock.now()`.
-2. Upsert the domain row with that `hlc`. A delete sets `deleted = 1`; rows are never removed.
-3. Upsert `_outbox (table_name, id, hlc)`.
+1. Stamp the HLC per the write guard.
+2. Upsert the domain row. A delete sets `deleted = 1`; rows are never removed.
+3. Upsert `_outbox (table_name, id)`.
 
-If the app dies mid-write, the transaction rolls back. A committed write always has an outbox entry.
+Deletes don't cascade. Deleting a session writes only the session's tombstone.
+Its exercises and sets remain, and queries hide children of deleted parents.
+This means:
+
+- undoing a delete brings back the whole subtree;
+- a concurrent edit to a deleted parent can't revive a parent with half its children.
 
 ### Push
 
-1. Read up to N outbox entries and join them with the current row data.
-2. Send `POST /push { device_id, changes: [{ table, id, hlc, deleted, v, data }] }`.
-3. On a 2xx response, delete the outbox entries whose `hlc` equals the `hlc` that was sent. If the row was edited again during the request, its outbox entry has a newer HLC and stays for the next push.
-4. Repeat until the outbox is empty.
+1. In one read transaction, take up to N outbox entries joined with their current rows. `hlc` comes from the row.
+2. Send `POST /api/sync/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`.
+3. The response has a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`future_clock`, `conflict`, `quota`, `schema_outdated`).
+4. Delete outbox entries that are `ok` and whose row `hlc` still equals the sent `hlc`. If the row was edited during the request, its entry stays and the new version goes in the next push.
+5. Rejected entries stay in the outbox and the UI shows the reason. A `quota` rejection stops the push loop until the next day.
 
 ### Pull
 
-1. Send `GET /pull?after=<cursor>&limit=1000`. The response is `{ changes, cursor, more }`.
-2. Apply the page in one transaction:
-   - For each change, call `clock.receive(change.hlc)`.
-   - If there is no local row, or `change.hlc > local.hlc`, overwrite the local row, including `deleted`. Also drop any outbox entry for that row, since its local edit lost the merge.
-   - Otherwise skip the change. This covers echoes of this device's own pushes (equal HLC) and changes that an existing edit already beats.
-   - Store the new cursor in the same transaction. A crash replays the page at worst, which is idempotent.
-3. Repeat while `more` is true.
+1. Send `GET /api/sync/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`.
+2. If `epoch` differs from the stored `server_epoch`, the server was restored. Run [epoch reset](#server-restore-and-epoch) and stop this pull.
+3. Apply the page in one transaction:
+   - Call `clock.receive` with the page's max HLC.
+   - For each change:
+     - if there is no local row, or `change.hlc > local.hlc`, overwrite the local row (including `deleted`) and drop the row's outbox entry, because its local edit lost;
+     - otherwise skip it. This covers echoes of this device's own pushes and older versions.
+   - Rows with `v` newer than the client supports are not applied. Sync pauses with "update the app", and the cursor does not advance past them.
+   - Store the new cursor in the same transaction.
+4. Repeat while `more` is true.
+
+### Bootstrap
+
+A new device (empty `_sync_state`) calls `GET /api/sync/snapshot`. The response
+holds the head rows and the max `seq`, both read in one server transaction. The
+device applies them as a pull page and stores that `seq` as its cursor.
 
 ### When it runs
 
@@ -120,91 +142,176 @@ If the app dies mid-write, the transaction rolls back. A committed write always 
 - Every 60 s while the app is open.
 - On manual "sync now".
 
-Each run pushes first, then pulls. The order doesn't affect correctness; pushing first just makes the round trip shorter. No background sync is needed on Android.
+Each run pushes first, then pulls. Later, a server-sent-events "poke" with the
+latest `seq` can replace polling. Pull stays the source of truth.
 
 ### Referential integrity
 
-Synced tables don't enforce foreign keys. Changes can arrive child-before-parent across pages, and a parent can be deleted on one device while a child is added on another.
+Synced tables don't enforce foreign keys. Changes can arrive child-before-parent
+across pages. Queries join through parents and drop children whose parent is
+missing or deleted.
 
-Queries join through parents and drop children whose parent is missing or deleted. Deleting a parent also marks its children deleted in the same transaction.
+### Ordering
+
+`position` columns are fractional index strings. Candidate library:
+`fractional-indexing`. Ties between equal keys, which concurrent inserts can
+produce, are broken by `id`. Every ordered query uses `ORDER BY position, id`.
+
+## Deterministic writes
+
+Seeds and imports must not overwrite user edits, and the same import on two
+devices must produce identical changes. For these writes, both the id and the
+HLC are derived from the source:
+
+| Source | id | HLC wall | Node |
+| --- | --- | --- | --- |
+| Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(builtin key) | Catalog version timestamp | `seed` |
+| Health Connect record | UUIDv5(HC record id) | Record's last-modified time | `hc` |
+| FitNotes import | UUIDv5(FitNotes table + row id) | Import time; see [fitnotes-import.md](fitnotes-import.md#re-import) | `fitnotes` |
+
+The rules:
+
+- The writer skips rows whose local HLC is greater than or equal to the HLC it would write. A user edit or delete is always newer, so it survives re-seeding and re-reading Health Connect.
+- Two devices importing the same Health Connect record produce byte-identical changes. The server stores one and ignores the other.
+- A known edge case: a device that seeds a *newer* catalog version before it has pulled an older user edit to that builtin row overwrites the edit. This is rare and accepted.
 
 ## Server side
 
-The sync part of the server is a few hundred lines with one table. Auth and
-quotas are in [accounts.md](accounts.md).
+The sync part of the server is a few hundred lines. Auth and quotas are in
+[accounts.md](accounts.md).
 
 ```
 change (
-  seq         INTEGER PRIMARY KEY AUTOINCREMENT,   -- global, increasing
+  seq         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     TEXT NOT NULL,
   table_name  TEXT NOT NULL,
   id          TEXT NOT NULL,
   hlc         TEXT NOT NULL,
   deleted     INTEGER NOT NULL,
   v           INTEGER NOT NULL,      -- schema version of data
-  data        TEXT NOT NULL,         -- JSON
+  data        TEXT NOT NULL,         -- JSON object of columns
   device_id   TEXT NOT NULL,
   received_at INTEGER NOT NULL,
   UNIQUE (user_id, table_name, id, hlc)
 )
-INDEX (user_id, seq)
+INDEX change (user_id, seq)
+
+head (user_id, table_name, id, hlc, deleted, v, data, seq,
+      PRIMARY KEY (user_id, table_name, id))
+
+server_meta (key PRIMARY KEY, value)   -- epoch
+user_sync (user_id PRIMARY KEY, max_v)
 ```
 
-All endpoints require a bearer token and act only on the token's `user_id`.
+All endpoints act only on the authenticated `user_id`.
 
-- `POST /push`: check quotas, then `INSERT OR IGNORE` each change in one transaction. The unique key makes retries no-ops. The server does not merge.
-- `GET /pull?after=&limit=`: `SELECT ... WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`.
-  - `seq` is global, so one user's cursor skips over the numbers used by other users. That is harmless, because a cursor only needs to increase.
-- `GET /snapshot`: the latest change per `(table_name, id)` by HLC, i.e. the current state, plus the max `seq` as a starting cursor. A new device can use this instead of replaying the whole log.
+- **`POST /push`** runs in one transaction. For each change, in order:
+  1. Validate the HLC format and the future-clock bound.
+  2. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know. Otherwise raise `max_v` if needed.
+  3. `INSERT` into `change`. If the unique key already exists:
+     - identical `data` and `deleted`: `ok` (duplicate);
+     - different: `conflict`, which means a node-id or determinism bug. It is logged.
+  4. If inserted, upsert `head` when `hlc > head.hlc`.
+  5. Count inserted rows against quota. Duplicates don't count. When the quota is reached, the remaining changes are rejected as `quota`.
+- **`GET /pull?after=&limit=`**: `SELECT ... FROM change WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`, plus `epoch`.
+- **`GET /snapshot`**: `head` rows (including tombstones) plus `max(seq)`, both read in one transaction, plus `epoch`.
+
+`seq` is global, so one user's cursor skips over other users' numbers. That is
+harmless, because a cursor only needs to increase.
+
+**Single-writer assumption.** A pull must never skip a change, which requires
+that changes become visible in `seq` order. SQLite's single writer guarantees
+that. If the server ever moves to Postgres or multiple instances, this breaks.
+Pull would then need a per-user counter allocated under a row lock in the push
+transaction, or must serve only up to a commit-safe watermark.
 
 ### Why an append-only log
 
 - Pull needs a total order of arrival anyway. An `seq` on an append-only table gives that for free.
-- The log is the full history, so the server can restore any point in time. This is the main protection against a bad edit or a buggy client version spreading to all devices. See [backups.md](backups.md).
-- Size is small. A set row is about 300 bytes of JSON, so 100k changes are roughly 30 MB. With several users, the D1 500 MB per-database limit matters, which is why per-user size quotas exist. Compaction (keeping only the latest change per row older than N months) is possible later and not needed now.
+- The log is the full history, so any row or account can be restored to any point in time. This is the main protection against a bad edit or a buggy client version spreading to all devices. See [backups.md](backups.md).
+- Size is small. A set row is about 300 bytes of JSON, so 100k changes are roughly 30 MB. Per-user size quotas bound it (see [accounts.md](accounts.md#quotas)). Compaction can come later: drop log entries older than N months that are no longer the head.
 
-## Semantic conflicts
+### Server restore and epoch
 
-LWW guarantees convergence, but the converged result can still be wrong. These cases need handling:
+A whole-database restore (Litestream, see [deployment.md](deployment.md#recovery-procedures))
+rolls back `seq`. It also loses changes that clients pushed after the restore
+point, which those clients already removed from their outboxes. The epoch
+handles this.
 
-| Case | Handling |
-| --- | --- |
-| The same entity is created on two offline devices (e.g. built-in exercises seeded on both) | Use deterministic ids wherever an entity has a natural key: UUIDv5 of the built-in key, of the FitNotes row id, or of the Health Connect record id. Both devices then write the same row id and LWW collapses them. Real user-created duplicates are rare; a merge tool comes later if needed. |
-| Concurrent reordering or inserting at the same position | `position` is a fractional index string, not an integer. Candidate library: `fractional-indexing`. Inserts never renumber siblings, so they never conflict. |
-| A row is edited after it was deleted elsewhere | The greater HLC wins. If that is the edit, the row comes back. Acceptable for one user. |
-| The same session is open on two devices | Each set is its own row, so all sets are kept. Session fields such as `ended_at` are LWW. Idle auto-end is deterministic, so every device computes the same value. |
-| Uniqueness rules (e.g. exercise names) | Not enforced in the database. The UI warns. |
+1. The restore procedure ends with `server new-epoch`. It writes a new random `epoch`.
+2. Each client sees the new epoch on its next pull and runs an **epoch reset**:
+   - mark every local row as outbox ("re-upload all");
+   - set the cursor to 0;
+   - store the new epoch;
+   - sync.
+3. The server dedups everything it still has via the unique key. Re-uploads within 24 h of an epoch change are exempt from quota.
+
+A whole-database restore is for disasters only, such as VPS loss or
+corruption. It is not for undoing bad data: the re-upload would bring the bad
+rows back. Bad data is undone with `wl restore`, which appends new changes (see
+[backups.md](backups.md#restore-procedures)).
+
+## Restores through the log
+
+`wl restore` reads old versions from `change` and writes them back as new
+changes:
+
+- **HLC:** `max(now, max hlc in the user's log)⁺` with node `restore`. The restored version always wins, even against a future-dated bad write.
+- **Whole-account or whole-table restore** also writes tombstones for rows that didn't exist at the target time.
+- **Schema version:** rows keep their original `v`. Clients upgrade them on apply.
+- **Permissions:** this requires a write-scoped API key. Keys are read-only by default.
 
 ## Schema evolution
 
-- Each change carries `v`, the app schema version that wrote it. The server stores `v` and `data` verbatim and never needs a migration.
-- A client upgrades rows with an older `v` on apply, using the same migration functions it runs on its local tables.
-- A client receiving a `v` newer than it understands pauses sync and shows "update the app". It does not apply or drop the change.
+- Each change carries `v`, the app schema version that wrote it. The server stores `v` and `data` verbatim and never migrates them.
+- A client upgrades incoming rows with an older `v` on apply, using the same migration functions it runs on its local tables.
+- A client receiving a `v` newer than it understands pauses sync and shows "update the app".
+- The server rejects pushes with a `v` older than the newest `v` it has seen from that user. An outdated APK therefore can't wipe columns written by a newer web app.
+
+## Semantic conflicts
+
+| Case | Handling |
+| --- | --- |
+| The same entity is created on two offline devices | Deterministic ids and HLCs wherever there is a natural key (see above). Real user-created duplicates are rare; a merge tool comes later if needed. |
+| Concurrent reordering or inserting at the same position | Fractional index keys; ties broken by `id`. |
+| A row is edited after it was deleted elsewhere | The greater HLC wins. If that is the edit, the row comes back, along with its children (deletes don't cascade). |
+| The same session is open on two devices | Each set is its own row, so all sets are kept. Idle auto-end is derived at query time, not written (see [architecture.md](architecture.md#data-model-client)), so it can't overwrite anything. |
+| Uniqueness rules (e.g. exercise names) | Not enforced in the database. The UI warns. |
 
 ## Failure modes
 
 | Failure | Result |
 | --- | --- |
-| Network drops mid-push | Outbox entries are unacknowledged and are re-sent. The server ignores duplicates. |
+| Network drops mid-push | Unacknowledged outbox entries are re-sent. The server reports duplicates as `ok`. |
 | Crash mid-pull | The page transaction rolls back, and the cursor is unchanged. The page is re-pulled. |
-| Device offline for weeks | The outbox grows and is pushed later. The pull pages through everything missed. |
-| Wrong device clock (too far ahead) | Push rejected, warning shown. Clocks that are behind are handled by the HLC receive rule. |
-| App data wiped on a device | Fresh device: new device id, pull a snapshot. Unpushed outbox entries are lost, so the UI shows "unsynced changes" prominently. |
-| Server data lost | Every device still has the full state. Re-push everything: there is a "re-upload all" action that marks every row as outbox. |
-| Quota exceeded | Push gets a 429. The outbox keeps the changes, local use continues, and the UI shows the reason. Changes push after the reset or after the owner raises the quota. |
+| Device offline for weeks | The outbox grows and is pushed later. The pull pages through everything missed. Inserted rows count against quota. |
+| Device clock far ahead | Those changes are rejected; the rest of the batch goes through. The user is warned, and "repair clock" fixes it. Clocks that are behind are handled by the receive rule. |
+| App data wiped on a device | Fresh device: new device id, then bootstrap from the snapshot. Unpushed outbox entries are lost, so the UI shows "unsynced changes" prominently. |
+| Server restored from Litestream | The epoch changes, and every device re-uploads and re-pulls. |
+| Server data lost entirely | Restore from backups (see [deployment.md](deployment.md)); this is also an epoch change. |
+| Quota exceeded | Rejected changes stay in the outbox, local use continues, and the UI shows the reason. |
 | Token revoked or expired | The app asks to log in again. The outbox is kept. |
+| Outdated app | Push gets `schema_outdated`, or the server's minimum client version returns 426. The app shows "update". The outbox is kept. |
+
+## Testing
+
+The clock and the merge logic are covered by a model-based fuzz test. It
+simulates several devices with skewed clocks, random edits and deletes, random
+delivery order, duplicated and dropped requests, and an epoch reset. It then
+asserts that all devices converge to the same state, and that a local edit
+always beats the version it was made on.
 
 ## Alternatives considered
 
-| Option | Fit | Reason not chosen (for now) |
+| Option | Fit | Reason not chosen |
 | --- | --- | --- |
-| **Evolu** | Closest match. SQLite on the client, per-column LWW with HLC, stateless relay that can run on Cloudflare Workers, end-to-end encrypted, MIT licensed. Its identity is a key/mnemonic per user, and with several users its encryption becomes a real privacy plus. | Data is encrypted on the relay, so server-side backups, restores, and the CLI must be full Evolu clients holding the user's key. Identity is a mnemonic, not a login, so it doesn't fit the invite/quota model directly. The schema and query API are Evolu's. The API has changed across major versions. **Worth a spike if you'd rather not own the sync code.** |
-| **TinyBase** MergeableStore + Durable Object SQL persister | Built-in CRDT sync over WebSocket, first-class Cloudflare Durable Object support. | Keeps the whole dataset in an in-memory store. Queries use TinyBase's API instead of SQL, which hurts analytics. |
-| **cr-sqlite** | Column-level CRDT as a SQLite extension, which would let us keep plain SQL. | Maintenance activity is unclear, and packaging is split between original and community forks. |
-| **PowerSync / ElectricSQL / Zero** | Mature sync engines. | All require a Postgres backend plus a sync service. Too much infrastructure for one user. |
+| **Evolu** | Closest match. SQLite on the client, per-column LWW with HLC, stateless relay, MIT licensed. | Encryption is mandatory, so server-side backups, restores, and the CLI must be full Evolu clients holding the user's key. Identity is a mnemonic, not a login, so it doesn't fit invites or quotas. The schema and query API are Evolu's, and the API has changed across major versions. |
+| **TinyBase** MergeableStore | Built-in CRDT sync over WebSocket. | Keeps the whole dataset in an in-memory store. Queries use TinyBase's API instead of SQL, which hurts analytics. |
+| **cr-sqlite** | Column-level CRDT as a SQLite extension, which would keep plain SQL. | Maintenance activity is unclear. |
+| **LiveStore** (event sourcing on SQLite) | Intent-preserving events. | Replay cost and migration complexity for no benefit at this scale. |
+| **PowerSync / ElectricSQL / Zero** | Mature sync engines. | All require a Postgres (or similar) backend plus a sync service. |
 
-Decision: the custom protocol above. It is small (a clock, an outbox, two
-endpoints) and every part of it can be tested in isolation. The server data
+Decision: the custom protocol. It is small (a clock, an outbox, two endpoints,
+a head table) and every part of it can be tested in isolation. The server data
 stays plain JSON rows that the CLI, restores, and backups can read directly.
-That matters more here than end-to-end encryption, which is out of scope (see
-[accounts.md](accounts.md#privacy)).
+End-to-end encryption is out of scope (see [accounts.md](accounts.md#privacy)).

@@ -66,8 +66,8 @@ The app is shared with coworkers, each with their own private data. See
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Routine of the most recent session preselected; changeable | P0 | |
-| Next day in the cycle highlighted; any day selectable | P0 | Next = the day after the last session's day in this routine, wrapping. The last performed day is also marked. |
+| Routine of the most recent session preselected; changeable | P0 | "Most recent" = latest `started_at` among sessions that have a routine. Ad hoc sessions are ignored. |
+| Next day in the cycle highlighted; any day selectable | P0 | Next = the day after the latest session's day in this routine, by `position`, wrapping. If that day has since been deleted, its old `position` still locates the next existing day. Reordering days changes "next"; that's intended. The last performed day is also marked. |
 | Ad hoc session without a routine | P0 | |
 | Adding, removing, and reordering exercises in a running session | P0 | Doesn't change the routine. |
 
@@ -78,19 +78,58 @@ The app is shared with coworkers, each with their own private data. See
 | List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. |
-| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set. Idle auto-end is computed when the app next opens, so no background process is needed. |
+| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)). Logging into an idle-ended session asks whether to continue it or start a new one. |
+| Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
 | Session notes | P1 | |
 
 ## Exercise logging view
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Fast weight and reps entry | P0 | Prefilled from the previous set, or from the same set index of the previous performance. Steppers plus a numeric keypad. One tap to log. |
+| Fast weight and reps entry | P0 | Steppers plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). |
+| Tap a previous-performance row to copy it into the input | P0 | |
 | Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
-| Dim star for set records, bright star for PRs | P0 | Shown on logged sets and in history. |
+| Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Rules in [progress markers](#progress-markers). |
 | Edit and delete logged sets | P0 | |
 | History graph for the exercise | P1 | Metrics: best e1RM per session, e1RM of each set, top weight, volume, reps at a weight. |
-| Records table: best weight for 1..N reps, best e1RM, heaviest weight | P1 | |
+| Records table: best weight for 1..N reps, best e1RM, heaviest weight, most reps at a weight | P1 | Covers sets above the e1RM cap. |
+
+## Progress markers
+
+Each set gets at most one marker, checked in this order:
+
+1. **PR** (bright star)
+2. **Set record** (dim star)
+3. **Weight increase** (up arrow)
+
+The last two compare against the **reference set**: the set with the same index
+in the previous performance. Sets are ordered by `position`, and deleted sets
+don't count.
+
+### `weight_reps` and `bodyweight_reps`
+
+- **e1RM** uses Epley and is computed only for 1–12 reps. The cap is a setting. Above the cap, e1RM is undefined: estimates there are unreliable.
+- **PR:** the set's e1RM is greater than the best e1RM of every earlier set of this exercise. Sets above the cap can't be PRs.
+- **Set record:**
+  - if both this set and the reference set have an e1RM: this set's e1RM is greater;
+  - otherwise (either is above the cap): this set dominates the reference, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
+- **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
+- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`.
+
+### Other exercise types
+
+| Type | PR and set record compare | Weight increase |
+| --- | --- | --- |
+| `reps` | reps | n/a |
+| `time` | duration | n/a |
+| `distance_time` | distance | n/a |
+
+### Edge cases
+
+- "Greater" means greater by more than an epsilon (1e-6 kg). Ties get no marker.
+- No reference set (first session of the exercise, or more sets than last time): no set record or weight increase marker.
+- The first session of an exercise never shows PRs, because everything would be one.
+- Markers in history are computed against the history before each session, so they show what was achieved at the time.
 
 ## Rest timer
 
@@ -129,7 +168,7 @@ A page for tracking body data and other quantities next to training data.
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Month calendar with sessions marked per day | P1 | Several sessions per day are possible. Each mark is labeled and colored by the routine day, or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. |
+| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a setting). Several sessions per day are possible. Each mark is labeled and colored by the routine day, or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. |
 | Year heatmap of training days | P2 | |
 | Sessions per week over time, with average | P1 | |
 | Days between sessions: average and distribution | P1 | |

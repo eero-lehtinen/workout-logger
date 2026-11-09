@@ -5,7 +5,8 @@ Guidance for coding agents working in this repository.
 ## Project
 
 A local-first workout logger: React web app + Capacitor Android shell, a Hono
-server on Cloudflare (auth, sync, quotas, snapshots), and a CLI. Used by the
+server on a Dokploy-managed VPS (auth, sync, quotas, snapshots; backups to
+Cloudflare R2), and a CLI. Used by the
 owner and a few invited coworkers. Not a production service, but user data
 must never be lost or leaked between accounts.
 
@@ -30,14 +31,17 @@ exist yet unless you see it.
 Breaking these causes data loss or leaks. Don't take shortcuts here.
 
 1. **All writes to synced tables go through the `core` write API.** It stamps the HLC and writes the outbox entry in the same transaction. Never `INSERT`/`UPDATE` synced tables directly from UI or feature code.
-2. **Never hard-delete synced rows on the client.** Set `deleted = 1`.
-3. **Ids are client-generated:** UUIDv7 for new entities, UUIDv5 for entities with a natural key (builtin key, FitNotes row id, Health Connect record id). Never use autoincrement ids for synced tables.
-4. **Merge rule is row-level LWW by HLC, applied on the client only.** The server stores and orders changes but never merges or interprets `data`.
+2. **Never hard-delete synced rows on the client.** Set `deleted = 1`. Deletes don't cascade: deleting a parent writes only the parent's tombstone, and queries hide children of deleted parents.
+3. **Ids are client-generated:** UUIDv7 for new entities. Seeds and imports (builtins, FitNotes, Health Connect) use deterministic ids *and* HLCs from their pseudo-node ([docs/sync.md](docs/sync.md#deterministic-writes)). Never use autoincrement ids for synced tables.
+4. **Merge rule is row-level LWW by HLC, applied by clients.** The server's head table uses the same comparison, but the server never interprets `data`. The HLC rules in docs/sync.md are exact, and the sync fuzz test must pass after any change to clock or merge code.
 5. **Every server query is scoped by the authenticated `user_id`** through the data-access module. No handler builds its own unscoped SQL.
 6. **No foreign key enforcement on synced tables.** Queries must tolerate missing or deleted parents.
 7. **Derived values (e1RM, records, volume) are not stored in synced tables.**
 8. **Weights are stored in kg.** Unit conversion happens only in the UI.
 9. **Schema changes need a migration** for local tables and an upgrade function for incoming sync rows with an older `v`.
+10. **The server is a single instance with one SQLite writer.** Pull correctness depends on it ([docs/sync.md](docs/sync.md#server-side)). Don't scale out or switch databases without redesigning `seq`.
+11. **The Capacitor scheme and hostname never change.** Changing them changes the WebView origin and orphans every user's local database.
+12. **Auth tokens on Android live only in secure storage**, never in `localStorage` or WebView storage. Android Auto Backup stays disabled.
 
 ## Private data
 

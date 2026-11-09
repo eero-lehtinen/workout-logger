@@ -21,8 +21,11 @@ current docs before we commit to them.
            ▼                                 ▼
       ┌──────────────────────────────────────────────┐       ┌─────────┐
       │ Server (Hono): auth, per-user change log,    │◀──────│   CLI   │
-      │ quotas, snapshots. Cloudflare Worker + D1    │       └─────────┘
-      └──────────────────────────────────────────────┘
+      │ quotas, snapshots. VPS (Dokploy) + SQLite    │       └─────────┘
+      └──────────────────────┬───────────────────────┘
+                             │ Litestream replica + daily DB copies
+                             ▼
+                    Cloudflare R2 (backups)
 ```
 
 Principles:
@@ -43,13 +46,15 @@ Principles:
 | Components | Radix-based headless components (*candidate*) | Accessible primitives; styling is our own. |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
 | Local DB | Official SQLite WASM build with the OPFS SAH-pool VFS (*candidate*), on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. OPFS in the Android WebView is verified in the first spike. |
-| Query layer | Kysely or Drizzle (*candidate*) | Typed SQL. |
+| Query layer | Kysely | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
+| Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#client-runtime). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
-| Server | Hono (*candidate*) | Runs on Cloudflare Workers and on Node/Bun, so the hosting decision stays reversible. |
-| Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and D1 support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
-| Hosting | Cloudflare Workers, free plan | Workers Paid ($5/month) if quotas get tight. Hono keeps a move to the VPS possible. |
-| Server storage | Cloudflare D1 | Free-plan limits: 100k rows written/day, 5M rows read/day, 500 MB per database. Per-user quotas keep usage inside these. |
-| Object storage | Cloudflare R2 | Daily snapshots. |
+| Server | Hono on Node (*candidate*) | Small, typed, and portable across runtimes. |
+| Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
+| Hosting | Owner's VPS under Dokploy | See [deployment.md](deployment.md). |
+| Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely, *candidate*) | Same engine as the clients. No platform row limits. |
+| Server backups | Litestream to Cloudflare R2 | Continuous replication with point-in-time restore, at a different provider than the VPS. |
+| Object storage | Cloudflare R2 | Litestream replica and daily DB copies, in separate buckets. |
 | CLI | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
 
 ## Repository layout (planned)
@@ -87,7 +92,8 @@ routine_day       (id, routine_id, name, position)
 slot              (id, day_id, exercise_id, position, rest_s?, note?)
 slot_alternative  (id, slot_id, exercise_id, position)
 
-session           (id, routine_id?, day_id?, started_at, ended_at?, end_reason?, notes)
+session           (id, routine_id?, day_id?, started_at, tz, ended_at?, end_reason?, notes)
+                  -- tz: IANA zone at start; end_reason: manual | unknown (imported, no duration)
 session_exercise  (id, session_id, slot_id?, exercise_id, position, notes)
 set_log           (id, session_exercise_id, position, logged_at,
                    weight_kg?, reps?, duration_s?, distance_m?)
@@ -101,12 +107,17 @@ setting           (id = key, value_json)
 Notes:
 
 - Weight is stored in kg as REAL. See [units and rounding](#units-and-rounding).
-- The routine's active day is not stored. It is derived from the latest session that has a `routine_id`, so the derived state cannot get out of sync with the logs.
-- `ended_at` is NULL for a running session. Idle auto-end runs when the app opens or resumes: if `now - last set_log.logged_at > idle_threshold`, set `ended_at = last logged_at` and `end_reason = 'idle'`. No background job is needed.
+- The routine's active day is not stored. It is derived (see [features.md](features.md#starting-a-session)), so the derived state cannot get out of sync with the logs.
+- **Session end.** `ended_at` is written only by a manual stop. Idle auto-end is derived at query time, not stored:
+  - effective end = `ended_at`, or else the last `set_log.logged_at` if `now` minus that time exceeds the idle threshold, or else still running;
+  - deriving it means nothing is written in the background and no device can overwrite another's edits with a computed value.
+- **Logging into an idle-ended session.** Opening a session whose effective end has passed and logging a set asks "continue that session or start a new one?". Continuing writes nothing extra; the idle rule then simply measures from the new last set.
+- **Calendar date** of a session is the local date of `started_at` in the session's `tz`. Weeks start on Monday (a setting).
 - Editing a routine never rewrites past sessions. History queries go by `exercise_id`.
 - The `set_log` columns are deliberately minimal. There are no set types (warm-up, superset, drop set), RPE, or per-set notes.
 - e1RM, set records, PRs, and volume are computed by queries, not stored. If they get slow, cache them in a local table that is not synced.
-- Built-in exercises, muscles, and the body weight metric use UUIDv5 ids derived from their builtin keys, so every device seeds identical rows.
+- Built-in exercises, muscles, and the body weight metric use deterministic ids and HLCs, so every device seeds identical rows. Seeding never overwrites user edits ([sync.md](sync.md#deterministic-writes)).
+- Every exercise has at least one primary muscle (factor 1.0). The editor enforces this, because frequency stats count primary muscles.
 
 ## Units and rounding
 
@@ -120,9 +131,44 @@ The weight unit is a per-user display setting. Storage is always kg.
 - **Prefill.** The prefilled weight is shown unrounded, in display units. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
 - **Comparisons** for stars and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
 
+## Client runtime
+
+### Database worker and tabs
+
+- SQLite runs in a dedicated worker. All queries go through it. Writes are short transactions. Heavy analytics queries are indexed, and split if they would delay set logging noticeably (target: logging a set under 100 ms).
+- The SAH-pool VFS allows one connection per database, so only one tab can open it. The tab holding a Web Lock owns the database. Other tabs show "open in another tab", with a "use here" button that takes the lock over. Proxying queries between tabs is not worth it.
+- Configure the VFS so that it does **not** delete its storage when initialization fails. Recent SQLite versions have an option for this; pin a version that has it and verify the option name.
+
+### Storage durability
+
+- **Web:** call `navigator.storage.persist()` on first run and show the result next to the backup status. Without it, the browser may evict the database.
+- **Android:** the Capacitor scheme and hostname are fixed forever. Changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md).
+
+### Client migrations
+
+- Run in the worker, before any other query, in one transaction.
+- Before migrating, copy the database file (OPFS copy on web, plus the regular snapshot on Android), and keep the last copy.
+- Migrations of local tables and upgrades of incoming sync rows with an older `v` share the same functions ([sync.md](sync.md#schema-evolution)).
+
+### Reactive queries
+
+- The `core` write API knows which tables each transaction touched, for local writes and for sync applies alike.
+- After commit, it emits the table names.
+- UI queries are TanStack Query queries tagged with the tables they read. Matching queries are invalidated and refetch. This is simple, and coarse enough to be correct.
+
+### Updates and version compatibility
+
+- **PWA:** precache the app shell and the SQLite WASM file (`vite-plugin-pwa`, *candidate*). A new version shows "reload to update". It is never activated automatically during a running session.
+- **APK:** checks GitHub releases on start and shows an update prompt.
+- **Server:** every request sends the app version. Below `MIN_CLIENT_VERSION` the server returns 426, and the app shows "update the app". Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+
 ## Sync
 
 Each user's devices push and pull through that user's change log on the server. Row-level last-writer-wins by HLC. Full design: [sync.md](sync.md).
+
+## Deployment
+
+A single Node container on the owner's VPS, managed by Dokploy. It serves the API and the web app. Images are built in CI. Full design and recovery procedures: [deployment.md](deployment.md).
 
 ## Accounts
 
@@ -133,8 +179,9 @@ Invite-only signup, an owner role without limits, and per-user quotas. Full desi
 Layered:
 
 - the server change log
-- daily R2 snapshots
-- an offsite CLI pull
+- a Litestream replica
+- daily full-DB copies in R2
+- the owner's encrypted PC copy
 - on-device snapshot files
 
 Full design: [backups.md](backups.md).
@@ -145,22 +192,27 @@ The native app exists for the rest timer and health data. The web cannot reliabl
 
 ### Rest alarm
 
-- When a set is logged, schedule a local notification at `logged_at + rest`. Cancel and reschedule on adjust or skip.
-- The notification uses a dedicated high-importance channel with a custom sound and a vibration pattern. On Android 8+, the sound is fixed per channel.
-- Android 12+ needs the exact-alarm permission. For a timer app outside the Play Store, `USE_EXACT_ALARM` is acceptable.
-- **Unverified, test first on a device:**
-  - whether the alert plays over music
-  - its behavior in silent mode and Do Not Disturb
+A custom Capacitor plugin in Kotlin, `RestTimer`, is the primary implementation. The stock local-notifications plugin quietly falls back to inexact alarms, loses scheduled alarms when the exact-alarm permission is revoked, and can't do the P1 countdown.
 
-  If the stock Capacitor plugin is insufficient, write a small custom plugin that plays the sound with `AudioAttributes.USAGE_ALARM` and drives the vibrator directly.
-- P1: an ongoing notification with a countdown. This may need a foreground service.
-- On the web, the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible.
+- **API:** `start(endsAt)`, `adjust(endsAt)`, `cancel()`, and events back to JS.
+- **Firing:** an exact alarm via `AlarmManager` (`setAlarmClock`, *candidate*: exact, and allowed in Doze). When it fires:
+  - play the sound with `AudioAttributes.USAGE_ALARM`, so it plays over music and isn't muted by notification volume;
+  - drive the vibrator directly with a pattern;
+  - show a notification.
+- **Countdown (P1):** a foreground service with an ongoing notification that shows the remaining time.
+- **Permission:** `USE_EXACT_ALARM` (acceptable for a timer app outside the Play Store). On every resume, check that exact alarms are still allowed; if not, warn in the UI.
+- **Test first on a device:**
+  - over music
+  - in silent mode and Do Not Disturb
+  - with the screen locked
+  - with the app swiped away
+- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible.
 
 ### Health Connect
 
 - Read body weight records through a Capacitor health plugin. Candidates: Capawesome Health, `@capgo/capacitor-health`. Requires the `READ_WEIGHT` permission.
 - Health Connect limits reads to about 30 days of history unless the user also grants history access. Request it for the first import.
-- Import runs on app start and resume. It reads records changed since a stored watermark and upserts them as `measurement` rows with `source = 'health_connect'` and `id = UUIDv5(record id)`. This is idempotent, including across two Android devices.
+- Import runs on app start and resume. It reads records changed since a stored watermark and writes them as `measurement` rows with `source = 'health_connect'`, using the deterministic id and HLC from [sync.md](sync.md#deterministic-writes). Re-reads are idempotent across devices, and a user's deletes or edits of imported rows survive.
 - Read only; we never write to Health Connect.
 
 ### Other
@@ -181,7 +233,9 @@ wl exercise "Barbell Row" --history --json
 wl measurements --metric "Body weight" --json
 wl export --format json|csv|sqlite
 wl sql "select ..."                       # raw read-only SQL on the mirror
-wl backup <dir>                           # dated snapshot file, see backups.md
+wl backup <dir> [--all]                   # snapshot files, see backups.md
+wl restore --at <time> [--table] [--id]   # append-only restore, needs write-scoped key
+wl import fitnotes <file>                 # needs write-scoped key
 ```
 
 The JSON output uses denormalized, readable names, so AI tools can consume it
