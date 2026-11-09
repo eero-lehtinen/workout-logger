@@ -1,0 +1,18 @@
+# Workout Logger
+
+Local-first strength training logger. A web app plus an Android build from the
+same codebase, sync between devices, invite-only accounts for a few users, and
+a CLI for exporting data to scripts and AI tools.
+
+Status: design phase. No code yet.
+
+## Documentation
+
+- [docs/glossary.md](docs/glossary.md) - terms used in the code and docs
+- [docs/features.md](docs/features.md) - feature requirements and priorities
+- [docs/architecture.md](docs/architecture.md) - tech stack, data model, platform specifics
+- [docs/sync.md](docs/sync.md) - sync protocol
+- [docs/accounts.md](docs/accounts.md) - login, roles, quotas, privacy
+- [docs/backups.md](docs/backups.md) - backup layers and restore procedures
+- [docs/fitnotes-import.md](docs/fitnotes-import.md) - migrating data from FitNotes
+- [docs/open-questions.md](docs/open-questions.md) - undecided items
