@@ -10,8 +10,7 @@ doc and delete it here.
 
 ## Needed from you
 
-- A recent `.fitnotes` backup file. It goes in a git-ignored `data/` directory and is never committed.
-- Your current routine(s), to validate the routine model.
+- **How you use FitNotes routine sections.** In your backup, some sections hold several times more exercises than any logged workout. If sections are workout days in a cycle, they map to `routine_day` and `slot`. If they are pools you pick exercises from, the routine import in [fitnotes-import.md](fitnotes-import.md#routines) needs a different mapping, and the routine model may need checking. Also: which of the two routines is current, and should the other be archived?
 - Phone model and Android version, for the rest alarm and Health Connect spikes.
 
 The order of work is in [implementation-plan.md](implementation-plan.md).

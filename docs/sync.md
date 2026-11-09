@@ -167,7 +167,7 @@ HLC are derived from the source:
 | --- | --- | --- | --- |
 | Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(builtin key) | Catalog version timestamp | `seed` |
 | Health Connect record | UUIDv5(HC record id) | Record's last-modified time | `hc` |
-| FitNotes import | UUIDv5(FitNotes table + row id) | Import time; see [fitnotes-import.md](fitnotes-import.md#re-import) | `fitnotes` |
+| FitNotes import | UUIDv5(FitNotes natural key; see [fitnotes-import.md](fitnotes-import.md#ids)) | Import time; see [fitnotes-import.md](fitnotes-import.md#re-import) | `fitnotes` |
 
 The rules:
 

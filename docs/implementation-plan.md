@@ -46,7 +46,7 @@ in the design docs.
    - Web Lock tab ownership;
    - the "don't wipe on init failure" option.
    - Exit: the [architecture.md](architecture.md#client-runtime) assumptions are confirmed, or the native-plugin fallback is chosen.
-3. **FitNotes schema.** Dump your `.fitnotes` backup's tables and columns, and fill in the mapping in [fitnotes-import.md](fitnotes-import.md).
+3. **FitNotes schema** [done]. Dump your `.fitnotes` backup's tables and columns, and fill in the mapping in [fitnotes-import.md](fitnotes-import.md).
 
 Health Connect and charting spikes are deferred to their phases; they are lower risk.
 
