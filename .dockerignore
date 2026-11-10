@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/storybook-static
+**/test-results
+**/playwright-report
+**/.tanstack
+**/.vitest
+**/*.tsbuildinfo
+.git
+.github
+.claude
+docs
+
+# Personal training and health data; never sent to the build.
+data
+**/*.fitnotes
+**/.env*
