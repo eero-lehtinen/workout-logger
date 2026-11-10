@@ -1,14 +1,13 @@
 import type { SettingChange } from "@workout-logger/core";
-import { useRef, useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { useState } from "react";
 import { PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
-import { Confirm } from "../../components/sheet.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { toasts } from "../../components/toasts.tsx";
-import { useCommand, useDb, useDbQuery } from "../../db/react.tsx";
+import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { formatDuration } from "../../lib/format.ts";
-import { usePersistence } from "../../lib/storage.ts";
+import { DataSection } from "./data-section.tsx";
+import { Row, Section } from "./settings-rows.tsx";
 
 export function SettingsPage() {
   const settings = useDbQuery("settings");
@@ -110,33 +109,6 @@ export function SettingsPage() {
   );
 }
 
-function Section(props: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="pt-4">
-      <h2 className="px-4 pb-1 text-lg font-semibold lg:px-0">{props.title}</h2>
-      <div className="mx-2 flex flex-col rounded-2xl bg-raised py-1 lg:mx-0">
-        {props.children}
-      </div>
-    </section>
-  );
-}
-
-function Row(props: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-4 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="font-medium">{props.label}</p>
-        {props.hint && <p className="text-sm text-ink-muted">{props.hint}</p>}
-      </div>
-      {props.children}
-    </div>
-  );
-}
-
 /** Saves on blur or Enter; invalid input reverts and says why. */
 function SettingInput<T extends number>(props: {
   label: string;
@@ -166,137 +138,5 @@ function SettingInput<T extends number>(props: {
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       className="tabular h-10 w-24 rounded-lg bg-chalk px-3 text-right font-semibold outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
     />
-  );
-}
-
-function DataSection() {
-  const db = useDb();
-  const { persisted, request } = usePersistence();
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [importBytes, setImportBytes] = useState<Uint8Array | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function exportSnapshot() {
-    setBusy(true);
-    try {
-      const bytes = await db.exportSnapshot();
-      const date = new Date().toISOString().slice(0, 10);
-      const url = URL.createObjectURL(
-        new Blob([bytes as BlobPart], { type: "application/vnd.sqlite3" }),
-      );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `workout-logger-${date}.sqlite3`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch (error) {
-      toasts.add({
-        title: "Export failed",
-        description: String(error),
-        type: "error",
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function runImport(mode: "merge" | "replace") {
-    if (!importBytes) return;
-    setBusy(true);
-    try {
-      const result = await db.importSnapshot(importBytes, mode);
-      const { undoTx } = result;
-      toasts.add({
-        title: "Snapshot imported",
-        description:
-          mode === "merge"
-            ? `${result.written} rows were newer than yours.`
-            : `${result.written} rows written, ${result.deleted} removed.`,
-        ...(undoTx !== null && {
-          actionProps: {
-            children: "Undo",
-            onClick: () => void db.undo(undoTx),
-          },
-        }),
-      });
-    } catch (error) {
-      toasts.add({
-        title: "Import failed",
-        description: error instanceof Error ? error.message : String(error),
-        type: "error",
-      });
-    } finally {
-      setBusy(false);
-      setImportBytes(null);
-    }
-  }
-
-  return (
-    <Section title="Data">
-      <Row
-        label="Export snapshot"
-        hint="Downloads all your data as one file. Keep it somewhere safe."
-      >
-        <Button disabled={busy} onClick={exportSnapshot}>
-          Export
-        </Button>
-      </Row>
-      <Row label="Import snapshot" hint="From a file exported here.">
-        <Button disabled={busy} onClick={() => fileInput.current?.click()}>
-          Import
-        </Button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".sqlite3,.sqlite,.db,application/vnd.sqlite3"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file) setImportBytes(new Uint8Array(await file.arrayBuffer()));
-          }}
-        />
-      </Row>
-      <Row
-        label="Storage"
-        hint={
-          persisted === null
-            ? "This browser doesn't report whether your data is protected from cleanup."
-            : persisted
-              ? "Protected: the browser won't clear your data to free space."
-              : "Not protected: the browser may clear your data when space runs low. Installing the app usually protects it. Until then, export regularly."
-        }
-      >
-        {persisted === false && (
-          <Button
-            onClick={async () => {
-              if (!(await request())) {
-                toasts.add({
-                  title: "The browser didn't allow it",
-                  description:
-                    "Chrome decides on its own, mostly once the app is installed. Install it, then try again.",
-                });
-              }
-            }}
-          >
-            Ask browser
-          </Button>
-        )}
-      </Row>
-      <Confirm
-        open={importBytes !== null}
-        onOpenChange={(open) => !open && setImportBytes(null)}
-        title="Import snapshot"
-        description="Merge keeps the newer version of anything in both. Replace makes your data match the file exactly; you can undo it right after."
-        actions={[
-          { label: "Merge", onClick: () => runImport("merge") },
-          {
-            label: "Replace everything",
-            variant: "danger",
-            onClick: () => runImport("replace"),
-          },
-        ]}
-      />
-    </Section>
   );
 }

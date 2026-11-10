@@ -128,7 +128,7 @@ testing.ts   in-memory store and server, migration fixture helpers
 db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind
 features/    screens by area: session, exercises, routines, settings
-lib/         formatting, the web rest timer, storage persistence
+lib/         formatting, the web rest timer, storage persistence, PWA install
 routes/      TanStack Router file routes; thin, they render feature components
 ```
 
@@ -229,7 +229,9 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 - **Web:** call `navigator.storage.persist()` on first run and show the result next to the backup status. Without it, the browser may evict the database under storage pressure.
   - Chrome grants it based on engagement or PWA install, without a prompt. A fresh profile gets `false`.
-  - Firefox shows a permission prompt.
+  - Firefox shows a permission prompt, so the automatic request runs once in a browser tab and once more on the first launch as the installed app, never on every start.
+  - Settings has an "Install app" button. The app catches `beforeinstallprompt` before the first render and shows the browser's install prompt from the button. Where the browser has no such event (Safari, Firefox), Settings tells the user to install from the browser's menu.
+  - Installing asks for persistence again: on `appinstalled`, which fires for installs from the button and from the browser's own menu, and on the first launch as the installed app, in case Chrome hadn't counted the install yet when the tab asked.
 - **Android:** the database lives in the app's private WebView storage. It survives reload, process kill, force stop, and an update installed over the top with a higher versionCode (tested on Android 16, WebView 157). Uninstalling deletes it.
   - `persist()` always returns `false` in the WebView: there is no grant path. Whether the WebView can evict storage under disk pressure is not documented. The on-device snapshots and server sync are the protection.
 - **Android origin:** `server.androidScheme: "https"` and `server.hostname: "localhost"`, set explicitly in the Capacitor config, so the origin is `https://localhost`. These are Capacitor 8's defaults, and `https` gives a secure context, which OPFS and Web Locks require. They never change: changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md). The `appId` is chosen once in phase 5 and is equally permanent.

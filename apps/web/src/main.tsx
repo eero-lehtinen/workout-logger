@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { DbGate } from "./components/db-gate.tsx";
 import { DatabaseProvider } from "./db/react.tsx";
+import { runningInstalled, watchInstall } from "./lib/install.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
 import { createAppRouter } from "./router.ts";
 import "./styles.css";
@@ -14,7 +15,8 @@ if (!rootElement) {
   throw new Error("Missing #app element");
 }
 
-void requestPersistenceOnce();
+watchInstall();
+void requestPersistenceOnce(runningInstalled() ? "installed" : "browser");
 
 createRoot(rootElement).render(
   <StrictMode>
