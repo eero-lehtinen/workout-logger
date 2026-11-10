@@ -30,8 +30,17 @@ jobs:
           install: false
 
       - run: pnpm install --frozen-lockfile
-      # Story tests and e2e tests run in Chromium.
-      - run: pnpm --filter @workout-logger/web exec playwright install --with-deps chromium
+      # Story tests and e2e tests run headless, so the headless shell is
+      # enough. No --with-deps: the runner image already has Chromium's
+      # libraries, and the extra fonts it would add came from a mirror that
+      # sometimes took minutes.
+      - id: playwright
+        run: echo "version=$(pnpm --filter @workout-logger/web exec playwright --version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ steps.playwright.outputs.version }}-headless-shell
+      - run: pnpm --filter @workout-logger/web exec playwright install --only-shell chromium
         timeout-minutes: 5
       - run: pnpm lint
       - run: pnpm typecheck
