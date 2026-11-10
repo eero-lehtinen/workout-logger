@@ -49,7 +49,10 @@ export interface BarChartProps {
   xKind: "time" | "category";
   label: string;
   formatX: (x: number) => string;
+  /** Tooltip text for a value, e.g. "3 sessions". */
   formatValue: (v: number) => string;
+  /** Axis text for a value, e.g. "3"; `formatValue` if not given. */
+  formatTick?: (v: number) => string;
   /** A horizontal line across the chart, e.g. the average. */
   reference?: { value: number; label: string };
   color?: ChartColor;

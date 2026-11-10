@@ -117,6 +117,7 @@ export function FrequencySection(props: {
         }))}
         formatX={(x) => `Week of ${weekLabel.format(x)}`}
         formatValue={(v) => `${v} ${v === 1 ? "session" : "sessions"}`}
+        formatTick={String}
         reference={{
           value: perWeek.average,
           label: `Average ${one.format(perWeek.average)}`,
@@ -138,6 +139,7 @@ export function FrequencySection(props: {
                 : String(x)
             }
             formatValue={(v) => `${v} ${v === 1 ? "time" : "times"}`}
+            formatTick={String}
           />
         </>
       )}

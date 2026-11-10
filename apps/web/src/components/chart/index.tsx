@@ -1,24 +1,28 @@
+import { lazy, Suspense } from "react";
+import { ChartFrame } from "./frame.tsx";
 import type { BarChartProps, TimeChartProps } from "./types.ts";
 
-// Placeholders until the charting spike picks a library
-// (docs/plans/phase-7.md). Each spike branch replaces this file.
+// ECharts is loaded only by screens that draw a chart.
+const LazyTimeChart = lazy(() => import("./time-chart.tsx"));
+const LazyBarChart = lazy(() => import("./bar-chart.tsx"));
 
 export function TimeChart(props: TimeChartProps) {
-  return <Placeholder label={props.label} height={props.height} />;
+  return (
+    <Suspense
+      fallback={<ChartFrame label={props.label} height={props.height} />}
+    >
+      <LazyTimeChart {...props} />
+    </Suspense>
+  );
 }
 
 export function BarChart(props: BarChartProps) {
-  return <Placeholder label={props.label} height={props.height} />;
-}
-
-function Placeholder(props: { label: string; height: number | undefined }) {
   return (
-    <div
-      role="img"
-      aria-label={props.label}
-      style={{ height: props.height ?? 240 }}
-      className="rounded-xl ring-1 ring-rule"
-    />
+    <Suspense
+      fallback={<ChartFrame label={props.label} height={props.height} />}
+    >
+      <LazyBarChart {...props} />
+    </Suspense>
   );
 }
 
