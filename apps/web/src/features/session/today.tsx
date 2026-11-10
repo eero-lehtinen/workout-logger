@@ -8,6 +8,7 @@ import { useDbQuery } from "../../db/react.tsx";
 import {
   formatDuration,
   formatSessionDate,
+  formatSessionLength,
   formatTime,
 } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
@@ -85,7 +86,7 @@ export function TodayPage() {
                       </div>
                       {!end.running && end.reason !== "unknown" && (
                         <span className="tabular text-sm text-ink-muted">
-                          {formatDuration((end.endedAt - s.startedAt) / 1000)}
+                          {formatSessionLength(end.endedAt - s.startedAt)}
                         </span>
                       )}
                       <ChevronRight size={18} className="text-ink-muted" />

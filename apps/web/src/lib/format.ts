@@ -14,6 +14,21 @@ export function formatDuration(totalSeconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
+// English units to match the UI text; the device locale would mix in e.g. Finnish "t".
+const sessionLengthFormat = new Intl.DurationFormat("en", {
+  style: "narrow",
+  minutesDisplay: "always",
+});
+
+/** `1h 5m`, `42m`: a finished session's length, to the minute. */
+export function formatSessionLength(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  return sessionLengthFormat.format({
+    hours: Math.floor(minutes / 60),
+    minutes: minutes % 60,
+  });
+}
+
 export function formatKm(meters: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(
     meters / 1000,

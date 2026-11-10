@@ -88,7 +88,9 @@ export const SessionIdle = pageStory({
   url: (ids) => `/sessions/${ids.idleSessionId}`,
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByText(/Idle since/),
+      await within(canvasElement).findByText(
+        /^Lasted \d+(h \d+)?m, no sets since/,
+      ),
     ).toBeVisible();
   },
 });

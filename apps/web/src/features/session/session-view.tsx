@@ -22,6 +22,7 @@ import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
   formatDuration,
   formatSessionDate,
+  formatSessionLength,
   formatSet,
   formatTime,
 } from "../../lib/format.ts";
@@ -296,7 +297,7 @@ function SessionTimer(props: {
   const ended =
     end.reason === "unknown"
       ? "Duration not recorded"
-      : `${end.reason === "idle" ? "Idle since" : "Ended"} ${formatTime(end.endedAt, session.tz)}, ${formatDuration((end.endedAt - session.startedAt) / 1000)}`;
+      : `Lasted ${formatSessionLength(end.endedAt - session.startedAt)}, ${end.reason === "idle" ? "no sets since" : "ended at"} ${formatTime(end.endedAt, session.tz)}`;
   return (
     <div className="flex items-center gap-3 rounded-xl bg-surface py-2 pr-2 pl-4">
       <p className="flex-1 text-[0.9375rem] text-ink-muted">{ended}</p>
