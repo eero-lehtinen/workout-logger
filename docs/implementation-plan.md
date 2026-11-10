@@ -228,6 +228,14 @@ private `workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it
 matches FitNotes per exercise on set count, session count, and best e1RM.
 Left: the real import, the check on the phone, and the cutover.
 
+## Phase 9b: Android live updates (S) [next]
+
+- The Android app downloads newer web builds from the server and runs them from the same origin, so web changes, including schema migrations, need no APK release.
+- A bundle declares the oldest native shell it works with; a bundle that fails to start rolls back.
+- Plan: [plans/live-updates.md](plans/live-updates.md).
+
+**Exit:** a push to `main` reaches the phone without installing an APK, and a broken bundle rolls back on the phone.
+
 ## Phase 10: CLI (S–M)
 
 - `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup [--all]`, `restore`.
