@@ -4,8 +4,9 @@ The server runs on the owner's VPS under Dokploy, at
 <https://lift.eerolehtinen.fi>. Backups go to Cloudflare R2, a different
 provider, so losing either the VPS or the bucket loses no data.
 
-**Current state (since phase 4):** the `app` container serves the static web build
-and `GET /api/status`. There is no database, auth, sync, Litestream, or
+**Current state (since phase 5):** the `app` container serves the static web build,
+`GET /api/status`, and the Android app's update endpoints
+([Android releases](#android-releases)). There is no database, auth, sync, Litestream, or
 scheduled job yet; phase 6 adds them to the same image, compose service, and
 CI pipeline. Sections below describe the full design and say where something
 is not built yet.
@@ -33,8 +34,9 @@ VPS (Dokploy, Traefik)
 └── project "Workout Logger" / compose service "workout-logger"
     ├── litestream-init  one-shot: restore app.db from R2 if missing   (phase 6)
     ├── litestream       sidecar: streams app.db to R2 (wl-litestream) (phase 6)
-    ├── app              Node + Hono: static web build + PWA, /api/status;
-    │                    later /api (auth, sync, admin), scheduled jobs
+    ├── app              Node + Hono: static web build + PWA, /api/status,
+    │                    /api/android; later /api (auth, sync, admin),
+    │                    scheduled jobs
     └── volume "data":   app.db (SQLite, WAL)                          (phase 6)
 
 Cloudflare R2                                                          (phase 6)
@@ -105,9 +107,52 @@ Planned for phase 6:
    2. Run migrations: Better Auth tables, `change`, `head`, usage, invites. The single instance has an exclusive DB lock while migrating.
 
    The health check has a long enough start period that a slow migration doesn't cause a restart loop.
-2. Android APKs are built in the same workflow on tags and attached to the GitHub release. The app checks GitHub releases for a newer APK.
 
 Images are built in CI, not on the VPS, so that builds don't compete with the running server for CPU and RAM.
+
+## Android releases
+
+The Android app is an APK attached to a GitHub release and sideloaded. There is no Play Store listing.
+
+**Releasing.** Push a tag `v<major>.<minor>.<patch>` on a commit of `main`:
+
+```
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The `android-release` job in `ci.yml` runs after `check`. It builds the web app, syncs it into `apps/android`, builds the release APK with the tag as its version, signs it, verifies the signature, and attaches `workout-logger-<version>.apk` to a GitHub release for the tag (creating the release with generated notes if it doesn't exist). On other pushes the `android` job builds a debug APK, so the Android build doesn't rot between releases.
+
+A new version must be higher than the installed one: Android refuses to install a lower `versionCode` over a higher one.
+
+**Signing.** Every release is signed with the same key. Android only installs an update over an app signed with the same key; with another key the app must be uninstalled first, which deletes its database. The key therefore must never be lost or replaced.
+
+- The keystore and its password are on the owner's PC in `~/Documents/ai-doc/workout-logger/android-release/` (`release.jks`, `credentials.txt`). Keep a second copy somewhere safe, e.g. in the password manager. The files are never committed.
+- CI reads them from GitHub Actions secrets: `ANDROID_KEYSTORE_BASE64` (the keystore file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+- Certificate SHA-256: `E4:BC:25:34:43:BB:5A:F4:7C:02:9D:F2:AD:C6:45:4E:5F:03:B3:33:84:CF:4B:4D:EB:78:6A:0F:AC:60:57:E1`. `apksigner verify --print-certs <apk>` shows it for a correctly signed APK.
+
+**Updates.** The repository is private, so the app can't read its releases. The server reads them with a token and hands them out:
+
+| Endpoint | Answer |
+| --- | --- |
+| `GET /api/android/latest` | `{ "version": "1.2.3" }`: the latest release that has an APK. 404 when there is none. |
+| `GET /api/android/apk` | A redirect to GitHub's short-lived signed URL of that APK, so the download doesn't pass through the VPS. |
+
+- Both are public, like the web app. `/api/android/latest` allows CORS from `https://localhost`, the app's WebView origin.
+- The server caches the latest release for 5 minutes, so the public endpoints can't spend the token's rate limit.
+- `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it both endpoints answer 503, and the app shows no update prompt.
+- The first install is the same download: open `https://lift.eerolehtinen.fi/api/android/apk` in the phone's browser and allow the browser to install apps.
+
+**Building locally.** Needs JDK 21 and the Android SDK (`platforms;android-36`, `build-tools;35.0.0`), with `ANDROID_HOME` set or `sdk.dir` in `apps/android/local.properties`.
+
+```
+pnpm android:sync
+cd apps/android
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+The debug build has its own application id and database, so it never touches the release app's data. To build a release APK locally, set `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` and run `./gradlew assembleRelease -PappVersion=<version>`.
 
 ## Configuration
 
@@ -119,10 +164,13 @@ Set in the image:
 | `PORT` | `3000`; the Dokploy domain points at it |
 | `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
 
-Set as Dokploy environment variables, never committed (phase 6):
+Set as Dokploy environment variables, never committed. `deploy/compose.yaml`
+passes each one to the container by name. Only `GITHUB_RELEASES_TOKEN` exists
+so far; the rest are phase 6.
 
 | Variable | Purpose |
 | --- | --- |
+| `GITHUB_RELEASES_TOKEN` | Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
 | `PUBLIC_URL` | Base URL, used for auth and links |
 | `AUTH_SECRET` | Better Auth secret. Rotating it probably invalidates all sessions (to verify). |
 | `DATABASE_PATH` | `/data/app.db` |
@@ -169,4 +217,6 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 | Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` ([backups.md](backups.md#restore-procedures)). |
 | Server DB corrupted | Stop `app`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy. Run `server new-epoch`, then start `app`. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). |
 | VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start. Run `server new-epoch`. |
+| Bad Android release | Delete the GitHub release (or its APK); within 5 minutes the server offers the previous release again. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
+| Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
 | R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy covers the gap. |

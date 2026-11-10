@@ -30,8 +30,10 @@ data. The layers below add history and copies outside the sync system.
    - `wl backup --all` uses the owner key to download each user's live `/snapshot` as SQLite, plus the latest daily DB copy.
    - restic encrypts and dedups. Its repository can live in a cloud-drive folder, because the files contain other users' health data.
    - This copy is independent of both the VPS and Cloudflare.
-5. **On-device snapshots** (Android). After each session ends, write a snapshot file to a user-visible folder (e.g. `Documents/WorkoutLogger/`). Keep the last 10.
-   - This protects against a corrupted local store, and it works without any server.
+5. **On-device snapshots** (Android). After each session ends, by a manual stop or by idling out, the app writes a snapshot file to `Documents/WorkoutLogger/` in shared storage and keeps the newest 10.
+   - This protects against a corrupted local store, and it works without any server. The folder is visible in a file manager and survives an uninstall.
+   - If the app wasn't open when the session idled out, the file is written on the next start. A failed write shows an error and is retried on the next start.
+   - Android lets the app see only files it created itself. After a reinstall, the earlier install's files stay in the folder but are no longer pruned.
    - On the web, use the manual export button. Browsers can't write files silently.
 
 Any user can export their own data from the app at any time. Settings → Export downloads `/snapshot`, or the local DB when offline.
@@ -81,7 +83,7 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 - the result of the last restore rehearsal
 - free disk space
 
-Settings shows the user's own last sync time and the age of the last local snapshot.
+Settings shows the user's own last sync time (phase 6) and, on Android, the time of the last snapshot file.
 
 The home screen shows a warning badge when:
 

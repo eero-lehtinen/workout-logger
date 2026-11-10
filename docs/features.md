@@ -81,6 +81,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
 | Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. |
 | Hide the session timer in settings | P1 | Hides only the running elapsed time; the session keeps its start and end, and ended sessions still show their duration. |
+| Keep the screen on while a session runs | P1 | A setting, off by default. Android, and browsers with the Screen Wake Lock API. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
 | Session notes | P1 | |
 
@@ -140,9 +141,10 @@ don't count.
 | Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default (2:00). |
 | Can be turned off in settings | P1 | Turning it off cancels a running rest. |
 | Adjust with +/-15 s, skip, restart | P0 | |
+| Alert volume: quiet, medium, loud | P1 | A setting; selecting a level previews it. On Android it scales the alert down from the phone's alarm volume. |
 | Countdown floats over other screens | P0 | Tapping it opens the exercise whose set started the rest; opening "Rest over" also dismisses it. "Rest over" clears itself after a minute. |
 | Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at alarm volume in silent mode and DND; music is ducked during the alert. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
-| Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. |
+| Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. The notification has "+15 s" and "Skip". |
 
 ## Measurements (custom data)
 

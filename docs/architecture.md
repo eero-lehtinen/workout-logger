@@ -92,8 +92,10 @@ Principles:
 
 ```
 apps/
-  web/        React app; also the Capacitor web asset source
-  android/    Capacitor Android project + native plugin code
+  web/        React app; also the Capacitor web asset source, with the
+              Capacitor config and plugin dependencies
+  android/    Gradle project of the Android app: the Capacitor shell and
+              the RestTimer plugin (Kotlin)
   server/     Hono server: serves the web build and /api/status; later
               auth, sync, quotas, snapshot job
   cli/        `wl` command
@@ -128,7 +130,9 @@ testing.ts   in-memory store and server, migration fixture helpers
 db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind
 features/    screens by area: session, exercises, routines, settings
-lib/         formatting, the web rest timer, storage persistence, PWA install
+lib/         formatting, the rest timer and its web and Android alarms,
+             storage persistence, PWA install, and the Android-only parts:
+             snapshot files, the update check
 routes/      TanStack Router file routes; thin, they render feature components
 ```
 
@@ -224,7 +228,8 @@ The weight unit is a per-user display setting. Storage is always kg.
 - The tab holding the Web Lock `workout-logger-db` owns the database. Other tabs get the lock with `ifAvailable: true`, see that it's taken, and show "open in another tab" with a "use here" button. Proxying queries between tabs is not worth it.
 - "Use here" requests the lock with `steal: true`. The old tab's lock request rejects with `AbortError`. It then terminates its worker, which releases the handles, and shows "open in another tab". The new tab opens the database with a fresh worker, retrying on failure. In Chrome and Firefox the first attempt succeeded, in about 50 ms.
 - A frozen page runs no code, so it can't see that its lock was stolen, and its worker keeps the files. Android freezes a background Chrome tab, for example while the installed app is in front. Two measures:
-  - On the Page Lifecycle `freeze` event, the owning tab terminates its worker and releases the lock. A waiting tab takes over by itself. On `resume`, the tab asks for the lock again and opens, or shows "open in another tab". A write in flight at that moment is lost and rolled back.
+  - On the Page Lifecycle `freeze` event, the owning tab terminates its worker and releases the lock. A waiting tab takes over by itself. On `resume`, the tab asks for the lock again and opens, or shows "open in another tab". A write in flight at that moment is lost and rolled back. A `resume` without a handled `freeze` is ignored: the tab still holds the lock, and asking again would leave it waiting for itself.
+  - The Android app does neither. Its WebView is the only context, so there is nobody to hand the database to, and its `resume` events arrive without a `freeze`.
   - If the files are still held after a steal's ten retries, the new tab keeps the lock and shows "still open in another window". It retries every 2 s, when the page becomes visible, and on "try again". Keeping the lock means the old tab, once it runs again, terminates its worker and waits instead of taking the database back. This covers tabs frozen without the event and tabs running a version without the handler.
   - Headless Chromium doesn't freeze pages, so the e2e tests dispatch `freeze` and `resume` themselves, and stall a tab's main thread to stand in for a frozen tab.
 - A worker terminated mid-transaction leaves a rollback journal, which SQLite recovers on the next open.
@@ -238,12 +243,12 @@ The weight unit is a per-user display setting. Storage is always kg.
   - Installing asks for persistence again: on `appinstalled`, which fires for installs from the button and from the browser's own menu, and on the first launch as the installed app, in case Chrome hadn't counted the install yet when the tab asked.
 - **Android:** the database lives in the app's private WebView storage. It survives reload, process kill, force stop, and an update installed over the top with a higher versionCode (tested on Android 16, WebView 157). Uninstalling deletes it.
   - `persist()` always returns `false` in the WebView: there is no grant path. Whether the WebView can evict storage under disk pressure is not documented. The on-device snapshots and server sync are the protection.
-- **Android origin:** `server.androidScheme: "https"` and `server.hostname: "localhost"`, set explicitly in the Capacitor config, so the origin is `https://localhost`. These are Capacitor 8's defaults, and `https` gives a secure context, which OPFS and Web Locks require. They never change: changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md). The `appId` is chosen once in phase 5 and is equally permanent.
+- **Android origin:** `server.androidScheme: "https"` and `server.hostname: "localhost"`, set explicitly in the Capacitor config, so the origin is `https://localhost`. These are Capacitor 8's defaults, and `https` gives a secure context, which OPFS and Web Locks require. They never change: changing them changes the WebView origin and orphans the database (an invariant in AGENTS.md). The application id `fi.eerolehtinen.lift` is equally permanent.
 
 ### Client migrations
 
 - Run in the worker, before any other query, in one transaction.
-- Before migrating, copy the database file (OPFS copy on web, plus the regular snapshot on Android), and keep the last copy.
+- Before migrating, copy the database file inside OPFS, and keep the last copy. On Android, the snapshot file written after the last session is a second copy outside the WebView.
 - Migrations of local tables and upgrades of incoming sync rows with an older `v` share the same functions. See [migrations.md](migrations.md).
 
 ### Reactive queries
@@ -256,7 +261,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 ### Updates and version compatibility
 
 - **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
-- **APK:** checks GitHub releases on start and shows an update prompt.
+- **APK:** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. The APK carries its own web build and registers no service worker. See [deployment.md](deployment.md#android-releases).
 - **Server:** every request sends the app version. Below `MIN_CLIENT_VERSION` the server returns 426, and the app shows "update the app". Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
 
 ## Testing
@@ -304,29 +309,44 @@ Full design: [backups.md](backups.md).
 
 The native app exists for the rest timer and health data. The web cannot reliably alert while the page is backgrounded or the screen is locked, and it has no access to Health Connect.
 
+### App shell
+
+`apps/android` is a Capacitor 8 shell around the web build. It is the same build as the PWA: the app checks `Capacitor.isNativePlatform()` at runtime where the two differ (the rest alarm, snapshot files, updates, no service worker, no install or storage-persistence rows in Settings).
+
+- **Capacitor lives in `apps/web`:** `capacitor.config.ts` and the plugin packages are there, because the CLI finds native plugins through the dependencies of the package that holds the config. `android.path` points at `../android`.
+- **`pnpm android:sync`** builds the web app and runs `cap sync`: it copies `dist` into the Gradle project and writes the plugin wiring (`capacitor.settings.gradle`, `app/capacitor.build.gradle`). Those files hold pnpm store paths with version numbers, so they are generated, not committed, and Gradle needs a sync first.
+- **Plugins:** `@capacitor/app` (the installed version), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, and the app's own `RestTimer`.
+- **Versions:** `minSdk` 30 (Android 11), where writing to the shared Documents folder needs no storage permission; target and compile SDK 36. `versionName` is the release tag and `versionCode` is `major * 1 000 000 + minor * 1 000 + patch`.
+- **Build types:** debug builds have the id `fi.eerolehtinen.lift.debug` and the name "Workouts (debug)", so they install next to the release app with their own database. Release builds are signed in CI ([deployment.md](deployment.md#android-releases)); without the keystore they come out unsigned. A release build never falls back to the debug key: replacing an install signed with another key needs an uninstall, which deletes the database.
+- **No backups:** `allowBackup="false"`, `fullBackupContent="false"`, and data extraction rules that exclude everything from cloud backup and device-to-device transfer (Android 12+ ignores `allowBackup` for transfers). A restored database would carry another install's device id and sync state ([sync.md](sync.md#client-side)).
+- **Insets:** the app draws edge to edge (required when targeting API 36). Capacitor's default inset handling makes the WebView honor `viewport-fit=cover`, so the `env(safe-area-inset-*)` paddings the PWA already uses apply.
+- **Icon:** an adaptive icon from vector drawables, with a monochrome layer for themed icons.
+
 ### Rest timer
 
 A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` before `super.onCreate`. It works like FitNotes: a foreground service stays alive for the whole rest and counts down itself. There is no alarm and no exact-alarm permission.
 
-- **API:** `start(endsAt)`, `adjust(endsAt)`, `cancel()`, and events back to JS (`finished`, `cancelled`, `startFailed`). The pending `endsAt` is also persisted natively, so the UI can show the countdown, or a finished rest, after a cold start.
-- **Start:** `start` runs when a set is logged, with the app visible. It starts `RestTimerService` with `startForegroundService` (`foregroundServiceType="mediaPlayback"`; permissions `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`). Android only allows this while the app is visible. Otherwise it throws `ForegroundServiceStartNotAllowedException`, which the plugin catches and reports as `startFailed`. The UI shows that the timer didn't start, instead of the app crashing.
-- **Countdown:** the service acquires a non-reference-counted `PARTIAL_WAKE_LOCK` with a timeout of the remaining time plus 30 s, and posts the end on a main-thread `Handler`. The wake lock keeps the CPU running in Doze, so the handler fires on time. `adjust` re-arms the handler, extends the wake lock, and re-posts the notification.
+In the UI, the rest timer (`lib/rest-timer.ts`) owns what is shown and delegates the alert to a `RestAlarm`: the in-page one on the web, the plugin on Android. The service decides when a rest ends and whether it has; the page adds what only it knows (the full length, the exercise).
+
+- **API:** `start({ endsAt })` starts a rest or moves the running one, `cancel()` stops the countdown or dismisses a finished rest, and `getState()` returns the rest as the service knows it. Events back to JS: `finished`, and `adjusted` and `cancelled` for the notification's buttons. The rest (`endsAt`, `finished`) is persisted in `SharedPreferences`. The page calls `getState()` on start and whenever it becomes visible, so it shows the right countdown, or a finished rest, after a cold start or after the notification's buttons were used while the WebView was gone.
+- **Start:** `start` runs when a set is logged, with the app visible. It starts `RestTimerService` with `startForegroundService` (`foregroundServiceType="mediaPlayback"`; permissions `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`). Android only allows this while the app is visible. Otherwise it throws `ForegroundServiceStartNotAllowedException`, which the plugin catches; `start` then rejects, and the UI clears the rest and says that the timer didn't start, instead of the app crashing.
+- **Countdown:** the service acquires a non-reference-counted `PARTIAL_WAKE_LOCK` with a timeout of the remaining time plus 30 s, and posts the end on a main-thread `Handler`. The wake lock keeps the CPU running in Doze, so the handler fires on time. A changed end time re-arms the handler, extends the wake lock, and re-posts the notification.
 - **Countdown notification** (the foreground-service notification):
   - channel with default importance, sound and vibration disabled;
-  - ongoing, `CATEGORY_STOPWATCH`, `VISIBILITY_PUBLIC`, title and "next set at" text, `BigTextStyle`;
+  - ongoing, `CATEGORY_STOPWATCH`, `VISIBILITY_PUBLIC`, a title and no text, `BigTextStyle`;
   - `setUsesChronometer(true)`, `setChronometerCountDown(true)`, `setWhen(endsAt)`, so the system draws the live countdown without reposting;
   - actions "+15 s" and "Skip", delivered to the service through `PendingIntent.getService`;
   - `setRequestPromotedOngoing(true)` (AndroidX `NotificationCompat`, core 1.17.0+) and the `POST_PROMOTED_NOTIFICATIONS` permission. This asks for an Android 16 QPR1 (API 36.1) Live Update, a status-bar chip with the countdown. It needs `BigTextStyle` or another allowed style, a title, ongoing, and no colorization. Not verified on a device yet; the test phone runs API 36.0, where `canPostPromotedNotifications()` is false.
 - **End of rest:** the service
-  - requests `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` and plays a short (~1.5 s) bundled sound through `MediaPlayer` with `USAGE_ALARM` / `CONTENT_TYPE_SONIFICATION`, so it uses the alarm volume and ignores the ringer mode;
+  - requests `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` and plays two short beeps (~0.6 s, a bundled file generated by `apps/android/tools/rest-beep.mjs`) through `MediaPlayer` with `USAGE_ALARM` / `CONTENT_TYPE_SONIFICATION`, so it uses the alarm volume and ignores the ringer mode. The `rest_alert_volume` setting scales the player's volume down from there (`start` passes it, and the plugin remembers it);
   - vibrates with `VibrationAttributes.USAGE_ALARM` (API 33+; `AudioAttributes` with `USAGE_ALARM` below);
   - posts a "rest over" notification on a high-importance channel with sound and vibration disabled;
   - after playback, abandons focus, removes the countdown notification, releases the wake lock, and stops itself.
 
   Audio focus works because the service is in the foreground. On Android 15+, apps targeting API 35+ get focus only as the top app or with a foreground service; without focus, music isn't ducked.
-- **Notifications permission:** without `POST_NOTIFICATIONS` the countdown and the alert still run, but no notification is shown. Request it on first use.
-- **Known gap:** if the process dies during a rest (force stop, crash, an OEM killer), that alert is lost. This is accepted: missing an alert in rare cases isn't harmful, and a foreground service with a wake lock survived swipe-away and deep Doze in testing. On the next app start, the UI shows a rest whose `endsAt` has passed as finished.
-- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible. The audio context is unlocked by the tap that logs the set. The end time is kept in `localStorage`, so a reload still shows the countdown, or a finished rest. A finished rest clears itself one minute after it ended.
+- **Notifications permission:** without `POST_NOTIFICATIONS` the countdown and the alert still run, but no notification is shown. The app asks before the first rest, and only while Android would still show its dialog: after a refusal it doesn't ask again.
+- **Known gap:** if the process dies during a rest (force stop, crash, an OEM killer), that alert is lost. This is accepted: missing an alert in rare cases isn't harmful, and a foreground service with a wake lock survived swipe-away and deep Doze in testing. On the next app start, `getState()` reports a rest whose `endsAt` has passed as finished, and restarts the service for one that is still counting.
+- **Web:** the alarm is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible. The audio context is unlocked by the tap that logs the set. The end time is kept in `localStorage`, so a reload still shows the countdown, or a finished rest. A finished rest clears itself one minute after it ended.
 
 #### Alternatives tested and rejected
 
@@ -338,7 +358,7 @@ A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` b
 
 #### Device test results
 
-Phase 1 spike, on the owner's OnePlus 12R (CPH2581), Android 16 (API 36.0), OxygenOS 16.0.10.601, app targeting API 36. Checked through `dumpsys` (audio player state, focus, ducking, vibration, wake locks), not by ear. Latency is the time from the scheduled end of the rest to the alert.
+From the phase 1 spike. The app runs the same service and alert code, but the matrix has not been repeated in it yet. On the owner's OnePlus 12R (CPH2581), Android 16 (API 36.0), OxygenOS 16.0.10.601, app targeting API 36. Checked through `dumpsys` (audio player state, focus, ducking, vibration, wake locks), not by ear. Latency is the time from the scheduled end of the rest to the alert.
 
 | Case | Countdown service |
 | --- | --- |
@@ -367,8 +387,9 @@ Not tested: Bluetooth earbuds (where an alarm-usage sound is routed), DND config
 
 ### Other
 
-- Keep the screen awake during a session (optional toggle).
-- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK.
+- **Keep screen on:** the `keep_screen_awake` setting keeps the screen on while a session is running, through `@capacitor-community/keep-awake`: `FLAG_KEEP_SCREEN_ON` on Android, the Screen Wake Lock API in browsers that have it. The setting is hidden elsewhere.
+- **Snapshot files:** after each session ends, the app writes a snapshot to `Documents/WorkoutLogger/` and keeps the newest 10 ([backups.md](backups.md#layers)). Settings → Export snapshot writes to the same folder, because a WebView can't download a file.
+- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK, which the server hands out ([deployment.md](deployment.md#android-releases)).
 
 ## CLI
 
