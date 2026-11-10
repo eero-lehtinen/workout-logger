@@ -19,6 +19,7 @@ export const COMMANDS = {
   updateSet: sessions.updateSet,
   deleteSet: sessions.deleteSet,
   createRoutine: routines.createRoutine,
+  createRoutineWithDays: routines.createRoutineWithDays,
   updateRoutine: routines.updateRoutine,
   duplicateRoutine: routines.duplicateRoutine,
   deleteRoutine: routines.deleteRoutine,
@@ -53,4 +54,5 @@ export {
   InvalidMuscleTargetsError,
   type MuscleTargets,
 } from "./exercises.ts";
+export type { RoutineContent } from "./routines.ts";
 export type { SettingChange } from "./settings.ts";

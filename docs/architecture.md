@@ -115,7 +115,8 @@ apps/
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
               idle end), queries, sync client
-  exercises/  seed exercise catalog + muscle list, seeding routine
+  exercises/  seed exercise catalog + muscle list, seeding routine,
+              built-in routines
 docs/
 ```
 
@@ -190,7 +191,7 @@ muscle            (id, name, group_name)               -- seeded, effectively st
 exercise          (id, name, type, default_rest_s?, weight_increment_kg?, notes, archived, builtin_key)
 exercise_muscle   (id, exercise_id, muscle_id, factor)  -- factor 0..1
 
-routine           (id, name, position, archived)
+routine           (id, name, position, archived, description)
 routine_day       (id, routine_id, name, position)
 slot              (id, day_id, exercise_id, position, rest_s?, note?)
 slot_alternative  (id, slot_id, exercise_id, position)
@@ -468,3 +469,4 @@ from, where the dataset has one.
 - Keys (`barbell_bench_press`) are permanent: ids derive from them, and the owner's FitNotes mapping refers to them. Renaming an exercise doesn't change its key.
 - The body weight metric is the only built-in metric.
 - `seedCatalog(store)` writes everything as deterministic rows ([sync.md](sync.md#deterministic-writes)) and is safe to run on every start.
+- Built-in routines (`ROUTINES`) are catalog data, not seeded rows. Adding one runs `createRoutineWithDays`, which writes a new routine with UUIDv7 ids, so the user owns it and catalog changes never touch it.

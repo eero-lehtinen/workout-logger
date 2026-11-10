@@ -15,12 +15,15 @@ import { upgradeRow } from "./upgrade.ts";
 
 const HLC = "001700000000000-00000-aaaaaaaaaaaa";
 
+const NEXT = SCHEMA_VERSION + 1;
+
 /**
- * A synthetic step that exercises every kind of row upgrade: a new column
- * derived from data, a table rename, and a split into several rows.
+ * A synthetic step after the current version that exercises every kind of
+ * row upgrade: a new column derived from data, a table rename, and a split
+ * into several rows.
  */
-const v2: Migration = {
-  version: 2,
+const next: Migration = {
+  version: NEXT,
   async up(db) {
     await db.schema
       .alterTable("exercise")
@@ -64,7 +67,7 @@ const v2: Migration = {
   },
 };
 
-const withV2 = [...MIGRATIONS, v2];
+const withNext = [...MIGRATIONS, next];
 
 const v1Rows = [
   {
@@ -135,9 +138,9 @@ describe("migrate", () => {
   });
 
   it("refuses a database from a newer app without touching it", async () => {
-    const db = await openDatabaseAt(2, withV2);
+    const db = await openDatabaseAt(NEXT, withNext);
     await expect(migrate(db)).rejects.toThrow(SchemaTooNewError);
-    expect(await readSchemaVersion(db)).toBe(2);
+    expect(await readSchemaVersion(db)).toBe(NEXT);
   });
 
   it("calls the pre-migration hook only for an existing database", async () => {
@@ -147,13 +150,13 @@ describe("migrate", () => {
     );
     await migrate(db, { beforeMigrate });
     expect(beforeMigrate).not.toHaveBeenCalled();
-    await migrate(db, { migrations: withV2, beforeMigrate });
-    expect(beforeMigrate).toHaveBeenCalledExactlyOnceWith(1, 2);
+    await migrate(db, { migrations: withNext, beforeMigrate });
+    expect(beforeMigrate).toHaveBeenCalledExactlyOnceWith(SCHEMA_VERSION, NEXT);
   });
 
   it("rolls back every step when one fails", async () => {
     const failing: Migration = {
-      ...v2,
+      ...next,
       upgrade: {
         muscle: () => {
           throw new Error("bad upgrade");
@@ -177,7 +180,7 @@ describe("migrate", () => {
     const db = await openDatabaseAt(0);
     await expect(
       migrate(db, {
-        migrations: [MIGRATIONS[0] as Migration, { ...v2, version: 3 }],
+        migrations: [MIGRATIONS[0] as Migration, { ...next, version: 3 }],
       }),
     ).rejects.toThrow("version 3");
   });
@@ -188,7 +191,7 @@ describe("row upgrades", () => {
     const { migrated, expected } = await migrateFixture({
       fromVersion: 1,
       rows: v1Rows,
-      migrations: withV2,
+      migrations: withNext,
     });
     expect(migrated).toEqual(expected);
     expect(migrated.setting).toBeUndefined();
@@ -213,10 +216,10 @@ describe("row upgrades", () => {
       id: "weight_unit",
       data: { value_json: '"lb"' },
     };
-    expect(upgradeRow(row, 1, withV2)).toEqual([
+    expect(upgradeRow(row, 1, withNext)).toEqual([
       { table: "preference", id: "weight_unit", data: { json: '"lb"' } },
     ]);
-    expect(upgradeRow(row, 2, withV2)).toEqual([row]);
+    expect(upgradeRow(row, NEXT, withNext)).toEqual([row]);
     expect(upgradeRow(row, 1)).toEqual([row]);
   });
 
@@ -245,7 +248,7 @@ describe("row upgrades", () => {
       .values({ tx: 1, table_name: "muscle", id: "m2", previous: null })
       .execute();
 
-    await migrate(db, { migrations: withV2 });
+    await migrate(db, { migrations: withNext });
 
     const outbox = await db
       .selectFrom("_outbox")

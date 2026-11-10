@@ -1,8 +1,9 @@
-import type { Store } from "@workout-logger/core";
+import { runCommand, runQuery, type Store } from "@workout-logger/core";
 import { openTestStore } from "@workout-logger/core/testing";
 import { describe, expect, it } from "vitest";
 import { EXERCISES, METRICS } from "./catalog.ts";
 import { MUSCLE_GROUPS, MUSCLES } from "./muscles.ts";
+import { ROUTINES, routineContent } from "./routines.ts";
 import { catalogRows, exerciseId, muscleId, seedCatalog } from "./seed.ts";
 
 describe("catalog", () => {
@@ -32,6 +33,40 @@ describe("catalog", () => {
     );
     expect(muscleId("lats")).toBe(muscleId("lats"));
     expect(muscleId("lats")).not.toBe(exerciseId("lats"));
+  });
+});
+
+describe("built-in routines", () => {
+  it("use built-in exercises, each once per slot", () => {
+    const keys = new Set(EXERCISES.map((e) => e.key));
+    for (const routine of ROUTINES) {
+      for (const day of routine.days) {
+        for (const slot of day.slots) {
+          for (const key of slot) expect(keys, routine.key).toContain(key);
+          expect(new Set(slot).size, slot[0]).toBe(slot.length);
+        }
+      }
+    }
+  });
+
+  it("can be added as routines", async () => {
+    const store = await openTestStore();
+    await seedCatalog(store);
+    for (const routine of ROUTINES) {
+      const { result: routineId } = await runCommand(
+        store,
+        "createRoutineWithDays",
+        routineContent(routine),
+      );
+      const detail = await runQuery(store, "routineDetail", { routineId });
+      expect(detail?.name).toBe(routine.name);
+      expect(detail?.days.map((d) => d.slots.length)).toEqual(
+        routine.days.map((d) => d.slots.length),
+      );
+      expect(
+        detail?.days.flatMap((d) => d.slots.map((s) => s.exerciseName)),
+      ).not.toContain(null);
+    }
   });
 });
 

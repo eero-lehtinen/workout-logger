@@ -1,7 +1,7 @@
 import type { Generated } from "kysely";
 
 /** Domain schema version, also the `v` of synced rows. See docs/migrations.md. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** SQLite has no boolean type. */
 export type Flag = 0 | 1;
@@ -48,6 +48,7 @@ export interface RoutineTable extends SyncedColumns {
   name: string;
   position: string;
   archived: Flag;
+  description: string;
 }
 
 export interface RoutineDayTable extends SyncedColumns {
@@ -218,7 +219,7 @@ export const SYNCED_COLUMNS: {
     "builtin_key",
   ],
   exercise_muscle: ["exercise_id", "muscle_id", "factor"],
-  routine: ["name", "position", "archived"],
+  routine: ["name", "position", "archived", "description"],
   routine_day: ["routine_id", "name", "position"],
   slot: ["day_id", "exercise_id", "position", "rest_s", "note"],
   slot_alternative: ["slot_id", "exercise_id", "position"],

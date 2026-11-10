@@ -27,6 +27,7 @@ previous performance, not by prescribing.
 | **Workout day** (day) | One entry in a routine's cycle, e.g. "Upper A". Holds an ordered list of slots. |
 | **Cycle** | The order of days in a routine. After the last day the cycle wraps back to the first. |
 | **Slot** | A position in a workout day. It holds a default exercise, optional alternatives, an optional rest time override, and an optional free-text note. Slots have no rep, weight, or set targets. |
+| **Built-in routine** | A routine shipped with the app. Adding one copies it into your routines; the copy is yours to edit. |
 | **Alternative** | An exercise you pre-pick as an acceptable replacement for a slot's default exercise, e.g. Dumbbell Row for a Barbell Row slot. Shown first in the substitution picker. |
 
 ## Logging (performed)

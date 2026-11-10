@@ -5,6 +5,7 @@ export interface RoutineItem {
   id: string;
   name: string;
   archived: boolean;
+  description: string;
   dayNames: string[];
 }
 
@@ -13,7 +14,7 @@ export const routines = defineQuery(
   async (db): Promise<RoutineItem[]> => {
     const rows = await db
       .selectFrom("routine")
-      .select(["id", "name", "position", "archived"])
+      .select(["id", "name", "position", "archived", "description"])
       .where("deleted", "=", 0)
       .execute();
     const days = await db
@@ -26,6 +27,7 @@ export const routines = defineQuery(
       id: r.id,
       name: r.name,
       archived: r.archived === 1,
+      description: r.description,
       dayNames: days.filter((d) => d.routine_id === r.id).map((d) => d.name),
     }));
   },
@@ -35,6 +37,7 @@ export interface RoutineDetail {
   id: string;
   name: string;
   archived: boolean;
+  description: string;
   days: {
     id: string;
     name: string;
@@ -61,7 +64,7 @@ export const routineDetail = defineQuery(
   async (db, args: { routineId: string }): Promise<RoutineDetail | null> => {
     const routine = await db
       .selectFrom("routine")
-      .select(["id", "name", "archived"])
+      .select(["id", "name", "archived", "description"])
       .where("id", "=", args.routineId)
       .where("deleted", "=", 0)
       .executeTakeFirst();
@@ -118,6 +121,7 @@ export const routineDetail = defineQuery(
       id: routine.id,
       name: routine.name,
       archived: routine.archived === 1,
+      description: routine.description,
       days: days.sort(compareOrder).map((d) => ({
         id: d.id,
         name: d.name,

@@ -208,7 +208,7 @@ section unless it was prefilled from a predefined set.
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
-| `Routine` | `routine` | `archived = 1`, `position` by `_id`. `Routine.notes` goes in the report: `routine` has no notes column. |
+| `Routine` | `routine` | `archived = 1`, `position` by `_id`. `Routine.notes` → `routine.description`. |
 | `RoutineSection` | `routine_day` | `position` by `(sort_order, _id)`. Empty sections become empty days. |
 | `RoutineSectionExercise` | `slot` | `position` by `(sort_order, _id)`. No alternatives. |
 | `RoutineSectionExerciseSet` | `slot.note` | As text, e.g. `FitNotes sets: 3 × 8 @ 60 kg`. Slots have no set targets. |

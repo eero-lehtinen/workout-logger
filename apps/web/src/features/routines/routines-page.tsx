@@ -1,5 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { RoutineItem } from "@workout-logger/core";
+import {
+  type CatalogRoutine,
+  ROUTINES,
+  routineContent,
+} from "@workout-logger/exercises";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
@@ -26,6 +31,17 @@ export function RoutinesPage() {
     }
   }
 
+  async function addBuiltin(routine: CatalogRoutine) {
+    const routineId = await command(
+      "createRoutineWithDays",
+      routineContent(routine),
+      { undoLabel: `${routine.name} added` },
+    );
+    if (routineId) {
+      await navigate({ to: "/routines/$routineId", params: { routineId } });
+    }
+  }
+
   return (
     <Screen
       header={<PageHeader title="Routines" />}
@@ -33,7 +49,9 @@ export function RoutinesPage() {
       width="medium"
     >
       {active.length === 0 ? (
-        <Empty>No routines yet. Name your first one below.</Empty>
+        <Empty>
+          No routines yet. Name your first one below, or add a built-in one.
+        </Empty>
       ) : (
         <RoutineList routines={active} />
       )}
@@ -49,6 +67,30 @@ export function RoutinesPage() {
           Create
         </Button>
       </form>
+      <section className="pt-8">
+        <h2 className="px-4 pb-2 font-semibold text-ink-muted lg:px-0">
+          Built-in routines
+        </h2>
+        <ul className={listClass}>
+          {ROUTINES.map((routine) => (
+            <li
+              key={routine.key}
+              className="flex items-center gap-3 rounded-xl px-3 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{routine.name}</p>
+                <p className="text-sm text-ink-muted">{routine.description}</p>
+              </div>
+              <Button
+                aria-label={`Add ${routine.name}`}
+                onClick={() => void addBuiltin(routine)}
+              >
+                Add
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </section>
       {archived.length > 0 && (
         <section className="pt-8">
           <h2 className="px-4 pb-2 font-semibold text-ink-muted lg:px-0">
@@ -73,6 +115,9 @@ function RoutineList({ routines }: { routines: RoutineItem[] }) {
           >
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{r.name}</p>
+              {r.description && (
+                <p className="line-clamp-2 text-sm">{r.description}</p>
+              )}
               <p className="truncate text-sm text-ink-muted">
                 {r.dayNames.length === 0
                   ? "No days yet"

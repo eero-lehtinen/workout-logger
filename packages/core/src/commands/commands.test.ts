@@ -463,9 +463,14 @@ describe("routines and exercises", () => {
   it("duplicates routines and days with their slots", async () => {
     const { query, run, ids } = await setup();
     await run("updateSlot", { slotId: ids.benchSlot, note: "heavy" });
+    await run("updateRoutine", {
+      routineId: ids.routineId,
+      description: "  Four days a week. ",
+    });
     const copyId = await run("duplicateRoutine", { routineId: ids.routineId });
     const copy = await query("routineDetail", { routineId: copyId });
     expect(copy?.name).toBe("Upper/Lower (copy)");
+    expect(copy?.description).toBe("Four days a week.");
     expect(copy?.days.map((d) => d.name)).toEqual(["Upper", "Lower"]);
     expect(copy?.days[0]?.slots).toMatchObject([
       {
@@ -489,6 +494,56 @@ describe("routines and exercises", () => {
     expect(routines.map((r) => r.name)).toEqual([
       "Upper/Lower",
       "Upper/Lower (copy)",
+    ]);
+  });
+
+  it("creates a routine with its days, slots, and alternatives in one undoable write", async () => {
+    const { store, query, ids } = await setup();
+    const { result: routineId, undoTx } = await runCommand(
+      store,
+      "createRoutineWithDays",
+      {
+        name: "Push/Legs",
+        description: "Two days.",
+        days: [
+          {
+            name: "Push",
+            slots: [
+              {
+                exerciseId: ids.bench,
+                alternativeIds: [ids.dbBench, ids.dips],
+              },
+              { exerciseId: ids.dips, alternativeIds: [] },
+            ],
+          },
+          {
+            name: "Legs",
+            slots: [{ exerciseId: ids.squat, alternativeIds: [] }],
+          },
+        ],
+      },
+    );
+    const detail = await query("routineDetail", { routineId });
+    expect(detail?.description).toBe("Two days.");
+    expect(detail?.days.map((d) => d.name)).toEqual(["Push", "Legs"]);
+    expect(detail?.days[0]?.slots).toMatchObject([
+      {
+        exerciseName: "Bench Press (Barbell)",
+        alternatives: [
+          { exerciseName: "Bench Press (Dumbbell)" },
+          { exerciseName: "Dip" },
+        ],
+      },
+      { exerciseName: "Dip", alternatives: [] },
+    ]);
+    expect((await query("routines", undefined)).map((r) => r.name)).toEqual([
+      "Upper/Lower",
+      "Push/Legs",
+    ]);
+
+    expect(await store.undo(undoTx ?? undefined)).toBe(true);
+    expect((await query("routines", undefined)).map((r) => r.name)).toEqual([
+      "Upper/Lower",
     ]);
   });
 

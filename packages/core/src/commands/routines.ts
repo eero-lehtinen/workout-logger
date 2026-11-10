@@ -1,4 +1,4 @@
-import { positionBetween } from "../domain/position.ts";
+import { positionBetween, positionsBetween } from "../domain/position.ts";
 import type { Writer } from "../store/write.ts";
 import { defineCommand } from "./define.ts";
 import { appendPosition, liveSiblings, moveInList } from "./order.ts";
@@ -9,17 +9,76 @@ export const createRoutine = defineCommand(
       name: args.name,
       position: await appendPosition(w, "routine", null, null),
       archived: 0,
+      description: "",
     }),
+);
+
+export interface RoutineContent {
+  name: string;
+  description: string;
+  days: {
+    name: string;
+    slots: { exerciseId: string; alternativeIds: string[] }[];
+  }[];
+}
+
+/** A new routine with these days, slots, and alternatives, at the end of the list. */
+export const createRoutineWithDays = defineCommand(
+  async (w, args: RoutineContent): Promise<string> => {
+    const routineId = await w.insert("routine", {
+      name: args.name,
+      position: await appendPosition(w, "routine", null, null),
+      archived: 0,
+      description: args.description,
+    });
+    const dayPositions = positionsBetween(null, null, args.days.length);
+    for (const [d, day] of args.days.entries()) {
+      const dayId = await w.insert("routine_day", {
+        routine_id: routineId,
+        name: day.name,
+        position: dayPositions[d] as string,
+      });
+      const slotPositions = positionsBetween(null, null, day.slots.length);
+      for (const [s, slot] of day.slots.entries()) {
+        const slotId = await w.insert("slot", {
+          day_id: dayId,
+          exercise_id: slot.exerciseId,
+          position: slotPositions[s] as string,
+        });
+        const altPositions = positionsBetween(
+          null,
+          null,
+          slot.alternativeIds.length,
+        );
+        for (const [a, exerciseId] of slot.alternativeIds.entries()) {
+          await w.insert("slot_alternative", {
+            slot_id: slotId,
+            exercise_id: exerciseId,
+            position: altPositions[a] as string,
+          });
+        }
+      }
+    }
+    return routineId;
+  },
 );
 
 export const updateRoutine = defineCommand(
   async (
     w,
-    args: { routineId: string; name?: string; archived?: boolean },
+    args: {
+      routineId: string;
+      name?: string;
+      archived?: boolean;
+      description?: string;
+    },
   ): Promise<void> => {
     await w.update("routine", args.routineId, {
       ...(args.name !== undefined && { name: args.name }),
       ...(args.archived !== undefined && { archived: args.archived ? 1 : 0 }),
+      ...(args.description !== undefined && {
+        description: args.description.trim(),
+      }),
     });
   },
 );
@@ -29,13 +88,14 @@ export const duplicateRoutine = defineCommand(
   async (w, args: { routineId: string }): Promise<string> => {
     const routine = await w.db
       .selectFrom("routine")
-      .select(["name"])
+      .select(["name", "description"])
       .where("id", "=", args.routineId)
       .executeTakeFirstOrThrow();
     const routineId = await w.insert("routine", {
       name: `${routine.name} (copy)`,
       position: await appendPosition(w, "routine", null, null),
       archived: 0,
+      description: routine.description,
     });
     const days = await w.db
       .selectFrom("routine_day")

@@ -60,6 +60,31 @@ export function RoutineEditor() {
   );
 }
 
+/** Free text, edited in place; saves on blur. */
+function RoutineDescription({ routine }: { routine: RoutineDetail }) {
+  const command = useCommand();
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = () => {
+    if (draft !== null && draft.trim() !== routine.description) {
+      command("updateRoutine", { routineId: routine.id, description: draft });
+    }
+    setDraft(null);
+  };
+  return (
+    <div className="px-4 pt-2 pb-2 lg:px-0">
+      <textarea
+        aria-label="Routine description"
+        value={draft ?? routine.description}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={save}
+        placeholder="Description: what the routine is for, how to run it"
+        rows={1}
+        className="field-sizing-content block min-h-10 w-full resize-none rounded-lg bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink"
+      />
+    </div>
+  );
+}
+
 function Editor({
   routine,
   back,
@@ -163,6 +188,7 @@ function Editor({
         />
       }
     >
+      <RoutineDescription routine={routine} />
       {routine.days.length === 0 && (
         <Empty>Add your workout days in the order you do them.</Empty>
       )}
