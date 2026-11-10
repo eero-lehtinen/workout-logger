@@ -10,8 +10,8 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: phases 0–3 of [docs/implementation-plan.md](docs/implementation-plan.md)
-are done; phase 4 (FitNotes import) is in progress. `apps/web` is a local-only PWA
+Status: phases 0–4 of [docs/implementation-plan.md](docs/implementation-plan.md)
+are done; phase 5 (Android app) is next. `apps/web` is a local-only PWA
 for logging workouts: the DB worker, tab ownership, sessions, the logging
 view, routines, exercises, settings, snapshots, and the web rest timer, with
 Storybook stories and Playwright tests. `packages/core` has the DB drivers,
@@ -20,8 +20,8 @@ sync module, the domain functions, and the UI's queries and commands;
 `packages/exercises` has the seed catalog. `apps/server` only serves the web
 build and `/api/status`; every push to `main` deploys it to
 <https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
-Android, the server's auth and sync, sync in the app, and the CLI are not
-built yet.
+Android, the server's auth and sync, sync in the app, the FitNotes import,
+and the CLI are not built yet.
 
 ## Read first
 

@@ -4,7 +4,7 @@ The server runs on the owner's VPS under Dokploy, at
 <https://lift.eerolehtinen.fi>. Backups go to Cloudflare R2, a different
 provider, so losing either the VPS or the bucket loses no data.
 
-**Current state (phase 4):** the `app` container serves the static web build
+**Current state (since phase 4):** the `app` container serves the static web build
 and `GET /api/status`. There is no database, auth, sync, Litestream, or
 scheduled job yet; phase 6 adds them to the same image, compose service, and
 CI pipeline. Sections below describe the full design and say where something

@@ -18,9 +18,8 @@ These are human estimates. AI agents can do large phases very quickly.
 
 | Milestone | After phase | Meaning |
 | --- | --- | --- |
-| **M1: logs locally** | 4 | A full workout can be logged in the browser on the phone, with real FitNotes history. |
-| **M2: FitNotes replaced** | 6 | Android app with a reliable rest timer, sync between phone and web, server backups running. |
-| **M3: other users invited** | 10 | Multi-user hardening, quotas, admin, restore rehearsal. |
+| **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, measurements, and all FitNotes history imported. Workouts are logged only here from now on. |
+| **M2: other users invited** | 11 | Multi-user hardening, quotas, admin, restore rehearsal. |
 
 ## Phase 0: Scaffolding (S) [done]
 
@@ -118,19 +117,17 @@ production build. Review in a PC browser led to fixed screen headers with
 only the body scrolling, drag reordering, in-place set editing, marker
 explanations, and calmer warm visuals ([architecture.md](architecture.md)).
 
-The real-workout check on the phone moves to phase 4: a phone can only use
-the app over HTTPS, and M1 needs that anyway. Firefox (tab handoff, the
+The real-workout check on the phone moves to phase 9, when the app replaces
+FitNotes. Firefox (tab handoff, the
 storage prompt) is untested.
 
-## Phase 4: FitNotes import (S–M)
+## Phase 4: Static hosting (S) [done]
 
-- Host the static web build over HTTPS on the VPS, so the phone can use it: the part of phase 6's deployment that doesn't need the server. [done: <https://lift.eerolehtinen.fi>, deployed on every push to `main`; [deployment.md](deployment.md)]
-- Importer in `core`, the exercise mapping file, the import report, re-import rules.
-- Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
-- Settings → Import.
-- Run it on your backup, then spot-check volumes, PRs, and session counts against FitNotes.
+Host the static web build over HTTPS on the VPS, so the phone can use it: the
+part of phase 6's deployment that doesn't need the server.
 
-**Exit:** **M1.** A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. All history is visible, and markers and records look right on real data.
+Result: served at <https://lift.eerolehtinen.fi>, deployed on every push to
+`main` ([deployment.md](deployment.md)).
 
 ## Phase 5: Android app (M)
 
@@ -139,11 +136,11 @@ storage prompt) is untested.
 - Keep-awake toggle, on-device snapshots after each session, `allowBackup=false`.
 - CI: APK build on tags, attached to the GitHub release; an in-app update check.
 
-**Exit:** daily use on the phone, with the rest timer trusted.
+**Exit:** the release APK installs on the phone, and the rest timer passes the phase 1 test matrix in the real app.
 
 ## Phase 6: Server, sync, deployment (L)
 
-Owner-only at first; multi-user hardening is phase 10.
+Owner-only at first; multi-user hardening is phase 11.
 
 - `apps/server`: Hono on Node, better-sqlite3 + Kysely, server migrations with the pre-migration R2 copy.
 - **Auth:** Better Auth with email + password, web cookies, the Android bearer token in secure storage, `server create-owner`.
@@ -164,7 +161,7 @@ Owner-only at first; multi-user hardening is phase 10.
   - external uptime monitor;
   - owner warning badges.
 
-**Exit:** **M2.** Phone and web stay in sync. You've rehearsed the "VPS lost" procedure once, and stopped using FitNotes.
+**Exit:** phone and web stay in sync. You've rehearsed the "VPS lost" procedure once.
 
 ## Phase 7: History, records, calendar (M)
 
@@ -179,13 +176,22 @@ Owner-only at first; multi-user hardening is phase 10.
 - Health Connect import (plugin choice, permissions, history access, deterministic writes).
 - Combined chart: stacked panels and normalized overlay, smoothing.
 
-## Phase 9: CLI (S–M)
+## Phase 9: FitNotes import (S–M)
+
+- Importer in `core`, the exercise mapping file, the import report, re-import rules.
+- Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
+- Settings → Import.
+- Run it on your backup, then spot-check volumes, PRs, and session counts against FitNotes.
+
+**Exit:** **M1.** All FitNotes history is visible on every synced device, and markers and records look right on real data. A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
+
+## Phase 10: CLI (S–M)
 
 - `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup [--all]`, `restore`, `import fitnotes`.
 - API keys in the app settings, with read and write scopes.
 - Owner backup task: `wl backup --all` plus restic, scheduled on your PC.
 
-## Phase 10: Multi-user hardening (M)
+## Phase 11: Multi-user hardening (M)
 
 - Invites (entropy, expiry, transactional redemption), signup.
 - Rate limits (per-IP before auth, tight on auth endpoints), body limits, trusted proxy configuration.
@@ -194,9 +200,9 @@ Owner-only at first; multi-user hardening is phase 10.
 - Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
 - Signup screen privacy notice.
 
-**Exit:** **M3.** The first invited user onboarded.
+**Exit:** **M2.** The first invited user onboarded.
 
-## Phase 11: Analytics and P2 (ongoing)
+## Phase 12: Analytics and P2 (ongoing)
 
 - Analytics page: weekly weighted sets per muscle, volume, durations, PR list.
 - Multi-step undo/redo, year heatmap, scatter plots, relative strength, kg/lb display polish.
