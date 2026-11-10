@@ -422,6 +422,13 @@ export const EditSetInFooter = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: /^Edit set 2/ }));
     await userEvent.keyboard("{Escape}");
     await expect(canvas.queryByText("Editing set 2")).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 2/ }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: /back to the next set/ }),
+    );
+    await expect(canvas.queryByText("Editing set 2")).toBeNull();
+    await expect(reps()).toHaveValue(draft);
   },
 });
 

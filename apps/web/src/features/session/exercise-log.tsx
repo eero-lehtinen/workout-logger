@@ -349,6 +349,7 @@ function Logger({ log }: { log: ExerciseLog }) {
           unit={unit}
           editingId={editing?.setId ?? null}
           onEdit={toggleEdit}
+          onStopEditing={() => setEditing(null)}
           onCopy={fillFrom}
         />
         {earlier.length > 0 && (
@@ -457,6 +458,7 @@ function Ledger(props: {
   /** The set being edited in the footer, highlighted here. */
   editingId: string | null;
   onEdit: (set: LoggedSet) => void;
+  onStopEditing: () => void;
   onCopy: (set: LoggedSet) => void;
 }) {
   const { log, unit } = props;
@@ -511,6 +513,16 @@ function Ledger(props: {
                       unit={unit}
                     />
                   </div>
+                ) : isNext && props.editingId ? (
+                  <button
+                    type="button"
+                    onClick={props.onStopEditing}
+                    className="-ml-2 flex h-12 items-center rounded-lg px-2 text-ink-muted hover:bg-surface hover:text-ink"
+                  >
+                    <span className="sr-only">Stop editing, back to the </span>
+                    next
+                    <span className="sr-only"> set</span>
+                  </button>
                 ) : (
                   <span className="flex h-12 items-center text-ink-muted">
                     {isNext ? "next" : ""}
