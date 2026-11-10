@@ -80,6 +80,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | Tapping an exercise opens the exercise logging view | P0 | |
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
 | Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. |
+| Hide the session timer in settings | P1 | Hides only the running elapsed time; the session keeps its start and end, and ended sessions still show their duration. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
 | Session notes | P1 | |
 
@@ -137,6 +138,7 @@ don't count.
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default (2:00). |
+| Can be turned off in settings | P1 | Turning it off cancels a running rest. |
 | Adjust with +/-15 s, skip, restart | P0 | |
 | Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at alarm volume in silent mode and DND; music is ducked during the alert. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
 | Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. |

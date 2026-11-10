@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { watchInstall } from "../../lib/install.ts";
-import { empty, inPounds } from "../../stories/fixtures.ts";
+import { empty, inPounds, timersOff } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
 export default {
@@ -50,3 +50,21 @@ export const InstallAvailable = {
     );
   },
 };
+
+export const TimersOff = pageStory({
+  fixture: timersOff,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rest = canvas.getByRole("switch", { name: "Rest timer" });
+    await expect(rest).not.toBeChecked();
+    await expect(
+      canvas.getByRole("switch", { name: "Session timer" }),
+    ).not.toBeChecked();
+    await expect(canvas.queryByLabelText("Rest time")).toBeNull();
+
+    await userEvent.click(rest);
+    await waitFor(() => expect(rest).toBeChecked());
+    await expect(canvas.getByLabelText("Rest time")).toBeVisible();
+  },
+});

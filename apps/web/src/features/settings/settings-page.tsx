@@ -3,9 +3,11 @@ import { useState } from "react";
 import { PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
+import { Switch } from "../../components/switch.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { formatDuration } from "../../lib/format.ts";
+import { restTimer } from "../../lib/rest-timer.ts";
 import { DataSection } from "./data-section.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
@@ -61,16 +63,43 @@ export function SettingsPage() {
           </Row>
         </Section>
 
-        <Section title="Sessions">
-          <Row label="Rest time" hint="m:ss. Exercises can set their own.">
-            <SettingInput
-              label="Rest time"
-              value={settings.rest_default_s}
-              format={formatDuration}
-              parse={parseDuration}
-              onSave={(value) => set({ key: "rest_default_s", value })}
+        <Section title="Timers">
+          <Row label="Rest timer" hint="Counts down after each logged set.">
+            <Switch
+              label="Rest timer"
+              checked={settings.rest_timer_enabled}
+              onChange={(value) => {
+                if (!value) restTimer.skip();
+                void set({ key: "rest_timer_enabled", value });
+              }}
             />
           </Row>
+          {settings.rest_timer_enabled && (
+            <Row label="Rest time" hint="m:ss. Exercises can set their own.">
+              <SettingInput
+                label="Rest time"
+                value={settings.rest_default_s}
+                format={formatDuration}
+                parse={parseDuration}
+                onSave={(value) => set({ key: "rest_default_s", value })}
+              />
+            </Row>
+          )}
+          <Row
+            label="Session timer"
+            hint="Shows how long the running session has lasted."
+          >
+            <Switch
+              label="Session timer"
+              checked={settings.session_timer_shown}
+              onChange={(value) =>
+                void set({ key: "session_timer_shown", value })
+              }
+            />
+          </Row>
+        </Section>
+
+        <Section title="Sessions">
           <Row
             label="Idle end (minutes)"
             hint="With no new set for this long, a session ends at its last set."

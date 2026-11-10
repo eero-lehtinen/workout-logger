@@ -124,6 +124,7 @@ function SessionPanel({ view }: { view: SessionView }) {
           <SessionTimer
             view={view}
             idleThresholdS={settings.idle_threshold_s}
+            showElapsed={settings.session_timer_shown}
           />
         </PageHeader>
       }
@@ -250,7 +251,11 @@ function DoneMark({ done }: { done: boolean }) {
   );
 }
 
-function SessionTimer(props: { view: SessionView; idleThresholdS: number }) {
+function SessionTimer(props: {
+  view: SessionView;
+  idleThresholdS: number;
+  showElapsed: boolean;
+}) {
   const { session } = props.view;
   const command = useCommand();
   const now = useNow();
@@ -268,11 +273,17 @@ function SessionTimer(props: { view: SessionView; idleThresholdS: number }) {
   if (end.running) {
     return (
       <div className="flex items-center gap-3 rounded-xl bg-surface py-2 pr-2 pl-4">
-        <p className="flex-1">
-          <span className="numerals text-3xl">
-            {formatDuration((now - session.startedAt) / 1000)}
-          </span>
-        </p>
+        {props.showElapsed ? (
+          <p className="flex-1">
+            <span className="numerals text-3xl">
+              {formatDuration((now - session.startedAt) / 1000)}
+            </span>
+          </p>
+        ) : (
+          <p className="flex-1 text-[0.9375rem] text-ink-muted">
+            Running since {formatTime(session.startedAt, session.tz)}
+          </p>
+        )}
         <Button
           variant="primary"
           onClick={() => command("endSession", { sessionId: session.id })}

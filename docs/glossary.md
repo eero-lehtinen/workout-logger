@@ -68,8 +68,8 @@ previous performance, not by prescribing.
 
 | Term | Meaning |
 | --- | --- |
-| **Rest timer** | A countdown that starts when a set is logged. When it ends, the phone vibrates and plays a sound, even when the app is in the background or music is playing. |
-| **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle auto-end. |
+| **Rest timer** | A countdown that starts when a set is logged. When it ends, the phone vibrates and plays a sound, even when the app is in the background or music is playing. Can be turned off in settings. |
+| **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle auto-end. Its display can be hidden in settings. |
 | **Idle auto-end** | If no set has been logged for the idle threshold (default 15 min, configurable), the session counts as ended at the timestamp of its last set. |
 
 ## Data, sync, and backups

@@ -27,6 +27,9 @@ export const SETTINGS = {
     default: DEFAULT_WEIGHT_INCREMENT.lb,
   },
   rest_default_s: { schema: integer(0, 3600), default: 120 },
+  rest_timer_enabled: { schema: v.boolean(), default: true },
+  /** Display only: sessions keep their start and end times either way. */
+  session_timer_shown: { schema: v.boolean(), default: true },
   idle_threshold_s: {
     schema: integer(60, 24 * 3600),
     default: DEFAULT_IDLE_THRESHOLD_MS / 1000,

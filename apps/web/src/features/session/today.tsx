@@ -34,7 +34,11 @@ export function TodayPage() {
         <section>
           <div className="px-4 lg:px-0">
             {running ? (
-              <RunningCard session={running} now={now} />
+              <RunningCard
+                session={running}
+                now={now}
+                showElapsed={settings.session_timer_shown}
+              />
             ) : (
               <Link
                 to="/start"
@@ -97,7 +101,11 @@ export function TodayPage() {
   );
 }
 
-function RunningCard(props: { session: SessionSummary; now: number }) {
+function RunningCard(props: {
+  session: SessionSummary;
+  now: number;
+  showElapsed: boolean;
+}) {
   const { session, now } = props;
   return (
     <Link
@@ -115,10 +123,12 @@ function RunningCard(props: { session: SessionSummary; now: number }) {
         <p className="opacity-70">{session.routineName}</p>
       )}
       <div className="mt-5 flex items-end justify-between">
-        <p className="numerals text-5xl leading-none">
-          {formatDuration((now - session.startedAt) / 1000)}
-        </p>
-        <p className="text-right text-sm">
+        {props.showElapsed && (
+          <p className="numerals text-5xl leading-none">
+            {formatDuration((now - session.startedAt) / 1000)}
+          </p>
+        )}
+        <p className="ml-auto text-right text-sm">
           {session.setCount} {session.setCount === 1 ? "set" : "sets"}
           <br />
           <span className="font-semibold">Continue</span>

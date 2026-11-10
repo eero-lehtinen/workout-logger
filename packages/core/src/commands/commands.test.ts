@@ -416,14 +416,17 @@ describe("settings", () => {
     expect(await query("settings", undefined)).toMatchObject({
       weight_unit: "kg",
       rest_default_s: 120,
+      rest_timer_enabled: true,
     });
     await run("setSetting", { key: "weight_unit", value: "lb" });
+    await run("setSetting", { key: "rest_timer_enabled", value: false });
     await store.write((w) =>
       w.put("setting", "rest_default_s", { value_json: '"soon"' }),
     );
     expect(await query("settings", undefined)).toMatchObject({
       weight_unit: "lb",
       rest_default_s: 120,
+      rest_timer_enabled: false,
     });
   });
 });

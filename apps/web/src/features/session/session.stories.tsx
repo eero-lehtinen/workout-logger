@@ -1,11 +1,13 @@
 import type { Meta } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
+import { restTimer } from "../../lib/rest-timer.ts";
 import {
   empty,
   idleEnded,
   inPounds,
   running,
   timed,
+  timersOff,
   withHistory,
 } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
@@ -66,6 +68,19 @@ export const SessionRunningPc = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}`,
   viewport: "pc",
+});
+
+export const SessionTimerHidden = pageStory({
+  fixture: timersOff,
+  url: (ids) => `/sessions/${ids.sessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/Running since/)).toBeVisible();
+    await expect(canvas.queryByText(/^\d+:\d\d$/)).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "End session" }),
+    ).toBeVisible();
+  },
 });
 
 export const SessionIdle = pageStory({
@@ -238,6 +253,23 @@ export const SettingsFromLogging = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: "Log set 3" }));
     // The countdown may already have ticked once.
     await expect(await canvas.findByText(/^(3:00|2:5\d)$/)).toBeVisible();
+  },
+});
+
+export const RestTimerOff = pageStory({
+  fixture: timersOff,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The timer is a module singleton, so an earlier story may have left one.
+    restTimer.skip();
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Log set 3" }),
+    );
+    await canvas.findByRole("button", { name: /^Edit set 3/ });
+    await expect(
+      canvas.queryByRole("button", { name: "Skip rest" }),
+    ).toBeNull();
   },
 });
 

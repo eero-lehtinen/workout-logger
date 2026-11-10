@@ -283,6 +283,13 @@ export const inPounds: Fixture = async (db) => {
   return ids;
 };
 
+export const timersOff: Fixture = async (db) => {
+  const ids = await running(db);
+  await db.run("setSetting", { key: "rest_timer_enabled", value: false });
+  await db.run("setSetting", { key: "session_timer_shown", value: false });
+  return ids;
+};
+
 /** Two custom exercises the user has archived. */
 export const withArchived: Fixture = async (db) => {
   const muscles = await db.client.query("muscles", undefined);

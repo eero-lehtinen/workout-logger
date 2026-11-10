@@ -135,7 +135,7 @@ function Logger({ log }: { log: ExerciseLog }) {
 
   async function logInto(sessionExerciseId: string, set: SetValues) {
     const id = await command("logSet", { sessionExerciseId, values: set });
-    if (id) restTimer.start(log.restSeconds);
+    if (id && settings.rest_timer_enabled) restTimer.start(log.restSeconds);
     return id;
   }
 
