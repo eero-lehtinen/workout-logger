@@ -12,14 +12,11 @@ export const METRIC_LABELS: Record<HistoryMetric, string> = {
   best_e1rm: "Best e1RM",
   set_e1rm: "Every set's e1RM",
   top_weight: "Top weight",
-  volume: "Volume",
   reps_at_weight: "Reps at a weight",
   best_reps: "Most reps",
-  total_reps: "Total reps",
   best_duration: "Longest",
-  total_duration: "Total time",
   best_distance: "Longest",
-  total_distance: "Total distance",
+  weekly_sets: "Sets per week",
 };
 
 export const HEADLINE_LABELS: Record<HeadlineKind, string> = {
@@ -28,26 +25,21 @@ export const HEADLINE_LABELS: Record<HeadlineKind, string> = {
   reps: "Most reps",
   duration: "Longest set",
   distance: "Longest distance",
-  session_volume: "Most volume in a session",
-  session_reps: "Most reps in a session",
-  session_duration: "Most time in a session",
-  session_distance: "Most distance in a session",
 };
 
 type Measure = "kg" | "reps" | "s" | "m";
 
-const METRIC_MEASURES: Record<HistoryMetric, Measure> = {
+/** Metrics plotted as values over time, i.e. all but the weekly set counts. */
+export type ValueMetric = Exclude<HistoryMetric, "weekly_sets">;
+
+const METRIC_MEASURES: Record<ValueMetric, Measure> = {
   best_e1rm: "kg",
   set_e1rm: "kg",
   top_weight: "kg",
-  volume: "kg",
   reps_at_weight: "reps",
   best_reps: "reps",
-  total_reps: "reps",
   best_duration: "s",
-  total_duration: "s",
   best_distance: "m",
-  total_distance: "m",
 };
 
 const HEADLINE_MEASURES: Record<HeadlineKind, Measure> = {
@@ -56,10 +48,6 @@ const HEADLINE_MEASURES: Record<HeadlineKind, Measure> = {
   reps: "reps",
   duration: "s",
   distance: "m",
-  session_volume: "kg",
-  session_reps: "reps",
-  session_duration: "s",
-  session_distance: "m",
 };
 
 const derivedFormat = new Intl.NumberFormat(undefined, {
@@ -81,7 +69,7 @@ function formatMeasure(measure: Measure, value: number, unit: WeightUnit) {
 }
 
 export function formatMetric(
-  metric: HistoryMetric,
+  metric: ValueMetric,
   value: number,
   unit: WeightUnit,
 ) {
@@ -96,7 +84,7 @@ const rateFormat = new Intl.NumberFormat(undefined, {
 
 /** A trend's rate, e.g. `+0.8 kg per month`, from its change per day. */
 export function formatTrendRate(
-  metric: HistoryMetric,
+  metric: ValueMetric,
   perDay: number,
   unit: WeightUnit,
 ) {

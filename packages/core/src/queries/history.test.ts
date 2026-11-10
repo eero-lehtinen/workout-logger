@@ -112,9 +112,10 @@ describe("history queries", () => {
     ]);
   });
 
-  it("collects the muscle groups each session trained", async () => {
+  it("counts each session's weighted sets per muscle and group", async () => {
     const { store, run, bench, squat, upper, session } = await setup();
     const withSets = await session(T0, upper, [
+      [bench, 100, 5],
       [bench, 100, 5],
       [squat, 100, 5],
     ]);
@@ -122,11 +123,19 @@ describe("history queries", () => {
     const empty = await session(T0 + DAY, null, []);
     await run("addSessionExercise", { sessionId: empty, exerciseId: squat });
     const stats = await runQuery(store, "trainingStats", undefined);
-    const groups = (id: string) =>
-      stats.sessions.find((s) => s.id === id)?.muscleGroups.sort();
-    expect(groups(withSets)).toEqual(["Chest", "Legs"]);
-    expect(groups(empty)).toEqual([]);
-    expect(stats.muscleGroups.sort()).toEqual(["Arms", "Chest", "Legs"]);
+    const sets = (id: string) =>
+      stats.sessions.find((s) => s.id === id)?.weightedSets;
+    // Bench targets chest 1.0 and triceps 0.5.
+    expect(sets(withSets)).toEqual({
+      muscles: { chest: 2, triceps: 1, quads: 1 },
+      groups: { Chest: 2, Arms: 1, Legs: 1 },
+    });
+    expect(sets(empty)).toEqual({ muscles: {}, groups: {} });
+    expect(stats.muscles.map((m) => m.group).sort()).toEqual([
+      "Arms",
+      "Chest",
+      "Legs",
+    ]);
     expect(stats.routines[0]?.days.map((d) => [d.name, d.index])).toEqual([
       ["Upper", 0],
       ["Lower", 1],

@@ -9,14 +9,17 @@ import {
 import {
   daysBetweenSessions,
   GAP_BUCKET_LIMIT,
-  muscleGroupFrequency,
   sessionsPerWeek,
+  weeklyAverages,
+  weightedSets,
 } from "./frequency.ts";
 import {
   exerciseRecords,
   historySeries,
   loggedWeights,
   type PerformanceSets,
+  setE1rmSeries,
+  weeklySets,
 } from "./history.ts";
 import type { SetValues } from "./markers.ts";
 
@@ -89,10 +92,16 @@ describe("historySeries", () => {
     ]);
   });
 
-  it("plots every set's e1RM at its session's start", () => {
-    const points = historySeries("weight_reps", history, "set_e1rm");
-    expect(points).toHaveLength(4);
-    expect(points.filter((p) => p.at === 5 * DAY)).toHaveLength(2);
+  it("plots every set's e1RM as one series per set number", () => {
+    const series = setE1rmSeries(history);
+    expect(
+      series.map((s) => [s.setNumber, s.points.map((p) => p.sessionId)]),
+    ).toEqual([
+      // Session 3's only set is above the cap.
+      [1, ["s1", "s5"]],
+      [2, ["s1", "s5"]],
+    ]);
+    expect(series[1]?.points[1]?.value).toBeCloseTo(90 * (1 + 8 / 30));
   });
 
   it("respects the e1RM cap", () => {
@@ -101,7 +110,33 @@ describe("historySeries", () => {
     ).toHaveLength(3);
   });
 
-  it("plots top weight, volume, and reps at a weight", () => {
+  it("counts sets per week through today, averaging to the last session", () => {
+    // Days 1, 3, and 5 after the epoch: Friday, Sunday, and Tuesday.
+    const to = "1970-01-14";
+    const result = weeklySets(history, { to }, "monday");
+    expect(result.weeks).toEqual([
+      { week: "1969-12-29", count: 3 },
+      { week: "1970-01-05", count: 2 },
+      { week: "1970-01-12", count: 0 },
+    ]);
+    // The empty week after the last session isn't averaged in.
+    expect(result.average).toBeCloseTo(5 / 2);
+    expect(weeklySets([], { to }, "monday").weeks).toEqual([]);
+  });
+
+  it("starts the weeks at the range's start when given", () => {
+    const weeks = weeklySets(
+      history,
+      { from: "1970-01-05", to: "1970-01-14" },
+      "monday",
+    ).weeks;
+    expect(weeks).toEqual([
+      { week: "1970-01-05", count: 2 },
+      { week: "1970-01-12", count: 0 },
+    ]);
+  });
+
+  it("plots top weight and reps at a weight", () => {
     const values = (
       metric: Parameters<typeof historySeries>[2],
       weightKg?: number,
@@ -110,7 +145,6 @@ describe("historySeries", () => {
         ...(weightKg !== undefined && { weightKg }),
       }).map((p) => p.value);
     expect(values("top_weight")).toEqual([100, 80, 105]);
-    expect(values("volume")).toEqual([900, 1200, 1035]);
     expect(values("reps_at_weight", 100)).toEqual([5]);
     expect(values("reps_at_weight")).toEqual([]);
   });
@@ -132,7 +166,6 @@ describe("historySeries", () => {
   it("plots durations of timed exercises", () => {
     const planks = [perf(1, [secs(40), secs(45)])];
     expect(historySeries("time", planks, "best_duration")[0]?.value).toBe(45);
-    expect(historySeries("time", planks, "total_duration")[0]?.value).toBe(85);
   });
 
   it("lists logged weights with their session counts", () => {
@@ -158,7 +191,6 @@ describe("exerciseRecords", () => {
     expect(byKind).toEqual({
       e1rm: [100 * (1 + 5 / 30), "s1"],
       weight: [110, "s3"],
-      session_volume: [1700, "s2"],
     });
   });
 
@@ -198,7 +230,6 @@ describe("exerciseRecords", () => {
     const records = exerciseRecords("time", [perf(1, [secs(40), secs(50)])]);
     expect(records.headline.map((r) => [r.kind, r.value])).toEqual([
       ["duration", 50],
-      ["session_duration", 90],
     ]);
     expect(records.byReps).toEqual([]);
   });
@@ -214,9 +245,9 @@ describe("frequency", () => {
       "monday",
     );
     expect(result.weeks).toEqual([
-      { week: "2026-01-05", sessions: 3 },
-      { week: "2026-01-12", sessions: 0 },
-      { week: "2026-01-19", sessions: 1 },
+      { week: "2026-01-05", count: 3 },
+      { week: "2026-01-12", count: 0 },
+      { week: "2026-01-19", count: 1 },
     ]);
     expect(result.average).toBeCloseTo(4 / 3);
   });
@@ -248,22 +279,40 @@ describe("frequency", () => {
     });
   });
 
-  it("counts each date once per muscle group", () => {
-    const result = muscleGroupFrequency(
+  it("weights sets by muscle factor, and counts a set once per group", () => {
+    const row = {
+      sets: 3,
+      targets: [
+        { muscleId: "lats", group: "Back", factor: 1 },
+        { muscleId: "upper_back", group: "Back", factor: 1 },
+        { muscleId: "biceps", group: "Arms", factor: 0.5 },
+      ],
+    };
+    const curl = {
+      sets: 2,
+      targets: [{ muscleId: "biceps", group: "Arms", factor: 1 }],
+    };
+    expect(weightedSets([row, curl])).toEqual({
+      muscles: { lats: 3, upper_back: 3, biceps: 3.5 },
+      groups: { Back: 3, Arms: 3.5 },
+    });
+  });
+
+  it("averages weekly amounts over the range", () => {
+    const result = weeklyAverages(
       [
-        { date: "2025-12-20", groups: ["Legs"] },
-        { date: "2026-01-05", groups: ["Chest", "Arms"] },
-        { date: "2026-01-05", groups: ["Chest"] },
-        { date: "2026-01-14", groups: ["Chest"] },
+        { date: "2025-12-20", amounts: { Legs: 4 } },
+        { date: "2026-01-05", amounts: { Chest: 3, Arms: 1.5 } },
+        { date: "2026-01-14", amounts: { Chest: 6 } },
       ],
       ["Chest", "Legs", "Core"],
       range,
       "monday",
     );
     expect(result).toEqual([
-      { group: "Chest", daysPerWeek: 2 / 3, lastDate: "2026-01-14" },
-      { group: "Legs", daysPerWeek: 0, lastDate: "2025-12-20" },
-      { group: "Core", daysPerWeek: 0, lastDate: null },
+      { key: "Chest", perWeek: 3, lastDate: "2026-01-14" },
+      { key: "Legs", perWeek: 0, lastDate: "2025-12-20" },
+      { key: "Core", perWeek: 0, lastDate: null },
     ]);
   });
 });

@@ -27,9 +27,10 @@ export function pageStory(options: {
   return {
     loaders: [
       async (): Promise<Loaded> => {
-        // The router keeps scroll positions in sessionStorage, which every
-        // story in the browser shares.
+        // Every story in the browser shares both storages: the router keeps
+        // scroll positions in one, view preferences live in the other.
         sessionStorage.clear();
+        localStorage.clear();
         const db = await openMemoryDb();
         return { db, url: options.url(await options.fixture(db)) };
       },

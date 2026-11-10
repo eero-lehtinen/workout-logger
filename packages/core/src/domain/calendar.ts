@@ -27,6 +27,10 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   return Temporal.PlainDate.from(date).add({ days }).toString();
 }
 
+export function earlierDate(a: IsoDate, b: IsoDate): IsoDate {
+  return Temporal.PlainDate.compare(a, b) <= 0 ? a : b;
+}
+
 /** Whole days from `a` to `b`; negative if `b` is earlier. */
 export function daysBetween(a: IsoDate, b: IsoDate): number {
   return Temporal.PlainDate.from(a).until(b, { largestUnit: "days" }).days;

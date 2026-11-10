@@ -5,27 +5,36 @@ import type {
   WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { useState } from "react";
 import { Segmented } from "../../components/segmented.tsx";
 import {
   formatSessionDate,
   formatSet,
   formatWeightWithUnit,
 } from "../../lib/format.ts";
+import { usePreference } from "../../lib/preference.ts";
 import { formatHeadline, HEADLINE_LABELS, isWeighted } from "./metrics.ts";
+import { PERIOD_PHRASES, type Period } from "./period.ts";
 
-type Table = "reps" | "weight";
+const TABLES = ["reps", "weight"] as const;
+type Table = (typeof TABLES)[number];
 
 export function RecordsSection(props: {
   history: ExerciseHistory;
   unit: WeightUnit;
+  period: Period;
 }) {
   const { history, unit } = props;
   const { records, exercise } = history;
-  const [table, setTable] = useState<Table>("reps");
+  const [table, setTable] = usePreference<Table>(
+    "history-records-table",
+    TABLES,
+    "reps",
+  );
   return (
     <section className="px-4 lg:px-0">
-      <h2 className="pb-2 text-lg font-semibold">Records</h2>
+      <h2 className="pb-2 text-lg font-semibold">
+        {`Records ${PERIOD_PHRASES[props.period]}`.trim()}
+      </h2>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {records.headline.map((r) => (
           <li

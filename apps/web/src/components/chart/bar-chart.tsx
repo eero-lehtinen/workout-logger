@@ -12,7 +12,7 @@ import {
   valueAxis,
   zoomOptions,
 } from "./options.ts";
-import { type ChartTheme, useChartTheme } from "./theme.ts";
+import { type ChartTheme, seriesColor, useChartTheme } from "./theme.ts";
 import type { BarChartProps } from "./types.ts";
 import { useChartOption, useEChart, useZoomReset } from "./use-echart.ts";
 
@@ -43,7 +43,7 @@ export default function EChartsBarChart(props: BarChartProps) {
 
 function barChartOption(props: BarChartProps, theme: ChartTheme) {
   const time = props.xKind === "time";
-  const color = theme.colors[props.color ?? "ink"];
+  const color = theme.colors[props.color ?? seriesColor(0)];
   const muted = theme.colors["ink-muted"];
   const series: BarSeriesOption = {
     id: "bars",

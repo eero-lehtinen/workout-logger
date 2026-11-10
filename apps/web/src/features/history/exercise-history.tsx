@@ -1,34 +1,51 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 import {
   type ExerciseHistory,
+  exerciseRecords,
   type HistoryMetric,
+  type HistoryPoint,
   historyMetrics,
   historySeries,
+  type IsoDate,
+  localDate,
   loggedWeights,
+  setE1rmSeries,
+  type WeekStart,
   type WeightUnit,
+  weeklySets,
 } from "@workout-logger/core";
 import { SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
-import { TimeChart } from "../../components/chart/index.tsx";
+import {
+  BarChart,
+  TimeChart,
+  type TimeSeries,
+} from "../../components/chart/index.tsx";
+import { seriesColor } from "../../components/chart/theme.ts";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import {
+  dateFromIso,
   formatSessionDate,
   formatSet,
   formatWeightWithUnit,
+  todayIso,
 } from "../../lib/format.ts";
-import { backToOrigin, originOf } from "../exercises/origin.ts";
+import { usePreference, useSwitchPreference } from "../../lib/preference.ts";
+import { backToOrigin, type Origin, originOf } from "../exercises/origin.ts";
 import { Marker } from "../session/marker.tsx";
 import {
   formatMetric,
   formatTrendRate,
   isWeighted,
   METRIC_LABELS,
+  type ValueMetric,
 } from "./metrics.ts";
+import { PERIOD_PHRASES, PERIODS, periodStart, usePeriod } from "./period.ts";
 import { RecordsSection } from "./records.tsx";
 
 const route = getRouteApi("/exercises/$exerciseId_/history");
@@ -54,7 +71,51 @@ export function ExerciseHistoryPage() {
       </Screen>
     );
   }
-  const { exercise, performances } = history;
+  return (
+    <InPeriod
+      history={history}
+      unit={unit}
+      back={back}
+      editSearch={{ ...origin, from: "history" }}
+    />
+  );
+}
+
+/**
+ * The page over the chosen period: the graph, the records, and the session
+ * list all see only the sessions in it. Markers stay as they were at the
+ * time, judged against all earlier history.
+ */
+function InPeriod(props: {
+  history: ExerciseHistory;
+  unit: WeightUnit;
+  back: ReturnType<typeof backToOrigin>;
+  editSearch: Origin & { from: "history" };
+}) {
+  const { history, unit } = props;
+  const { exercise } = history;
+  const [period, setPeriod] = usePeriod();
+  const today = todayIso();
+  const from = periodStart(period, today);
+  const performances = from
+    ? history.performances.filter((p) => localDate(p.startedAt, p.tz) >= from)
+    : history.performances;
+  const view: ExerciseHistory = {
+    ...history,
+    performances,
+    records: from
+      ? exerciseRecords(exercise.type, performances, {
+          e1rmRepCap: history.e1rmRepCap,
+        })
+      : history.records,
+  };
+  const phrase = PERIOD_PHRASES[period];
+  const first = history.performances[0];
+  const logged = first !== undefined;
+  // Weekly charts start at the period, but never before the first session.
+  const firstDate = first && localDate(first.startedAt, first.tz);
+  const chartFrom = from && firstDate && from > firstDate ? from : firstDate;
+
   return (
     <Screen
       scrollId="exercise-history"
@@ -62,16 +123,16 @@ export function ExerciseHistoryPage() {
         <PageHeader
           title={exercise.name}
           subtitle={
-            performances.length === 0
-              ? "Not logged yet"
-              : `${performances.length} ${performances.length === 1 ? "session" : "sessions"}`
+            logged
+              ? `${performances.length} ${performances.length === 1 ? "session" : "sessions"} ${phrase}`.trim()
+              : "Not logged yet"
           }
-          back={back}
+          back={props.back}
           actions={
             <Link
               to="/exercises/$exerciseId"
-              params={{ exerciseId }}
-              search={{ ...origin, from: "history" }}
+              params={{ exerciseId: exercise.id }}
+              search={props.editSearch}
               aria-label="Edit exercise"
               title="Edit exercise"
               className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
@@ -79,112 +140,236 @@ export function ExerciseHistoryPage() {
               <SlidersHorizontal size={20} />
             </Link>
           }
-        />
+        >
+          {logged && (
+            <Segmented
+              label="Period"
+              size="sm"
+              value={period}
+              onChange={setPeriod}
+              options={PERIODS}
+            />
+          )}
+        </PageHeader>
       }
     >
-      {performances.length === 0 ? (
+      {!logged ? (
         <Empty>Sets you log of this exercise show up here.</Empty>
+      ) : performances.length === 0 ? (
+        <Empty>No sets of this exercise {phrase}.</Empty>
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
           <div className="flex flex-col gap-8">
-            <ProgressChart key={exercise.id} history={history} unit={unit} />
-            <RecordsSection history={history} unit={unit} />
+            <ProgressChart
+              key={exercise.id}
+              history={view}
+              from={chartFrom ?? null}
+              unit={unit}
+            />
+            <RecordsSection history={view} unit={unit} period={period} />
           </div>
-          <PastSessions history={history} unit={unit} />
+          <PastSessions history={view} unit={unit} />
         </div>
       )}
     </Screen>
   );
 }
 
-function ProgressChart(props: { history: ExerciseHistory; unit: WeightUnit }) {
+const selectClass =
+  "h-10 min-w-0 rounded-lg bg-raised pr-2 pl-3 font-medium ring-1 ring-rule outline-none focus-visible:ring-2 focus-visible:ring-ink";
+
+function ProgressChart(props: {
+  history: ExerciseHistory;
+  /** The period's first date; null for all time. */
+  from: IsoDate | null;
+  unit: WeightUnit;
+}) {
   const { history, unit } = props;
   const { exercise, performances } = history;
   const metrics = historyMetrics(exercise.type);
-  const [metric, setMetric] = useState<HistoryMetric>(
+  // One metric for every exercise: a type without it shows its first metric
+  // and leaves the stored one for the exercises that have it.
+  const [metric, setMetric] = usePreference<HistoryMetric>(
+    "history-metric",
+    metrics,
     metrics[0] ?? "best_e1rm",
   );
-  const [trend, setTrend] = useState(true);
+  const [trend, setTrend] = useSwitchPreference("history-trend", true);
   const weights = isWeighted(exercise.type) ? loggedWeights(performances) : [];
-  const [weightKg, setWeightKg] = useState(
-    () =>
-      weights.reduce<(typeof weights)[number] | undefined>(
-        (best, w) => (!best || w.sessions > best.sessions ? w : best),
-        undefined,
-      )?.weightKg,
+  const mostUsed = weights.reduce<(typeof weights)[number] | undefined>(
+    (best, w) => (!best || w.sessions > best.sessions ? w : best),
+    undefined,
   );
-  const points = historySeries(exercise.type, performances, metric, {
-    e1rmRepCap: history.e1rmRepCap,
-    ...(weightKg !== undefined && { weightKg }),
-  }).map((p) => ({ t: p.at, v: p.value }));
-
+  // Per exercise, since weights differ between exercises. One that isn't in
+  // the period falls back to the period's most used weight.
+  const [weight, setWeight] = usePreference(
+    `history-weight:${exercise.id}`,
+    weights.map((w) => String(w.weightKg)),
+    String(mostUsed?.weightKg ?? ""),
+  );
+  const weightKg = mostUsed ? Number(weight) : undefined;
   return (
     <section className="px-4 pt-2 lg:px-0">
       <h2 className="sr-only">Progress</h2>
-      <div className="-mx-4 overflow-x-auto px-4 pb-3 lg:mx-0 lg:px-0">
-        <Segmented
-          label="Metric"
-          size="sm"
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]">
+        <select
+          aria-label="Metric"
           value={metric}
-          onChange={setMetric}
-          options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
-        />
-      </div>
-      <div className="flex items-center gap-3 pb-3 text-[0.9375rem]">
-        <Switch label="Trend line" checked={trend} onChange={setTrend} />
-        <span aria-hidden className="text-ink-muted">
-          Trend line
-        </span>
-      </div>
-      {metric === "reps_at_weight" && (
-        <label className="flex items-center gap-2 pb-3 text-[0.9375rem]">
-          <span className="text-ink-muted">Weight</span>
+          onChange={(e) => setMetric(e.target.value as HistoryMetric)}
+          className={selectClass}
+        >
+          {metrics.map((m) => (
+            <option key={m} value={m}>
+              {METRIC_LABELS[m]}
+            </option>
+          ))}
+        </select>
+        {metric === "reps_at_weight" && (
           <select
-            value={weightKg ?? ""}
-            onChange={(e) => setWeightKg(Number(e.target.value))}
-            className="h-9 rounded-lg bg-raised px-2 ring-1 ring-rule"
+            aria-label="Weight"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className={selectClass}
           >
             {weights.map((w) => (
-              <option key={w.weightKg} value={w.weightKg}>
+              <option key={w.weightKg} value={String(w.weightKg)}>
                 {formatWeightWithUnit(w.weightKg, unit)} ({w.sessions}{" "}
                 {w.sessions === 1 ? "session" : "sessions"})
               </option>
             ))}
           </select>
-        </label>
-      )}
-      {points.length === 0 ? (
-        <p className="py-10 text-center text-[0.9375rem] text-ink-muted">
-          {metric === "best_e1rm" || metric === "set_e1rm"
-            ? "No sets within the e1RM rep limit yet."
-            : "Nothing to show for this metric yet."}
-        </p>
+        )}
+        {metric !== "weekly_sets" && metric !== "set_e1rm" && (
+          <span className="flex items-center gap-3">
+            <Switch label="Trend line" checked={trend} onChange={setTrend} />
+            <span aria-hidden className="text-ink-muted">
+              Trend line
+            </span>
+          </span>
+        )}
+      </div>
+      {metric === "weekly_sets" ? (
+        <WeeklySetsChart history={history} from={props.from} />
       ) : (
-        <TimeChart
-          label={METRIC_LABELS[metric]}
-          height={260}
-          series={[
-            {
-              id: metric,
-              label: METRIC_LABELS[metric],
-              points,
-              kind: metric === "set_e1rm" ? "points" : "line",
-              color: "ink",
-              trend,
-            },
-          ]}
-          formatValue={(v) => formatMetric(metric, v, unit)}
-          formatTrend={(perDay) => formatTrendRate(metric, perDay, unit)}
-          formatTime={(t) =>
-            new Intl.DateTimeFormat(undefined, {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }).format(t)
-          }
+        <MetricChart
+          history={history}
+          metric={metric}
+          weightKg={weightKg}
+          trend={trend}
+          unit={unit}
         />
       )}
     </section>
+  );
+}
+
+const sessionDate = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+/** One colored line, or one per set number for every set's e1RM. */
+function chartSeries(
+  history: ExerciseHistory,
+  metric: ValueMetric,
+  weightKg: number | undefined,
+  trend: boolean,
+): TimeSeries[] {
+  const options = {
+    e1rmRepCap: history.e1rmRepCap,
+    ...(weightKg !== undefined && { weightKg }),
+  };
+  const toPoints = (points: HistoryPoint[]) =>
+    points.map((p) => ({ t: p.at, v: p.value }));
+  if (metric === "set_e1rm") {
+    return setE1rmSeries(history.performances, options).map((s, i) => ({
+      id: `set-${s.setNumber}`,
+      label: `Set ${s.setNumber}`,
+      points: toPoints(s.points),
+      kind: "line",
+      color: seriesColor(i),
+    }));
+  }
+  const points = toPoints(
+    historySeries(history.exercise.type, history.performances, metric, options),
+  );
+  if (points.length === 0) return [];
+  return [
+    {
+      id: metric,
+      label: METRIC_LABELS[metric],
+      points,
+      kind: "line",
+      color: seriesColor(0),
+      trend,
+    },
+  ];
+}
+
+function MetricChart(props: {
+  history: ExerciseHistory;
+  metric: ValueMetric;
+  weightKg: number | undefined;
+  trend: boolean;
+  unit: WeightUnit;
+}) {
+  const { history, metric, unit } = props;
+  const series = chartSeries(history, metric, props.weightKg, props.trend);
+  if (series.length === 0) {
+    return (
+      <p className="py-10 text-center text-[0.9375rem] text-ink-muted">
+        {metric === "best_e1rm" || metric === "set_e1rm"
+          ? "No sets within the e1RM rep limit yet."
+          : "Nothing to show for this metric yet."}
+      </p>
+    );
+  }
+  return (
+    <TimeChart
+      label={METRIC_LABELS[metric]}
+      height={260}
+      series={series}
+      formatValue={(v) => formatMetric(metric, v, unit)}
+      formatTrend={(perDay) => formatTrendRate(metric, perDay, unit)}
+      formatTime={(t) => sessionDate.format(t)}
+    />
+  );
+}
+
+const weekLabel = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const average = new Intl.NumberFormat(undefined, {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** Every week since the first performance, empty weeks included. */
+function WeeklySetsChart(props: {
+  history: ExerciseHistory;
+  from: IsoDate | null;
+}) {
+  const settings = useDbQuery("settings");
+  const { weeks, average: mean } = weeklySets(
+    props.history.performances,
+    { from: props.from, to: todayIso() },
+    settings.week_start as WeekStart,
+  );
+  return (
+    <BarChart
+      label="Sets per week"
+      xKind="time"
+      height={260}
+      bars={weeks.map((w) => ({ x: dateFromIso(w.week), v: w.count }))}
+      formatX={(x) => `Week of ${weekLabel.format(x)}`}
+      formatValue={(v) => `${v} ${v === 1 ? "set" : "sets"}`}
+      formatTick={String}
+      reference={{ value: mean, label: `Average ${average.format(mean)}` }}
+    />
   );
 }
 

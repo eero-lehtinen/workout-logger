@@ -58,6 +58,20 @@ export default function EChartsTimeChart(props: TimeChartProps) {
         chartRef={setEl}
         onReset={zoom.zoomed ? zoom.reset : undefined}
       />
+      {several && (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-ink-muted">
+          {props.series.map((s) => (
+            <li key={s.id} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="size-2.5 rounded-full"
+                style={{ background: theme.colors[s.color] }}
+              />
+              {s.label}
+            </li>
+          ))}
+        </ul>
+      )}
       {formatTrend && trends.length > 0 && (
         <p className="tabular pt-1 text-sm text-ink-muted">
           {trends
@@ -137,15 +151,22 @@ function timeChartOption(
     },
     series: [
       ...props.series.map((s) => seriesOption(s, theme)),
-      ...trends.map(({ series, trend }) => trendOption(series, trend, theme)),
+      ...trends.map(({ series, trend }) =>
+        trendOption(series, trend, theme, several),
+      ),
     ],
   };
 }
 
+/**
+ * A lone series' trend is neutral, so it reads apart from the colored line;
+ * with several series it takes its series' color to say whose it is.
+ */
 function trendOption(
   s: TimeSeries,
   trend: Trend,
   theme: ChartTheme,
+  several: boolean,
 ): LineSeriesOption {
   return {
     id: `${s.id}${TREND_SUFFIX}`,
@@ -158,10 +179,10 @@ function trendOption(
     silent: true,
     z: 1,
     lineStyle: {
-      color: theme.colors[s.color],
+      color: theme.colors[several ? s.color : "ink-muted"],
       width: 2,
       type: [6, 4],
-      opacity: 0.6,
+      opacity: several ? 0.6 : 0.9,
     },
     emphasis: { disabled: true },
   };

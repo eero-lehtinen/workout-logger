@@ -12,33 +12,46 @@ export interface DateRange {
   to: IsoDate;
 }
 
-export interface WeekCount {
+export interface WeekTotal {
   /** The week's first date. */
   week: IsoDate;
-  sessions: number;
+  count: number;
 }
 
 /**
- * Sessions per week over every week of the range, empty weeks included.
- * `dates` holds one calendar date per session.
+ * Totals per week over every week of the range, empty weeks included, and
+ * their average.
  */
+export function perWeek(
+  entries: readonly { date: IsoDate; count: number }[],
+  range: DateRange,
+  weekStart: WeekStart,
+): { weeks: WeekTotal[]; average: number } {
+  const counts = new Map<IsoDate, number>();
+  for (const { date, count } of entries) {
+    if (date < range.from || date > range.to) continue;
+    const week = weekOf(date, weekStart);
+    counts.set(week, (counts.get(week) ?? 0) + count);
+  }
+  const weeks = weeksBetween(range.from, range.to, weekStart).map((week) => ({
+    week,
+    count: counts.get(week) ?? 0,
+  }));
+  const total = weeks.reduce((n, w) => n + w.count, 0);
+  return { weeks, average: weeks.length > 0 ? total / weeks.length : 0 };
+}
+
+/** Sessions per week. `dates` holds one calendar date per session. */
 export function sessionsPerWeek(
   dates: readonly IsoDate[],
   range: DateRange,
   weekStart: WeekStart,
-): { weeks: WeekCount[]; average: number } {
-  const counts = new Map<IsoDate, number>();
-  for (const date of dates) {
-    if (date < range.from || date > range.to) continue;
-    const week = weekOf(date, weekStart);
-    counts.set(week, (counts.get(week) ?? 0) + 1);
-  }
-  const weeks = weeksBetween(range.from, range.to, weekStart).map((week) => ({
-    week,
-    sessions: counts.get(week) ?? 0,
-  }));
-  const total = weeks.reduce((n, w) => n + w.sessions, 0);
-  return { weeks, average: weeks.length > 0 ? total / weeks.length : 0 };
+) {
+  return perWeek(
+    dates.map((date) => ({ date, count: 1 })),
+    range,
+    weekStart,
+  );
 }
 
 export interface GapBucket {
@@ -83,38 +96,77 @@ export function daysBetweenSessions(
   };
 }
 
-export interface MuscleGroupFrequency {
-  group: string;
+/** An exercise's logged sets in one session, with its muscle targets. */
+export interface TrainedExercise {
+  sets: number;
+  targets: readonly { muscleId: string; group: string; factor: number }[];
+}
+
+export interface WeightedSets {
+  /** Muscle id → weighted sets. */
+  muscles: Record<string, number>;
+  /** Muscle group → weighted sets. */
+  groups: Record<string, number>;
+}
+
+/**
+ * Weighted sets of a session (glossary: each set counts by the muscle target
+ * factor). For a group, a set counts once, by its exercise's highest factor
+ * among the group's muscles: a row that hits lats and upper back at 1.0 is
+ * one back set, not two.
+ */
+export function weightedSets(
+  exercises: readonly TrainedExercise[],
+): WeightedSets {
+  const muscles: Record<string, number> = {};
+  const groups: Record<string, number> = {};
+  for (const { sets, targets } of exercises) {
+    const groupFactor = new Map<string, number>();
+    for (const t of targets) {
+      muscles[t.muscleId] = (muscles[t.muscleId] ?? 0) + sets * t.factor;
+      groupFactor.set(
+        t.group,
+        Math.max(groupFactor.get(t.group) ?? 0, t.factor),
+      );
+    }
+    for (const [group, factor] of groupFactor) {
+      groups[group] = (groups[group] ?? 0) + sets * factor;
+    }
+  }
+  return { muscles, groups };
+}
+
+export interface WeeklyAmount {
+  key: string;
   /** Average over every week of the range. */
-  daysPerWeek: number;
-  /** The latest date the group was trained, in or before the range. */
+  perWeek: number;
+  /** The latest date with any, in or before the range. */
   lastDate: IsoDate | null;
 }
 
 /**
- * Days per week each muscle group was trained. A date counts once per group
- * however many sessions or exercises hit it. `groups` lists every group to
- * report, in display order.
+ * The weekly average of per-session amounts by key, e.g. weighted sets by
+ * muscle group, for every key in `keys`, in its order.
  */
-export function muscleGroupFrequency(
-  days: readonly { date: IsoDate; groups: readonly string[] }[],
-  groups: readonly string[],
+export function weeklyAverages(
+  sessions: readonly {
+    date: IsoDate;
+    amounts: Readonly<Record<string, number>>;
+  }[],
+  keys: readonly string[],
   range: DateRange,
   weekStart: WeekStart,
-): MuscleGroupFrequency[] {
+): WeeklyAmount[] {
   const weeks = weeksBetween(range.from, range.to, weekStart).length;
-  return groups.map((group) => {
-    const dates = new Set<IsoDate>();
+  return keys.map((key) => {
+    let total = 0;
     let lastDate: IsoDate | null = null;
-    for (const day of days) {
-      if (!day.groups.includes(group) || day.date > range.to) continue;
-      if (lastDate === null || day.date > lastDate) lastDate = day.date;
-      if (day.date >= range.from) dates.add(day.date);
+    for (const { date, amounts } of sessions) {
+      const amount = amounts[key] ?? 0;
+      if (amount <= 0 || date > range.to) continue;
+      if (lastDate === null || date > lastDate) lastDate = date;
+      if (date >= range.from) total += amount;
     }
-    return {
-      group,
-      daysPerWeek: weeks > 0 ? dates.size / weeks : 0,
-      lastDate,
-    };
+    return { key, perWeek: weeks > 0 ? total / weeks : 0, lastDate };
   });
 }

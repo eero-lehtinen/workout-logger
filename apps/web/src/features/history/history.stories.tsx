@@ -48,13 +48,21 @@ export const ExerciseHistoryMetrics = pageStory({
   url: () => bench,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Reps at a weight" }),
-    );
+    const metric = canvas.getByRole("combobox", { name: "Metric" });
+    await userEvent.selectOptions(metric, "Reps at a weight");
     const weight = canvas.getByRole("combobox", { name: "Weight" });
     await expect(weight).toBeVisible();
     await expect(
-      canvas.getByRole("img", { name: "Reps at a weight" }),
+      await canvas.findByRole("img", { name: "Reps at a weight" }),
+    ).toBeVisible();
+    await userEvent.selectOptions(metric, "Every set's e1RM");
+    await expect(await canvas.findByText("Set 2")).toBeVisible();
+    await expect(
+      canvas.queryByRole("switch", { name: "Trend line" }),
+    ).toBeNull();
+    await userEvent.selectOptions(metric, "Sets per week");
+    await expect(
+      await canvas.findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();
     await userEvent.click(
       canvas.getByRole("button", { name: "Most reps at weight" }),
@@ -80,6 +88,54 @@ export const ExerciseHistoryTrend = pageStory({
     await expect(rate).toBeVisible();
     await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
     await expect(canvas.queryByText(/per month$/)).toBeNull();
+  },
+});
+
+/** The period filters the page and carries over to the history tab. */
+export const ExerciseHistoryPeriod = pageStory({
+  fixture: withHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("3 sessions")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "3 months" }));
+    await expect(
+      canvas.getByText("3 sessions in the last 3 months"),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("heading", { name: "Records in the last 3 months" }),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("link", { name: "History" }));
+    await expect(
+      await canvas.findByRole("button", { name: "3 months", pressed: true }),
+    ).toBeVisible();
+  },
+});
+
+/** The metric and the trend switch carry over to the next exercise. */
+export const ExerciseHistoryRemembers = pageStory({
+  fixture: withHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(
+      canvas.getByRole("combobox", { name: "Metric" }),
+      "Top weight",
+    );
+    await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
+    await userEvent.click(
+      canvas.getByRole("link", { name: "Back to exercises" }),
+    );
+    await userEvent.click(
+      await canvas.findByRole("link", { name: /^Squat \(Barbell\)/ }),
+    );
+    await canvas.findByRole("heading", { name: "Squat (Barbell)" });
+    await expect(canvas.getByRole("combobox", { name: "Metric" })).toHaveValue(
+      "top_weight",
+    );
+    await expect(
+      canvas.getByRole("switch", { name: "Trend line" }),
+    ).not.toBeChecked();
   },
 });
 
@@ -184,7 +240,12 @@ export const Frequency = pageStory({
     await expect(
       canvas.getByRole("img", { name: "Sessions per week" }),
     ).toBeVisible();
-    await expect(canvas.getByRole("cell", { name: "Legs" })).toBeVisible();
+    await expect(canvas.getByRole("rowheader", { name: "Legs" })).toBeVisible();
+    await expect(canvas.queryByRole("rowheader", { name: "Quads" })).toBeNull();
+    await userEvent.click(canvas.getByRole("switch", { name: "Show muscles" }));
+    await expect(
+      canvas.getByRole("rowheader", { name: "Quads" }),
+    ).toBeVisible();
     await expect(canvas.getByRole("cell", { name: "Upper" })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "All" }));
     await expect(

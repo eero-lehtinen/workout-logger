@@ -36,6 +36,24 @@ const TOKENS: ChartColor[] = [
   "day-6",
 ];
 
+const SERIES_COLORS: readonly ChartColor[] = [
+  "day-1",
+  "day-2",
+  "day-3",
+  "day-4",
+  "day-5",
+  "day-6",
+];
+
+/**
+ * The color of a chart's nth series. The routine day palette doubles as the
+ * series palette: distinct hues, none of them a marker color. More than six
+ * series repeat colors.
+ */
+export function seriesColor(index: number): ChartColor {
+  return SERIES_COLORS[index % SERIES_COLORS.length] ?? "ink";
+}
+
 let cached: { key: string; theme: ChartTheme } | undefined;
 
 /**

@@ -3,25 +3,16 @@ import {
   daysBetweenSessions,
   type IsoDate,
   localDate,
-  muscleGroupFrequency,
   sessionsPerWeek,
   type TrainingStats,
   type WeekStart,
 } from "@workout-logger/core";
-import { MUSCLE_GROUPS } from "@workout-logger/exercises";
-import { useState } from "react";
 import { BarChart } from "../../components/chart/index.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { dateFromIso } from "../../lib/format.ts";
 import { dayDotClass } from "./day-colors.ts";
-
-type Span = "3m" | "1y" | "all";
-
-const SPANS = [
-  { value: "3m", label: "3 months" },
-  { value: "1y", label: "Year" },
-  { value: "all", label: "All" },
-] as const;
+import { MuscleSets } from "./muscle-sets.tsx";
+import { PERIODS, type Period, periodStart, usePeriod } from "./period.ts";
 
 const one = new Intl.NumberFormat(undefined, {
   minimumFractionDigits: 1,
@@ -41,14 +32,8 @@ const shortDate = new Intl.DateTimeFormat(undefined, {
 });
 
 /** The period, cut to start at the first session so averages aren't diluted. */
-function rangeOf(span: Span, today: IsoDate, first: IsoDate): DateRange {
-  const t = Temporal.PlainDate.from(today);
-  const from =
-    span === "3m"
-      ? t.subtract({ months: 3 }).add({ days: 1 }).toString()
-      : span === "1y"
-        ? t.subtract({ years: 1 }).add({ days: 1 }).toString()
-        : first;
+function rangeOf(period: Period, today: IsoDate, first: IsoDate): DateRange {
+  const from = periodStart(period, today) ?? first;
   return { from: from < first ? first : from, to: today };
 }
 
@@ -58,27 +43,16 @@ export function FrequencySection(props: {
   today: IsoDate;
 }) {
   const { stats, weekStart, today } = props;
-  const [span, setSpan] = useState<Span>("1y");
+  const [period, setPeriod] = usePeriod();
   const days = stats.sessions.map((s) => ({
     ...s,
     date: localDate(s.startedAt, s.tz),
   }));
   if (days.length === 0) return null;
-  const range = rangeOf(span, today, days[0]?.date ?? today);
+  const range = rangeOf(period, today, days[0]?.date ?? today);
   const dates = days.map((d) => d.date);
   const perWeek = sessionsPerWeek(dates, range, weekStart);
   const gaps = daysBetweenSessions(dates, range);
-  const known: readonly string[] = MUSCLE_GROUPS;
-  const groupOrder = [
-    ...known.filter((g) => stats.muscleGroups.includes(g)),
-    ...stats.muscleGroups.filter((g) => !known.includes(g)),
-  ];
-  const groups = muscleGroupFrequency(
-    days.map((d) => ({ date: d.date, groups: d.muscleGroups })),
-    groupOrder,
-    range,
-    weekStart,
-  );
   const inRange = days.filter(
     (d) => d.date >= range.from && d.date <= range.to,
   );
@@ -92,9 +66,9 @@ export function FrequencySection(props: {
         <Segmented
           label="Period"
           size="sm"
-          value={span}
-          onChange={setSpan}
-          options={SPANS}
+          value={period}
+          onChange={setPeriod}
+          options={PERIODS}
         />
       </div>
 
@@ -113,7 +87,7 @@ export function FrequencySection(props: {
         height={180}
         bars={perWeek.weeks.map((w) => ({
           x: dateFromIso(w.week),
-          v: w.sessions,
+          v: w.count,
         }))}
         formatX={(x) => `Week of ${weekLabel.format(x)}`}
         formatValue={(v) => `${v} ${v === 1 ? "session" : "sessions"}`}
@@ -131,7 +105,7 @@ export function FrequencySection(props: {
             label="Days between sessions"
             xKind="category"
             height={160}
-            color="ink-muted"
+            color="day-2"
             bars={gaps.distribution.map((b) => ({ x: b.days, v: b.count }))}
             formatX={(x) =>
               gaps.distribution.find((b) => b.days === x)?.orMore
@@ -144,35 +118,12 @@ export function FrequencySection(props: {
         </>
       )}
 
-      <h3 className="pt-6 pb-1 font-semibold">Muscle groups</h3>
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="text-sm text-ink-muted">
-            <th scope="col" className="py-1 font-normal">
-              Group
-            </th>
-            <th scope="col" className="py-1 text-right font-normal">
-              Days per week
-            </th>
-            <th scope="col" className="py-1 pl-4 text-right font-normal">
-              Last trained
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((g) => (
-            <tr key={g.group} className="border-t border-rule">
-              <td className="py-1.5 font-medium">{g.group}</td>
-              <td className="tabular py-1.5 text-right">
-                {one.format(g.daysPerWeek)}
-              </td>
-              <td className="tabular py-1.5 pl-4 text-right text-ink-muted">
-                {g.lastDate ? shortDate.format(dateFromIso(g.lastDate)) : "–"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <MuscleSets
+        sessions={days}
+        muscles={stats.muscles}
+        range={range}
+        weekStart={weekStart}
+      />
 
       <RoutineDays stats={stats} days={days} inRange={inRange} />
     </section>

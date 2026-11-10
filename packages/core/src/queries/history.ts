@@ -1,3 +1,8 @@
+import {
+  type TrainedExercise,
+  type WeightedSets,
+  weightedSets,
+} from "../domain/frequency.ts";
 import { type ExerciseRecords, exerciseRecords } from "../domain/history.ts";
 import { compareOrder } from "../domain/position.ts";
 import type { ExerciseType } from "../schema/tables.ts";
@@ -128,11 +133,10 @@ export interface TrainingStats {
     tz: string;
     routineId: string | null;
     dayId: string | null;
-    /** Muscle groups of the primary muscles of exercises with logged sets. */
-    muscleGroups: string[];
+    weightedSets: WeightedSets;
   }[];
-  /** Every muscle group in the catalog. */
-  muscleGroups: string[];
+  /** Every live muscle, by name. */
+  muscles: { id: string; name: string; group: string }[];
   /** Live routines with their live days in cycle order. */
   routines: {
     id: string;
@@ -167,39 +171,49 @@ export const trainingStats = defineQuery(
       .where("deleted", "=", 0)
       .orderBy("started_at")
       .execute();
-    const trained = await db
+    // One row per session exercise and muscle target, with its set count.
+    const targets = await db
       .selectFrom("session_exercise as se")
       .innerJoin("exercise as e", "e.id", "se.exercise_id")
       .innerJoin("exercise_muscle as em", "em.exercise_id", "e.id")
       .innerJoin("muscle as m", "m.id", "em.muscle_id")
-      .select(["se.session_id as sessionId", "m.group_name as group"])
-      .distinct()
+      .select((eb) => [
+        "se.session_id as sessionId",
+        "se.id as sessionExerciseId",
+        "em.muscle_id as muscleId",
+        "m.group_name as group",
+        "em.factor",
+        eb
+          .selectFrom("set_log as sl")
+          .select((c) => c.fn.countAll<number>().as("n"))
+          .whereRef("sl.session_exercise_id", "=", "se.id")
+          .where("sl.deleted", "=", 0)
+          .as("sets"),
+      ])
       .where("se.deleted", "=", 0)
       .where("e.deleted", "=", 0)
       .where("em.deleted", "=", 0)
-      .where("em.factor", "=", 1)
       .where("m.deleted", "=", 0)
-      .where((eb) =>
-        eb.exists(
-          eb
-            .selectFrom("set_log as sl")
-            .select("sl.id")
-            .whereRef("sl.session_exercise_id", "=", "se.id")
-            .where("sl.deleted", "=", 0),
-        ),
-      )
       .execute();
-    const groupsBySession = new Map<string, string[]>();
-    for (const { sessionId, group } of trained) {
-      const groups = groupsBySession.get(sessionId) ?? [];
-      groups.push(group);
-      groupsBySession.set(sessionId, groups);
+    const bySession = new Map<string, Map<string, TrainedExercise>>();
+    for (const t of targets) {
+      if (!t.sets) continue;
+      const exercises = bySession.get(t.sessionId) ?? new Map();
+      bySession.set(t.sessionId, exercises);
+      const exercise: TrainedExercise = exercises.get(t.sessionExerciseId) ?? {
+        sets: t.sets,
+        targets: [],
+      };
+      exercises.set(t.sessionExerciseId, {
+        ...exercise,
+        targets: [...exercise.targets, t],
+      });
     }
-    const groups = await db
+    const muscles = await db
       .selectFrom("muscle")
-      .select("group_name")
-      .distinct()
+      .select(["id", "name", "group_name as group"])
       .where("deleted", "=", 0)
+      .orderBy("name")
       .execute();
     const routines = await db
       .selectFrom("routine")
@@ -216,9 +230,9 @@ export const trainingStats = defineQuery(
     return {
       sessions: sessions.map((s) => ({
         ...s,
-        muscleGroups: groupsBySession.get(s.id) ?? [],
+        weightedSets: weightedSets([...(bySession.get(s.id)?.values() ?? [])]),
       })),
-      muscleGroups: groups.map((g) => g.group_name),
+      muscles,
       routines: routines.sort(compareOrder).map((r) => ({
         id: r.id,
         name: r.name,

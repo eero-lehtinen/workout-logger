@@ -1,5 +1,12 @@
 import type { ExerciseType } from "../schema/tables.ts";
+import {
+  earlierDate,
+  type IsoDate,
+  localDate,
+  type WeekStart,
+} from "./calendar.ts";
 import { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./e1rm.ts";
+import { perWeek, type WeekTotal } from "./frequency.ts";
 import type { SetValues } from "./markers.ts";
 import { WEIGHT_EPSILON_KG } from "./units.ts";
 
@@ -11,27 +18,31 @@ export interface PerformanceSets {
   sets: readonly SetValues[];
 }
 
-/** What the history graph can plot. Which apply depends on the exercise type. */
+/**
+ * What the history graph can plot. Which apply depends on the exercise type.
+ * `weekly_sets` is per week (`weeklySets`), `set_e1rm` one series per set
+ * number (`setE1rmSeries`), the others one value per session
+ * (`historySeries`).
+ */
 export type HistoryMetric =
   | "best_e1rm"
   | "set_e1rm"
   | "top_weight"
-  | "volume"
   | "reps_at_weight"
   | "best_reps"
-  | "total_reps"
   | "best_duration"
-  | "total_duration"
   | "best_distance"
-  | "total_distance";
+  | "weekly_sets";
+
+export type SessionMetric = Exclude<HistoryMetric, "weekly_sets" | "set_e1rm">;
 
 const METRICS: Record<ExerciseType, readonly HistoryMetric[]> = {
   weight_reps: [
     "best_e1rm",
     "set_e1rm",
     "top_weight",
-    "volume",
     "reps_at_weight",
+    "weekly_sets",
   ],
   bodyweight_reps: [
     "best_e1rm",
@@ -39,10 +50,11 @@ const METRICS: Record<ExerciseType, readonly HistoryMetric[]> = {
     "top_weight",
     "best_reps",
     "reps_at_weight",
+    "weekly_sets",
   ],
-  reps: ["best_reps", "total_reps"],
-  time: ["best_duration", "total_duration"],
-  distance_time: ["best_distance", "total_distance"],
+  reps: ["best_reps", "weekly_sets"],
+  time: ["best_duration", "weekly_sets"],
+  distance_time: ["best_distance", "weekly_sets"],
 };
 
 export function historyMetrics(type: ExerciseType): readonly HistoryMetric[] {
@@ -63,36 +75,52 @@ export interface HistoryOptions {
 }
 
 /**
- * Points of one metric, oldest first: one per session, or one per set for
- * `set_e1rm`. Sessions without a value for the metric are left out.
+ * One point per session, oldest first. Sessions without a value for the
+ * metric are left out.
  */
 export function historySeries(
   type: ExerciseType,
   performances: readonly PerformanceSets[],
-  metric: HistoryMetric,
+  metric: SessionMetric,
   options: HistoryOptions = {},
 ): HistoryPoint[] {
   const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
-  const points: HistoryPoint[] = [];
+  return performances.flatMap((p) => {
+    const value = sessionValue(type, p.sets, metric, cap, options.weightKg);
+    return value === undefined
+      ? []
+      : [{ at: p.startedAt, value, sessionId: p.sessionId }];
+  });
+}
+
+/**
+ * Each set's e1RM, one series per set number: set 1 of every session, set 2,
+ * and so on, like the reference sets of the markers. A session without that
+ * set, or with it above the e1RM cap, has no point in its series.
+ */
+export function setE1rmSeries(
+  performances: readonly PerformanceSets[],
+  options: HistoryOptions = {},
+): { setNumber: number; points: HistoryPoint[] }[] {
+  const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
+  const series: HistoryPoint[][] = [];
   for (const p of performances) {
-    const add = (value: number | undefined) => {
-      if (value !== undefined) {
-        points.push({ at: p.startedAt, value, sessionId: p.sessionId });
-      }
-    };
-    if (metric === "set_e1rm") {
-      for (const set of p.sets) add(setE1rm(set, cap));
-    } else {
-      add(sessionValue(type, p.sets, metric, cap, options.weightKg));
-    }
+    p.sets.forEach((set, i) => {
+      const value = setE1rm(set, cap);
+      if (value === undefined) return;
+      series[i] ??= [];
+      series[i].push({ at: p.startedAt, value, sessionId: p.sessionId });
+    });
   }
-  return points;
+  return series.flatMap((points, i) =>
+    points ? [{ setNumber: i + 1, points }] : [],
+  );
 }
 
 function sessionValue(
   type: ExerciseType,
   sets: readonly SetValues[],
-  metric: Exclude<HistoryMetric, "set_e1rm">,
+  metric: SessionMetric,
   cap: number,
   weightKg: number | undefined,
 ): number | undefined {
@@ -101,8 +129,6 @@ function sessionValue(
       return max(sets.map((s) => setE1rm(s, cap)));
     case "top_weight":
       return max(sets.map((s) => positive(s.weight_kg)));
-    case "volume":
-      return positive(sum(sets.map((s) => (s.weight_kg ?? 0) * (s.reps ?? 0))));
     case "reps_at_weight":
       if (weightKg === undefined) return undefined;
       return max(
@@ -116,17 +142,40 @@ function sessionValue(
           .filter((s) => type !== "bodyweight_reps" || !hasWeight(s))
           .map((s) => positive(s.reps)),
       );
-    case "total_reps":
-      return positive(sum(sets.map((s) => s.reps ?? 0)));
     case "best_duration":
       return max(sets.map((s) => positive(s.duration_s)));
-    case "total_duration":
-      return positive(sum(sets.map((s) => s.duration_s ?? 0)));
     case "best_distance":
       return max(sets.map((s) => positive(s.distance_m)));
-    case "total_distance":
-      return positive(sum(sets.map((s) => s.distance_m ?? 0)));
   }
+}
+
+/**
+ * Sets of the exercise in every week of the range, empty weeks included.
+ * Without `from`, the range starts at the first performance. The average
+ * stops at the week of the last performance, so an exercise that was
+ * dropped keeps the average it had while it was done.
+ */
+export function weeklySets(
+  performances: readonly PerformanceSets[],
+  range: { from?: IsoDate | null; to: IsoDate },
+  weekStart: WeekStart,
+): { weeks: WeekTotal[]; average: number } {
+  const first = performances[0];
+  const last = performances.at(-1);
+  if (!first || !last) return { weeks: [], average: 0 };
+  const from = range.from ?? localDate(first.startedAt, first.tz);
+  const entries = performances.map((p) => ({
+    date: localDate(p.startedAt, p.tz),
+    count: p.sets.length,
+  }));
+  const { weeks } = perWeek(entries, { from, to: range.to }, weekStart);
+  const lastDate = localDate(last.startedAt, last.tz);
+  const { average } = perWeek(
+    entries,
+    { from, to: earlierDate(lastDate, range.to) },
+    weekStart,
+  );
+  return { weeks, average };
 }
 
 export interface WeightChoice {
@@ -165,23 +214,14 @@ export interface RecordAt {
   tz: string;
 }
 
-export type HeadlineKind =
-  | "e1rm"
-  | "weight"
-  | "reps"
-  | "duration"
-  | "distance"
-  | "session_volume"
-  | "session_reps"
-  | "session_duration"
-  | "session_distance";
+export type HeadlineKind = "e1rm" | "weight" | "reps" | "duration" | "distance";
 
 export interface HeadlineRecord {
   kind: HeadlineKind;
   /** kg, reps, s, or m. */
   value: number;
-  /** The set that holds it; null for session totals. */
-  set: SetValues | null;
+  /** The set that holds it. */
+  set: SetValues;
   at: RecordAt;
 }
 
@@ -214,11 +254,11 @@ export interface ExerciseRecords {
 }
 
 const HEADLINES: Record<ExerciseType, readonly HeadlineKind[]> = {
-  weight_reps: ["e1rm", "weight", "session_volume"],
+  weight_reps: ["e1rm", "weight"],
   bodyweight_reps: ["e1rm", "weight", "reps"],
-  reps: ["reps", "session_reps"],
-  time: ["duration", "session_duration"],
-  distance_time: ["distance", "session_distance"],
+  reps: ["reps"],
+  time: ["duration"],
+  distance_time: ["distance"],
 };
 
 /**
@@ -237,7 +277,7 @@ export function exerciseRecords(
   const offer = (
     kind: HeadlineKind,
     value: number | undefined,
-    set: SetValues | null,
+    set: SetValues,
     at: RecordAt,
   ) => {
     if (value === undefined || value <= 0) return;
@@ -281,25 +321,6 @@ export function exerciseRecords(
       offer("duration", set.duration_s ?? undefined, set, at);
       offer("distance", set.distance_m ?? undefined, set, at);
     }
-    offer(
-      "session_volume",
-      sum(p.sets.map((s) => (s.weight_kg ?? 0) * (s.reps ?? 0))),
-      null,
-      at,
-    );
-    offer("session_reps", sum(p.sets.map((s) => s.reps ?? 0)), null, at);
-    offer(
-      "session_duration",
-      sum(p.sets.map((s) => s.duration_s ?? 0)),
-      null,
-      at,
-    );
-    offer(
-      "session_distance",
-      sum(p.sets.map((s) => s.distance_m ?? 0)),
-      null,
-      at,
-    );
   }
 
   const reps = [...byReps.values()].sort((a, b) => a.reps - b.reps);
@@ -355,8 +376,4 @@ function max(values: (number | undefined)[]): number | undefined {
     if (v !== undefined && (best === undefined || v > best)) best = v;
   }
   return best;
-}
-
-function sum(values: number[]): number {
-  return values.reduce((a, b) => a + b, 0);
 }
