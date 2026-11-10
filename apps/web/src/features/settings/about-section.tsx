@@ -45,7 +45,8 @@ function AppVersionRow() {
     try {
       const [update, waiting] = await Promise.all([
         checkForUpdate(),
-        checkForLiveUpdate(),
+        // A failed download must not hide an APK that was found.
+        checkForLiveUpdate().catch(() => false),
       ]);
       if (update) {
         toasts.add({

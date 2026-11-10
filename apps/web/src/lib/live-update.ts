@@ -97,8 +97,11 @@ async function confirmBundle(): Promise<void> {
   await removeBundles(plan.remove);
 }
 
-// Longer than the shell's rollback timeout (capacitor.config.ts), so a
-// failing bundle is rolled back, and blocked, before anything is downloaded.
+// Longer than the shell's rollback timeout (capacitor.config.ts), so with
+// the app in front a failing bundle is rolled back, and blocked, before
+// anything is downloaded. The shell's timer pauses in the background and
+// this one doesn't; a check on a failing bundle then only stages the
+// server's build early.
 const UNCONFIRMED_CHECK_MS = 30_000;
 
 let started = false;
