@@ -121,6 +121,39 @@ export const EarlierSessions = pageStory({
   },
 });
 
+export const RoutineFromSession = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Edit routine" }),
+    );
+    const back = await canvas.findByRole("link", { name: "Back to session" });
+    // The session's day is outlined and the others aren't.
+    const days = canvasElement.querySelectorAll('li[id^="day-"]');
+    await expect(days).toHaveLength(2);
+    await expect(days[0]).toHaveClass("ring-2");
+    await expect(days[1]).not.toHaveClass("ring-2");
+    await userEvent.click(back);
+    await expect(
+      await canvas.findByRole("heading", { name: "Upper" }),
+    ).toBeVisible();
+  },
+});
+
+export const NoRoutineLinkWhenAdHoc = pageStory({
+  fixture: idleEnded,
+  url: (ids) => `/sessions/${ids.idleSessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Ad hoc session" });
+    await expect(
+      canvas.queryByRole("link", { name: "Edit routine" }),
+    ).toBeNull();
+  },
+});
+
 export const SettingsFromLogging = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

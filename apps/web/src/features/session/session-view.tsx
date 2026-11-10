@@ -11,7 +11,14 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ListOrdered,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -104,13 +111,30 @@ function SessionPanel({ view }: { view: SessionView }) {
             .join(", ")}
           back={{ to: "/", label: "Back to today" }}
           actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditing(!editing)}
-            >
-              {editing ? "Done" : "Edit"}
-            </Button>
+            <>
+              {session.routineId && (
+                <Link
+                  to="/routines/$routineId"
+                  params={{ routineId: session.routineId }}
+                  search={{
+                    sessionId: session.id,
+                    ...(session.dayId && { dayId: session.dayId }),
+                  }}
+                  aria-label="Edit routine"
+                  title="Edit routine"
+                  className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+                >
+                  <ListOrdered size={20} />
+                </Link>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(!editing)}
+              >
+                {editing ? "Done" : "Edit"}
+              </Button>
+            </>
           }
         >
           <SessionTimer

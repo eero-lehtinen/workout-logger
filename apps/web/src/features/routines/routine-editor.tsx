@@ -1,5 +1,10 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import {
+  getRouteApi,
+  type LinkProps,
+  useNavigate,
+} from "@tanstack/react-router";
 import type { RoutineDetail } from "@workout-logger/core";
+import { clsx } from "clsx";
 import {
   ArrowDown,
   ArrowLeftRight,
@@ -8,7 +13,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -31,26 +36,52 @@ const PICKER_TITLES: Record<PickTarget["kind"], string> = {
 
 export function RoutineEditor() {
   const { routineId } = route.useParams();
+  const search = route.useSearch();
   const routine = useDbQuery("routineDetail", { routineId });
+  const back = search.sessionId
+    ? {
+        to: "/sessions/$sessionId" as const,
+        params: { sessionId: search.sessionId },
+        label: "Back to session",
+      }
+    : { to: "/routines" as const, label: "Back to routines" };
   if (!routine) {
     return (
       <Screen
-        header={
-          <PageHeader
-            title="Routine"
-            back={{ to: "/routines", label: "Back to routines" }}
-          />
-        }
+        header={<PageHeader title="Routine" back={back} />}
         scrollId="routine-deleted"
       >
         <Empty>This routine was deleted.</Empty>
       </Screen>
     );
   }
-  return <Editor key={routine.id} routine={routine} />;
+  return (
+    <Editor
+      key={routine.id}
+      routine={routine}
+      back={back}
+      highlightDayId={search.dayId ?? null}
+    />
+  );
 }
 
-function Editor({ routine }: { routine: RoutineDetail }) {
+function Editor({
+  routine,
+  back,
+  highlightDayId,
+}: {
+  routine: RoutineDetail;
+  back: LinkProps & { label: string };
+  /** The day of the session the editor was opened from. */
+  highlightDayId: string | null;
+}) {
+  useEffect(() => {
+    if (highlightDayId) {
+      document
+        .getElementById(`day-${highlightDayId}`)
+        ?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightDayId]);
   const command = useCommand();
   const navigate = useNavigate();
   const [pick, setPick] = useState<PickTarget | null>(null);
@@ -93,7 +124,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
             />
           }
           subtitle={routine.archived ? "Archived" : undefined}
-          back={{ to: "/routines", label: "Back to routines" }}
+          back={back}
           actions={
             <>
               <Button
@@ -127,7 +158,13 @@ function Editor({ routine }: { routine: RoutineDetail }) {
         {routine.days.map((day, dayIndex) => (
           <li
             key={day.id}
-            className="rounded-2xl bg-raised p-3 ring-1 ring-rule"
+            id={`day-${day.id}`}
+            className={clsx(
+              "rounded-2xl bg-raised p-3",
+              day.id === highlightDayId
+                ? "ring-2 ring-ink/60"
+                : "ring-1 ring-rule",
+            )}
           >
             <div className="flex items-center gap-1">
               <span className="tabular w-6 shrink-0 text-sm text-ink-muted">
