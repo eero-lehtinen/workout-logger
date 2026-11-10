@@ -8,7 +8,12 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowLeftRight, ChevronDown, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ChevronDown,
+  SlidersHorizontal,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, buttonClass, IconButton } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -352,6 +357,25 @@ function Logger({ log }: { log: ExerciseLog }) {
             First time logging this exercise.
           </p>
         )}
+        <Button
+          variant="danger"
+          size="sm"
+          className="mt-6"
+          onClick={async () => {
+            await command(
+              "removeSessionExercise",
+              { sessionExerciseId: log.sessionExerciseId },
+              { undoLabel: `Removed ${exercise.name}` },
+            );
+            await navigate({
+              to: "/sessions/$sessionId",
+              params: { sessionId: log.session.id },
+            });
+          }}
+        >
+          <Trash2 size={16} />
+          Remove from session
+        </Button>
       </div>
 
       <ExercisePicker

@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import {
   empty,
   idleEnded,
@@ -131,7 +131,7 @@ export const RoutineFromSession = pageStory({
     );
     const back = await canvas.findByRole("link", { name: "Back to session" });
     // The session's day is outlined and the others aren't.
-    const days = canvasElement.querySelectorAll('li[id^="day-"]');
+    const days = canvasElement.querySelectorAll('[id^="day-"]');
     await expect(days).toHaveLength(2);
     await expect(days[0]).toHaveClass("ring-2");
     await expect(days[1]).not.toHaveClass("ring-2");
@@ -139,6 +139,47 @@ export const RoutineFromSession = pageStory({
     await expect(
       await canvas.findByRole("heading", { name: "Upper" }),
     ).toBeVisible();
+  },
+});
+
+export const ReorderByKeyboard = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const names = () =>
+      canvas
+        .getAllByRole("link", { name: /\(Barbell\)/ })
+        .map((link) => link.querySelector("p")?.textContent);
+    const grip = await canvas.findByRole("button", {
+      name: "Move Bench Press (Barbell)",
+    });
+    grip.focus();
+    await userEvent.keyboard("[Space]");
+    await userEvent.keyboard("[ArrowDown]");
+    await userEvent.keyboard("[Space]");
+    await waitFor(() =>
+      expect(names()).toEqual([
+        "Bent-Over Row (Barbell)",
+        "Bench Press (Barbell)",
+        "Overhead Press (Barbell)",
+      ]),
+    );
+  },
+});
+
+export const RemoveFromSession = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Remove from session" }),
+    );
+    await canvas.findByRole("heading", { name: "Upper" });
+    await waitFor(() =>
+      expect(canvas.queryByRole("link", { name: /^Bench Press/ })).toBeNull(),
+    );
   },
 });
 

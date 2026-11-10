@@ -271,18 +271,29 @@ describe("session exercises", () => {
     const names = async () =>
       (await query("sessionView", { sessionId }))?.exercises.map((e) => e.name);
     const view = await query("sessionView", { sessionId });
-    const [, dip, squat] = view?.exercises ?? [];
+    const [bench, dip, squat] = view?.exercises ?? [];
+    // A drop moves straight to its index; out-of-range indexes clamp.
     await run("moveSessionExercise", {
       sessionExerciseId: squat?.id ?? "",
-      direction: -1,
+      toIndex: 0,
     });
+    expect(await names()).toEqual([
+      "Squat (Barbell)",
+      "Bench Press (Barbell)",
+      "Dip",
+    ]);
     await run("moveSessionExercise", {
-      sessionExerciseId: squat?.id ?? "",
-      direction: -1,
+      sessionExerciseId: bench?.id ?? "",
+      toIndex: 9,
     });
+    expect(await names()).toEqual([
+      "Squat (Barbell)",
+      "Dip",
+      "Bench Press (Barbell)",
+    ]);
     await run("moveSessionExercise", {
-      sessionExerciseId: squat?.id ?? "",
-      direction: -1,
+      sessionExerciseId: bench?.id ?? "",
+      toIndex: 1,
     });
     expect(await names()).toEqual([
       "Squat (Barbell)",
@@ -291,6 +302,36 @@ describe("session exercises", () => {
     ]);
     await run("removeSessionExercise", { sessionExerciseId: dip?.id ?? "" });
     expect(await names()).toEqual(["Squat (Barbell)", "Bench Press (Barbell)"]);
+  });
+
+  it("renumbers when concurrent inserts left equal positions", async () => {
+    const { store, query, run, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: null,
+      dayId: null,
+    });
+    const added: string[] = [];
+    for (const exerciseId of [ids.bench, ids.dips, ids.squat]) {
+      added.push(await run("addSessionExercise", { sessionId, exerciseId }));
+    }
+    // Two devices appending at once can pick the same key.
+    await store.write(async (w) => {
+      for (const id of added) {
+        await w.update("session_exercise", id, { position: "a0" });
+      }
+    });
+    const before = (await query("sessionView", { sessionId }))?.exercises ?? [];
+    const last = before.at(-1);
+    await run("moveSessionExercise", {
+      sessionExerciseId: last?.id ?? "",
+      toIndex: 1,
+    });
+    const after = (await query("sessionView", { sessionId }))?.exercises ?? [];
+    expect(after.map((e) => e.id)).toEqual([
+      before[0]?.id,
+      last?.id,
+      before[1]?.id,
+    ]);
   });
 
   it("ends an idle session at its last set", async () => {
@@ -322,7 +363,7 @@ describe("session exercises", () => {
 describe("routines and exercises", () => {
   it("reads a routine with days, slots, and alternatives", async () => {
     const { query, run, ids } = await setup();
-    await run("moveDay", { dayId: ids.lower, direction: -1 });
+    await run("moveDay", { dayId: ids.lower, toIndex: 0 });
     const detail = await query("routineDetail", { routineId: ids.routineId });
     expect(detail?.days.map((d) => d.name)).toEqual(["Lower", "Upper"]);
     expect(detail?.days[1]?.slots).toMatchObject([

@@ -54,20 +54,21 @@ export async function liveSiblings(
 }
 
 /**
- * Moves `id` one place up (-1) or down (+1) among its live siblings. Equal
- * positions from concurrent inserts have no key between them; the siblings
- * are then renumbered first.
+ * Moves `id` to index `toIndex` among its live siblings, e.g. where it was
+ * dropped. Only the moved row is written, unless equal positions from
+ * concurrent inserts leave no key between its new neighbors: the siblings
+ * are then renumbered.
  */
 export async function moveInList(
   w: Writer,
   table: OrderedTable,
   siblings: readonly Ordered[],
   id: string,
-  direction: -1 | 1,
+  toIndex: number,
 ): Promise<void> {
   const from = siblings.findIndex((s) => s.id === id);
-  const to = from + direction;
-  if (from === -1 || to < 0 || to >= siblings.length) return;
+  const to = Math.min(Math.max(Math.trunc(toIndex), 0), siblings.length - 1);
+  if (from === -1 || from === to) return;
   const order = [...siblings];
   const [moved] = order.splice(from, 1);
   if (!moved) return;

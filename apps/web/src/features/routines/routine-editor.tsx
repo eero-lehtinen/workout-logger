@@ -5,19 +5,13 @@ import {
 } from "@tanstack/react-router";
 import type { RoutineDetail } from "@workout-logger/core";
 import { clsx } from "clsx";
-import {
-  ArrowDown,
-  ArrowLeftRight,
-  ArrowUp,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowLeftRight, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
+import { GripHandle, SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { ExercisePicker } from "../exercises/picker.tsx";
 
@@ -154,10 +148,14 @@ function Editor({
       {routine.days.length === 0 && (
         <Empty>Add the days of the cycle in the order you train them.</Empty>
       )}
-      <ol className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-2 lg:px-0 xl:grid-cols-3">
-        {routine.days.map((day, dayIndex) => (
-          <li
-            key={day.id}
+      <SortableList
+        items={routine.days}
+        layout="grid"
+        className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-2 lg:px-0 xl:grid-cols-3"
+        handleLabel={(day) => `Move ${day.name}`}
+        onMove={(dayId, toIndex) => command("moveDay", { dayId, toIndex })}
+        render={(day, dayIndex, handle) => (
+          <div
             id={`day-${day.id}`}
             className={clsx(
               "rounded-2xl bg-raised p-3",
@@ -167,7 +165,8 @@ function Editor({
             )}
           >
             <div className="flex items-center gap-1">
-              <span className="tabular w-6 shrink-0 text-sm text-ink-muted">
+              <GripHandle handle={handle} />
+              <span className="tabular w-5 shrink-0 text-sm text-ink-muted">
                 {dayIndex + 1}
               </span>
               <InlineName
@@ -176,24 +175,6 @@ function Editor({
                 onSave={(name) => command("renameDay", { dayId: day.id, name })}
                 className="flex-1 text-lg font-semibold"
               />
-              <IconButton
-                label="Move day earlier"
-                disabled={dayIndex === 0}
-                onClick={() =>
-                  command("moveDay", { dayId: day.id, direction: -1 })
-                }
-              >
-                <ArrowUp size={17} />
-              </IconButton>
-              <IconButton
-                label="Move day later"
-                disabled={dayIndex === routine.days.length - 1}
-                onClick={() =>
-                  command("moveDay", { dayId: day.id, direction: 1 })
-                }
-              >
-                <ArrowDown size={17} />
-              </IconButton>
               <IconButton
                 label={`Delete ${day.name}`}
                 variant="danger"
@@ -209,10 +190,19 @@ function Editor({
               </IconButton>
             </div>
 
-            <ol className="mt-2 flex flex-col gap-1">
-              {day.slots.map((slot, slotIndex) => (
-                <li key={slot.id} className="rounded-xl bg-chalk p-2">
+            <SortableList
+              items={day.slots}
+              className="mt-2 flex flex-col gap-1"
+              handleLabel={(slot) =>
+                `Move ${slot.exerciseName ?? "deleted exercise"}`
+              }
+              onMove={(slotId, toIndex) =>
+                command("moveSlot", { slotId, toIndex })
+              }
+              render={(slot, _index, slotHandle) => (
+                <div className="rounded-xl bg-chalk py-2 pr-1 pl-1">
                   <div className="flex items-center gap-1">
+                    <GripHandle handle={slotHandle} />
                     <button
                       type="button"
                       onClick={() =>
@@ -230,27 +220,7 @@ function Editor({
                       />
                     </button>
                     <IconButton
-                      label="Move up"
-                      className="size-9"
-                      disabled={slotIndex === 0}
-                      onClick={() =>
-                        command("moveSlot", { slotId: slot.id, direction: -1 })
-                      }
-                    >
-                      <ArrowUp size={16} />
-                    </IconButton>
-                    <IconButton
-                      label="Move down"
-                      className="size-9"
-                      disabled={slotIndex === day.slots.length - 1}
-                      onClick={() =>
-                        command("moveSlot", { slotId: slot.id, direction: 1 })
-                      }
-                    >
-                      <ArrowDown size={16} />
-                    </IconButton>
-                    <IconButton
-                      label="Remove from day"
+                      label={`Remove ${slot.exerciseName ?? "exercise"} from day`}
                       variant="danger"
                       className="size-9"
                       onClick={() =>
@@ -266,7 +236,7 @@ function Editor({
                       <Trash2 size={16} />
                     </IconButton>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-10">
                     {slot.alternatives.map((alt) => (
                       <span
                         key={alt.id}
@@ -298,9 +268,9 @@ function Editor({
                       Alternative
                     </button>
                   </div>
-                </li>
-              ))}
-            </ol>
+                </div>
+              )}
+            />
             <Button
               variant="ghost"
               size="sm"
@@ -310,10 +280,9 @@ function Editor({
               <Plus size={16} />
               Add exercise
             </Button>
-          </li>
-        ))}
-      </ol>
-
+          </div>
+        )}
+      />
       <form onSubmit={addDay} className="flex max-w-xl gap-2 px-4 pt-4 lg:px-0">
         <input
           value={dayName}

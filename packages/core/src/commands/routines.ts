@@ -29,9 +29,9 @@ export const deleteRoutine = defineCommand(
 );
 
 export const moveRoutine = defineCommand(
-  async (w, args: { routineId: string; direction: -1 | 1 }): Promise<void> => {
+  async (w, args: { routineId: string; toIndex: number }): Promise<void> => {
     const siblings = await liveSiblings(w, "routine", null, null);
-    await moveInList(w, "routine", siblings, args.routineId, args.direction);
+    await moveInList(w, "routine", siblings, args.routineId, args.toIndex);
   },
 );
 
@@ -62,7 +62,7 @@ export const deleteDay = defineCommand(
 );
 
 export const moveDay = defineCommand(
-  async (w, args: { dayId: string; direction: -1 | 1 }): Promise<void> => {
+  async (w, args: { dayId: string; toIndex: number }): Promise<void> => {
     const day = await w.db
       .selectFrom("routine_day")
       .select("routine_id")
@@ -74,7 +74,7 @@ export const moveDay = defineCommand(
       "routine_id",
       day.routine_id,
     );
-    await moveInList(w, "routine_day", siblings, args.dayId, args.direction);
+    await moveInList(w, "routine_day", siblings, args.dayId, args.toIndex);
   },
 );
 
@@ -100,14 +100,14 @@ export const deleteSlot = defineCommand(
 );
 
 export const moveSlot = defineCommand(
-  async (w, args: { slotId: string; direction: -1 | 1 }): Promise<void> => {
+  async (w, args: { slotId: string; toIndex: number }): Promise<void> => {
     const slot = await w.db
       .selectFrom("slot")
       .select("day_id")
       .where("id", "=", args.slotId)
       .executeTakeFirstOrThrow();
     const siblings = await liveSiblings(w, "slot", "day_id", slot.day_id);
-    await moveInList(w, "slot", siblings, args.slotId, args.direction);
+    await moveInList(w, "slot", siblings, args.slotId, args.toIndex);
   },
 );
 

@@ -11,19 +11,13 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ListOrdered,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Check, ListOrdered, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Button, IconButton } from "../../components/button.tsx";
+import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
+import { GripHandle, SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
   formatDuration,
@@ -92,7 +86,6 @@ function SessionPanel({ view }: { view: SessionView }) {
   const settings = useDbQuery("settings");
   const command = useCommand();
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -111,30 +104,21 @@ function SessionPanel({ view }: { view: SessionView }) {
             .join(", ")}
           back={{ to: "/", label: "Back to today" }}
           actions={
-            <>
-              {session.routineId && (
-                <Link
-                  to="/routines/$routineId"
-                  params={{ routineId: session.routineId }}
-                  search={{
-                    sessionId: session.id,
-                    ...(session.dayId && { dayId: session.dayId }),
-                  }}
-                  aria-label="Edit routine"
-                  title="Edit routine"
-                  className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
-                >
-                  <ListOrdered size={20} />
-                </Link>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditing(!editing)}
+            session.routineId && (
+              <Link
+                to="/routines/$routineId"
+                params={{ routineId: session.routineId }}
+                search={{
+                  sessionId: session.id,
+                  ...(session.dayId && { dayId: session.dayId }),
+                }}
+                aria-label="Edit routine"
+                title="Edit routine"
+                className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
               >
-                {editing ? "Done" : "Edit"}
-              </Button>
-            </>
+                <ListOrdered size={20} />
+              </Link>
+            )
           }
         >
           <SessionTimer
@@ -147,9 +131,15 @@ function SessionPanel({ view }: { view: SessionView }) {
       {view.exercises.length === 0 ? (
         <Empty>Add the exercises you're doing.</Empty>
       ) : (
-        <ol className={listClass}>
-          {view.exercises.map((exercise, index) => (
-            <li key={exercise.id} className="flex items-center">
+        <SortableList
+          items={view.exercises}
+          className={listClass}
+          handleLabel={(exercise) => `Move ${exercise.name}`}
+          onMove={(sessionExerciseId, toIndex) =>
+            command("moveSessionExercise", { sessionExerciseId, toIndex })
+          }
+          render={(exercise, _index, handle) => (
+            <div className="flex items-center">
               <Link
                 to="/sessions/$sessionId/$sessionExerciseId"
                 params={{
@@ -181,64 +171,27 @@ function SessionPanel({ view }: { view: SessionView }) {
                   )}
                 </div>
               </Link>
-              {editing && (
-                <div className="flex shrink-0 pr-2">
-                  <IconButton
-                    label="Move up"
-                    disabled={index === 0}
-                    onClick={() =>
-                      command("moveSessionExercise", {
-                        sessionExerciseId: exercise.id,
-                        direction: -1,
-                      })
-                    }
-                  >
-                    <ArrowUp size={18} />
-                  </IconButton>
-                  <IconButton
-                    label="Move down"
-                    disabled={index === view.exercises.length - 1}
-                    onClick={() =>
-                      command("moveSessionExercise", {
-                        sessionExerciseId: exercise.id,
-                        direction: 1,
-                      })
-                    }
-                  >
-                    <ArrowDown size={18} />
-                  </IconButton>
-                  <IconButton
-                    label={`Remove ${exercise.name}`}
-                    variant="danger"
-                    onClick={() =>
-                      command(
-                        "removeSessionExercise",
-                        { sessionExerciseId: exercise.id },
-                        { undoLabel: `Removed ${exercise.name}` },
-                      )
-                    }
-                  >
-                    <Trash2 size={18} />
-                  </IconButton>
-                </div>
-              )}
-            </li>
-          ))}
-        </ol>
+              <GripHandle handle={handle} />
+            </div>
+          )}
+        />
       )}
 
-      <div className="flex flex-col gap-2 px-4 pt-4 lg:px-0">
-        <Button onClick={() => setAdding(true)}>
+      <div className="flex flex-col items-start gap-2 px-4 pt-4 lg:px-0">
+        <Button className="w-full" onClick={() => setAdding(true)}>
           <Plus size={18} />
           Add exercise
         </Button>
-        {editing && (
-          <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-            Delete session
-          </Button>
-        )}
+        <Button
+          variant="danger"
+          size="sm"
+          className="mt-4"
+          onClick={() => setConfirmDelete(true)}
+        >
+          <Trash2 size={16} />
+          Delete session
+        </Button>
       </div>
-
       <ExercisePicker
         open={adding}
         onOpenChange={setAdding}

@@ -208,7 +208,7 @@ export const removeSessionExercise = defineCommand(
 export const moveSessionExercise = defineCommand(
   async (
     w,
-    args: { sessionExerciseId: string; direction: -1 | 1 },
+    args: { sessionExerciseId: string; toIndex: number },
   ): Promise<void> => {
     const row = await w.db
       .selectFrom("session_exercise")
@@ -226,7 +226,7 @@ export const moveSessionExercise = defineCommand(
       "session_exercise",
       siblings,
       args.sessionExerciseId,
-      args.direction,
+      args.toIndex,
     );
   },
 );
