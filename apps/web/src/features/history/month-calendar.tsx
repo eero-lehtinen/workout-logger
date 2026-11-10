@@ -14,17 +14,13 @@ import { dayChipClass } from "./day-colors.ts";
 /** Marks shown in a day cell before "+n". */
 const VISIBLE_MARKS = 2;
 
-/** The dates of the weeks that cover `month` (`YYYY-MM`). */
+/**
+ * Six weeks from the week of `month`'s (`YYYY-MM`) first day. Always six, the
+ * most any month spans, so the calendar keeps its height between months.
+ */
 export function monthGrid(month: string, weekStart: WeekStart): IsoDate[] {
-  const ym = Temporal.PlainYearMonth.from(month);
-  const first = ym.toPlainDate({ day: 1 }).toString();
-  const last = ym.toPlainDate({ day: ym.daysInMonth }).toString();
-  const end = addDays(weekOf(last, weekStart), 6);
-  const days: IsoDate[] = [];
-  for (let d = weekOf(first, weekStart); d <= end; d = addDays(d, 1)) {
-    days.push(d);
-  }
-  return days;
+  const first = weekOf(`${month}-01`, weekStart);
+  return Array.from({ length: 42 }, (_, i) => addDays(first, i));
 }
 
 export function shiftMonth(month: string, months: number): string {
@@ -76,16 +72,18 @@ export function MonthCalendar(props: {
           <ChevronRight size={20} />
         </IconButton>
       </div>
-      <div className="grid grid-cols-7 gap-px px-1 lg:px-0">
+      <div aria-hidden className="grid grid-cols-7 px-1 lg:px-0">
         {days.slice(0, 7).map((d) => (
           <div
             key={d}
-            aria-hidden
             className="pb-1 text-center text-xs font-medium text-ink-muted"
           >
             {weekday.format(dateFromIso(d))}
           </div>
         ))}
+      </div>
+      {/* The 1px gaps over the rule-colored grid draw the cell borders. */}
+      <div className="mx-1 grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-rule bg-rule lg:mx-0">
         {days.map((d) => {
           const sessions = props.sessionsByDate.get(d) ?? [];
           const inMonth = d.startsWith(props.month);
@@ -96,8 +94,11 @@ export function MonthCalendar(props: {
               type="button"
               onClick={() => props.onSelect(d)}
               aria-pressed={d === props.selected}
+              // Fixed height: the day number and two marks fit, and "+n"
+              // sits beside the number, so sessions never stretch a row.
               className={clsx(
-                "flex min-h-16 min-w-0 flex-col gap-0.5 rounded-lg p-0.5 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50 lg:min-h-22 lg:p-1.5",
+                "relative flex h-16 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50 aria-pressed:ring-inset lg:h-22 lg:p-1.5",
+                inMonth ? "bg-raised" : "bg-recessed",
               )}
             >
               <span className="sr-only">
@@ -128,7 +129,7 @@ export function MonthCalendar(props: {
                 </span>
               ))}
               {hidden > 0 && (
-                <span className="px-0.5 text-[0.6875rem] text-ink-muted lg:px-1 lg:text-xs">
+                <span className="absolute top-0.5 right-0.5 text-[0.6875rem] leading-6 text-ink-muted lg:top-1.5 lg:right-1.5 lg:text-xs">
                   +{hidden}
                   <span className="sr-only"> more</span>
                 </span>
