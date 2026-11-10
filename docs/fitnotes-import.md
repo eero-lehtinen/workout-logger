@@ -7,11 +7,8 @@ repo's `core` and `exercises` packages. The owner imports it with Settings →
 Import snapshot. Neither the app nor the CLI has a FitNotes import.
 
 This document is the reference for that conversion: the FitNotes schema and
-the mapping rules, which also say how imported data looks in the app. The
-conversion implements the rules the owner's backup needs. It refuses a backup
-with data it has no rule for, such as comments or body tracker values,
-instead of reporting it. It leaves the FitNotes routines out, since they no
-longer matched the training, and creates the current routine instead.
+the general mapping rules, which also say how imported data looks in the app.
+Choices specific to the owner's data are in the private repo's README.
 
 If another user ever needs an import, it should need no hand-written
 mapping. Built-ins are matched by name, everything else becomes a custom
