@@ -9,8 +9,8 @@ Everything in the order of work below is built. Decisions are recorded in
 architecture.md, features.md, and backups.md. Verified:
 
 - `pnpm check` passes: core tests cover the commands, queries, settings, snapshot round trips, and undo by transaction.
-- A headless Chromium run (phone and PC widths) logged sets, undid a delete, survived a reload, edited a routine, exported a snapshot, and handed the database between two tabs and back.
-- The production build reloads, logs sets, and serves deep links offline from the precache.
+- 31 Storybook stories cover every screen at phone and PC widths, light and dark, with accessibility checks. Writing them found and fixed two accessibility bugs: low contrast on the next-set placeholder, and set buttons whose accessible name hid their visible text.
+- Playwright end-to-end tests cover logging with undo, persistence across reloads, the tab handoff in both directions, and offline use of the production build.
 
 Left before the phase is done:
 

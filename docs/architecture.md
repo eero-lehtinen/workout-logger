@@ -57,7 +57,7 @@ Principles:
 | Validation | Valibot | Small and fast at runtime and in type-checking. Used where stored or imported data may come from another app version, e.g. settings. |
 | Worker RPC | Comlink | Calls into the DB worker and proxies change events back. |
 | Lint/format | Biome | One fast tool for both. |
-| Tests | Vitest | Shares Vite's config and transforms. |
+| Tests | Vitest; Storybook stories as browser tests; Playwright end-to-end | See [testing](#testing). |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
 | Local DB | Official SQLite WASM build (`@sqlite.org/sqlite-wasm`, pinned; verified on 3.54.1-build1) with the OPFS SAH-pool VFS, on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. Verified in Chrome, Firefox, and the Android WebView; see [client runtime](#client-runtime). |
 | Query layer | Kysely, with its stock SQLite dialect over a small `Driver` interface in `core`: sqlite-wasm in the browser, better-sqlite3 on Node (tests, CLI, server) | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
@@ -237,6 +237,23 @@ The weight unit is a per-user display setting. Storage is always kg.
 - **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
 - **APK:** checks GitHub releases on start and shows an update prompt.
 - **Server:** every request sends the app version. Below `MIN_CLIENT_VERSION` the server returns 426, and the app shows "update the app". Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+
+## Testing
+
+| Layer | Runs | Covers |
+| --- | --- | --- |
+| Unit (Vitest, Node) | `pnpm test` | Everything in `core`: domain functions, queries, commands, migrations, snapshots, and the sync fuzz test. Pure web helpers. |
+| Stories (Storybook + `@storybook/addon-vitest`, Chromium) | `pnpm test`, `pnpm storybook` to browse | Every screen at phone and PC widths, light and dark, with interaction checks in `play` functions and axe accessibility checks that fail the test. |
+| End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, and offline use through the service worker. Runs against the production build. |
+
+Screen stories don't mock data. They render the real router at a URL over
+`openMemoryDb()`: the real `core` store on an in-memory SQLite in the page,
+seeded with the catalog and filled by fixtures (`apps/web/src/stories/fixtures.ts`)
+through the real commands at past timestamps. Story data therefore can't
+drift from what the queries return.
+
+Storybook keeps the PWA plugin's virtual modules but drops its service worker
+build. Telemetry is disabled.
 
 ## Sync
 
