@@ -308,6 +308,47 @@ export const RestTimerOff = pageStory({
   },
 });
 
+async function logSetAndLeave(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    await canvas.findByRole("button", { name: "Log set 3" }),
+  );
+  await canvas.findByRole("button", { name: "Skip rest" });
+  await userEvent.click(canvas.getByRole("link", { name: "Back to session" }));
+  await canvas.findByRole("heading", { name: "Upper", level: 1 });
+}
+
+export const RestBarOpensExercise = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await logSetAndLeave(canvas);
+    await userEvent.click(canvas.getByRole("link", { name: /^Rest \d/ }));
+    await expect(
+      await canvas.findByRole("button", { name: "Log set 4" }),
+    ).toBeVisible();
+    await expect(restTimer.getState()?.finished).toBe(false);
+    restTimer.skip();
+  },
+});
+
+export const RestOverOpensExercise = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await logSetAndLeave(canvas);
+    restTimer.adjust(-60 * 60);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Rest over" }),
+    );
+    await expect(
+      await canvas.findByRole("button", { name: "Log set 4" }),
+    ).toBeVisible();
+    await expect(restTimer.getState()).toBeNull();
+  },
+});
+
 export const EditSetInFooter = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

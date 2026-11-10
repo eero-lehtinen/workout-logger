@@ -326,7 +326,7 @@ A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` b
   Audio focus works because the service is in the foreground. On Android 15+, apps targeting API 35+ get focus only as the top app or with a foreground service; without focus, music isn't ducked.
 - **Notifications permission:** without `POST_NOTIFICATIONS` the countdown and the alert still run, but no notification is shown. Request it on first use.
 - **Known gap:** if the process dies during a rest (force stop, crash, an OEM killer), that alert is lost. This is accepted: missing an alert in rare cases isn't harmful, and a foreground service with a wake lock survived swipe-away and deep Doze in testing. On the next app start, the UI shows a rest whose `endsAt` has passed as finished.
-- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible. The audio context is unlocked by the tap that logs the set. The end time is kept in `localStorage`, so a reload still shows the countdown, or a finished rest.
+- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible. The audio context is unlocked by the tap that logs the set. The end time is kept in `localStorage`, so a reload still shows the countdown, or a finished rest. A finished rest clears itself one minute after it ended.
 
 #### Alternatives tested and rejected
 

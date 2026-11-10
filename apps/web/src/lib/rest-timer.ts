@@ -5,15 +5,24 @@ import { useSyncExternalStore } from "react";
  * visible (docs/architecture.md#rest-timer). Android replaces this with the
  * RestTimer plugin in phase 5.
  */
+export interface RestFor {
+  sessionId: string;
+  sessionExerciseId: string;
+}
+
 export interface RestState {
   endsAt: number;
   /** The full rest, for restart and progress. */
   seconds: number;
   finished: boolean;
+  /** The session exercise whose set started the rest. */
+  for: RestFor | null;
 }
 
 const STORAGE_KEY = "rest-timer";
 const MAX_SECONDS = 60 * 60;
+/** How long "Rest over" stays up before it clears itself. */
+export const FINISHED_VISIBLE_MS = 60_000;
 
 class RestTimer {
   #state: RestState | null = load();
@@ -22,14 +31,15 @@ class RestTimer {
   #audio: AudioContext | undefined;
 
   constructor() {
-    if (this.#state && !this.#state.finished) {
-      if (this.#state.endsAt <= Date.now()) {
-        // Ended while the page was closed: show it as over, without an alert.
-        this.#set({ ...this.#state, finished: true });
-      } else {
-        this.#schedule();
-      }
+    if (
+      this.#state &&
+      !this.#state.finished &&
+      this.#state.endsAt <= Date.now()
+    ) {
+      // Ended while the page was closed: show it as over, without an alert.
+      this.#set({ ...this.#state, finished: true });
     }
+    this.#schedule();
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") this.#schedule();
     });
@@ -43,7 +53,7 @@ class RestTimer {
   getState = () => this.#state;
 
   /** Call from a user gesture, so audio is allowed to play at the end. */
-  start(seconds: number) {
+  start(seconds: number, restFor: RestFor | null) {
     this.#unlockAudio();
     if (seconds <= 0) {
       this.skip();
@@ -53,6 +63,7 @@ class RestTimer {
       endsAt: Date.now() + seconds * 1000,
       seconds,
       finished: false,
+      for: restFor,
     });
     this.#schedule();
   }
@@ -68,7 +79,7 @@ class RestTimer {
   }
 
   restart() {
-    if (this.#state) this.start(this.#state.seconds);
+    if (this.#state) this.start(this.#state.seconds, this.#state.for);
   }
 
   skip() {
@@ -79,19 +90,22 @@ class RestTimer {
   #schedule() {
     clearTimeout(this.#timeout);
     const state = this.#state;
-    if (!state || state.finished) return;
-    const delay = state.endsAt - Date.now();
+    if (!state) return;
+    const next = state.finished ? () => this.skip() : () => this.#finish();
+    const delay =
+      state.endsAt + (state.finished ? FINISHED_VISIBLE_MS : 0) - Date.now();
     if (delay <= 0) {
-      this.#finish();
+      next();
       return;
     }
-    this.#timeout = setTimeout(() => this.#finish(), delay);
+    this.#timeout = setTimeout(next, delay);
   }
 
   #finish() {
     if (!this.#state || this.#state.finished) return;
     this.#set({ ...this.#state, finished: true });
     this.#alert();
+    this.#schedule();
   }
 
   #unlockAudio() {
@@ -137,10 +151,19 @@ function load(): RestState | null {
     if (typeof value.endsAt !== "number" || typeof value.seconds !== "number") {
       return null;
     }
+    const restFor = value.for;
     return {
       endsAt: value.endsAt,
       seconds: value.seconds,
       finished: Boolean(value.finished),
+      for:
+        typeof restFor?.sessionId === "string" &&
+        typeof restFor.sessionExerciseId === "string"
+          ? {
+              sessionId: restFor.sessionId,
+              sessionExerciseId: restFor.sessionExerciseId,
+            }
+          : null,
     };
   } catch {
     return null;

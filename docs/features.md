@@ -140,6 +140,7 @@ don't count.
 | Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default (2:00). |
 | Can be turned off in settings | P1 | Turning it off cancels a running rest. |
 | Adjust with +/-15 s, skip, restart | P0 | |
+| Countdown floats over other screens | P0 | Tapping it opens the exercise whose set started the rest; opening "Rest over" also dismisses it. "Rest over" clears itself after a minute. |
 | Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at alarm volume in silent mode and DND; music is ducked during the alert. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
 | Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. |
 

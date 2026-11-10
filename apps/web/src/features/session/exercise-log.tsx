@@ -133,9 +133,15 @@ function Logger({ log }: { log: ExerciseLog }) {
   const [showEarlier, setShowEarlier] = useState(false);
   const values = setFromEntry(entry, exercise.type, unit);
 
-  async function logInto(sessionExerciseId: string, set: SetValues) {
+  async function logInto(
+    sessionId: string,
+    sessionExerciseId: string,
+    set: SetValues,
+  ) {
     const id = await command("logSet", { sessionExerciseId, values: set });
-    if (id && settings.rest_timer_enabled) restTimer.start(log.restSeconds);
+    if (id && settings.rest_timer_enabled) {
+      restTimer.start(log.restSeconds, { sessionId, sessionExerciseId });
+    }
     return id;
   }
 
@@ -151,8 +157,9 @@ function Logger({ log }: { log: ExerciseLog }) {
       Date.now(),
       settings.idle_threshold_s * 1000,
     );
-    if (end.running) void logInto(log.sessionExerciseId, values);
-    else setEnded(end);
+    if (end.running) {
+      void logInto(log.session.id, log.sessionExerciseId, values);
+    } else setEnded(end);
   }
 
   async function continueSession() {
@@ -160,7 +167,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     if (log.session.endedAt !== null) {
       await command("resumeSession", { sessionId: log.session.id });
     }
-    await logInto(log.sessionExerciseId, values);
+    await logInto(log.session.id, log.sessionExerciseId, values);
   }
 
   async function startNewSession() {
@@ -177,7 +184,7 @@ function Logger({ log }: { log: ExerciseLog }) {
       slotId: log.slotId,
     });
     if (!sessionExerciseId) return;
-    await logInto(sessionExerciseId, values);
+    await logInto(sessionId, sessionExerciseId, values);
     await navigate({
       to: "/sessions/$sessionId/$sessionExerciseId",
       params: { sessionId, sessionExerciseId },

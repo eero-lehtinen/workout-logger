@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { RotateCcw, X } from "lucide-react";
 import { formatDuration } from "../../lib/format.ts";
@@ -80,33 +81,69 @@ function RestButton(props: {
   );
 }
 
-/** A compact countdown floating over other screens. */
+const PILL =
+  "fixed right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex h-11 items-center rounded-full border border-rule bg-raised p-1 text-sm text-ink shadow-lg lg:right-6 lg:bottom-6";
+
+/**
+ * A compact countdown floating over other screens. Tapping it opens the
+ * exercise the rest belongs to; opening a finished rest also dismisses it.
+ */
 export function RestBar() {
   const state = useRestTimer();
-  const now = useNow(500);
   if (!state) return null;
+  const label = <RestLabel state={state} />;
+  const target = "flex h-full items-center rounded-full px-3 hover:bg-surface";
   return (
-    <div className="fixed right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-full border border-rule bg-raised py-1 pr-1 pl-4 text-ink shadow-lg lg:right-6 lg:bottom-6">
-      <span className="text-sm" aria-live="polite">
-        {state.finished ? (
-          "Rest over"
-        ) : (
-          <>
-            Rest{" "}
-            <span className="numerals text-base">
-              {formatDuration(remainingSeconds(state, now))}
-            </span>
-          </>
-        )}
-      </span>
+    <div className={PILL}>
+      {state.for ? (
+        <Link
+          to="/sessions/$sessionId/$sessionExerciseId"
+          params={state.for}
+          onClick={() => {
+            if (state.finished) restTimer.skip();
+          }}
+          className={target}
+        >
+          {label}
+        </Link>
+      ) : state.finished ? (
+        <button
+          type="button"
+          onClick={() => restTimer.skip()}
+          className={target}
+        >
+          {label}
+        </button>
+      ) : (
+        <span className="px-3">{label}</span>
+      )}
       <button
         type="button"
         aria-label={state.finished ? "Dismiss" : "Skip rest"}
         onClick={() => restTimer.skip()}
-        className="flex size-8 items-center justify-center rounded-full hover:bg-surface"
+        className="flex size-9 items-center justify-center rounded-full hover:bg-surface"
       >
         <X size={16} />
       </button>
     </div>
+  );
+}
+
+function RestLabel({ state }: { state: RestState }) {
+  const now = useNow(500);
+  if (state.finished) {
+    return (
+      <span className="font-semibold" aria-live="polite">
+        Rest over
+      </span>
+    );
+  }
+  return (
+    <span aria-live="polite">
+      Rest{" "}
+      <span className="numerals text-base">
+        {formatDuration(remainingSeconds(state, now))}
+      </span>
+    </span>
   );
 }
