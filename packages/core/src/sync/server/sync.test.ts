@@ -102,6 +102,28 @@ describe("push", () => {
     expect(await db.selectFrom("change").selectAll().execute()).toHaveLength(1);
   });
 
+  it("treats a re-sent row upgraded by a migration as a duplicate", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ v: 1, data: { value_json: '"kg"' } })]);
+    const resent = await pushAs(db, "u1", [
+      change({ v: 2, data: { value_json: '"kg"', extra: null } }),
+      change({ v: 2, deleted: true }),
+    ]);
+    expect(resent).toMatchObject({
+      results: [{ status: "ok" }, { status: "rejected", reason: "conflict" }],
+      inserted: 0,
+    });
+    await pushAs(db, "u1", [change({ id: "other", v: 2 })]);
+    const old = await pushAs(db, "u1", [
+      change({ v: 1 }),
+      change({ id: "new", v: 1 }),
+    ]);
+    expect(old.results).toEqual([
+      { status: "ok" },
+      { status: "rejected", reason: "schema_outdated" },
+    ]);
+  });
+
   it("rejects malformed changes individually", async () => {
     const { db } = await openTestServer();
     const bad: Change[] = [

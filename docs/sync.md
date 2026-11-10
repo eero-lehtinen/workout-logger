@@ -229,10 +229,10 @@ All endpoints act only on the authenticated `user_id`.
 
 - **`POST /push`** runs in one transaction. For each change, in order:
   1. Validate the shape (table name, id, `v`, `data` a flat object of scalars) and reject anything else as `invalid`. Validate the HLC format and the future-clock bound.
-  2. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
-  3. If the unique key already exists:
-     - identical `data` and `deleted`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal;
-     - different: `conflict`, which means a node-id or determinism bug. It is logged.
+  2. If the unique key already exists:
+     - same `deleted`, and identical `data` or a different `v`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal. A different `v` is the same row version rewritten by a client migration, which keeps HLCs; this happens on re-uploads after an epoch reset or a lost push response;
+     - otherwise: `conflict`, which means a node-id or determinism bug. It is logged.
+  3. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
   4. If the quota is used up, reject it as `quota`. Duplicates don't count, so they are still `ok`.
   5. `INSERT` into `change`, upsert `head` when `hlc > head.hlc`, and raise `max_v` if needed.
 

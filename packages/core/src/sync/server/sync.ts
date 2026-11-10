@@ -90,24 +90,26 @@ async function pushOne(
   if (parseHlc(change.hlc).wall > now + FUTURE_CLOCK_LIMIT_MS) {
     return reject("future_clock");
   }
-  // An older app would reset columns it doesn't know about.
-  if (change.v < state.maxV) return reject("schema_outdated");
-
   const data = canonicalJson(change.data);
   const deleted = change.deleted ? 1 : 0;
   const existing = await trx
     .selectFrom("change")
-    .select(["data", "deleted"])
+    .select(["data", "deleted", "v"])
     .where("user_id", "=", userId)
     .where("table_name", "=", change.table)
     .where("id", "=", change.id)
     .where("hlc", "=", change.hlc)
     .executeTakeFirst();
   if (existing) {
-    return existing.data === data && existing.deleted === deleted
-      ? { status: "ok" }
-      : reject("conflict");
+    // Migrations rewrite data but keep the HLC, so the same HLC at another
+    // schema version is the same row version, not a conflict.
+    const duplicate =
+      existing.deleted === deleted &&
+      (existing.v !== change.v || existing.data === data);
+    return duplicate ? { status: "ok" } : reject("conflict");
   }
+  // An older app would reset columns it doesn't know about.
+  if (change.v < state.maxV) return reject("schema_outdated");
   if (state.inserted >= state.quotaRemaining) return reject("quota");
 
   const { seq } = await trx
