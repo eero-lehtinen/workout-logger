@@ -11,7 +11,7 @@ import { clsx } from "clsx";
 import { ArrowLeftRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
@@ -34,17 +34,22 @@ export function ExerciseLogPage() {
   const log = useDbQuery("exerciseLog", { sessionExerciseId });
   if (!log) {
     return (
-      <>
-        <PageHeader
-          title="Exercise"
-          back={{
-            to: "/sessions/$sessionId",
-            params: { sessionId },
-            label: "Back to session",
-          }}
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Exercise"
+            back={{
+              to: "/sessions/$sessionId",
+              params: { sessionId },
+              label: "Back to session",
+            }}
+          />
+        }
+        scrollId="exercise-removed"
+        width="narrow"
+      >
         <Empty>This exercise was removed from the session.</Empty>
-      </>
+      </Screen>
     );
   }
   return <Logger key={log.sessionExerciseId} log={log} />;
@@ -131,8 +136,8 @@ function Logger({ log }: { log: ExerciseLog }) {
   const previous = log.previous[0];
   const earlier = log.previous.slice(1);
 
-  return (
-    <div className="flex min-h-dvh flex-col lg:min-h-0 lg:max-w-2xl">
+  const header = (
+    <>
       <PageHeader
         title={exercise.name}
         back={{
@@ -164,8 +169,37 @@ function Logger({ log }: { log: ExerciseLog }) {
           {exercise.notes}
         </p>
       )}
+    </>
+  );
 
-      <div className="flex-1 px-4 pt-2 lg:px-0">
+  return (
+    <Screen
+      header={header}
+      scrollId="logging"
+      width="narrow"
+      footer={
+        <div className="flex flex-col gap-3 px-4 py-3 lg:px-0">
+          <RestControls />
+          <EntryFields
+            type={exercise.type}
+            entry={entry}
+            onChange={setEntry}
+            unit={unit}
+            incrementKg={exercise.weightIncrementKg}
+            settings={settings}
+          />
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={!values}
+            onClick={onLog}
+          >
+            Log set {log.sets.length + 1}
+          </Button>
+        </div>
+      }
+    >
+      <div className="px-4 pt-2 pb-4 lg:px-0">
         <Ledger
           log={log}
           unit={unit}
@@ -211,21 +245,6 @@ function Logger({ log }: { log: ExerciseLog }) {
         )}
       </div>
 
-      <div className="sticky bottom-0 z-10 mt-4 flex flex-col gap-3 border-t border-rule bg-chalk/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:static lg:mt-6 lg:rounded-2xl lg:border lg:bg-raised lg:p-4 lg:backdrop-blur-none">
-        <RestControls />
-        <EntryFields
-          type={exercise.type}
-          entry={entry}
-          onChange={setEntry}
-          unit={unit}
-          incrementKg={exercise.weightIncrementKg}
-          settings={settings}
-        />
-        <Button variant="primary" size="lg" disabled={!values} onClick={onLog}>
-          Log set {log.sets.length + 1}
-        </Button>
-      </div>
-
       <EditSetSheet
         set={editing}
         onClose={() => setEditing(null)}
@@ -269,7 +288,7 @@ function Logger({ log }: { log: ExerciseLog }) {
           },
         ]}
       />
-    </div>
+    </Screen>
   );
 }
 
@@ -312,7 +331,7 @@ function Ledger(props: {
           const isNext = i === log.sets.length;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: rows are set numbers
-            <tr key={i} className="border-t border-rule">
+            <tr key={i}>
               <td className="tabular py-1 text-sm text-ink-muted">{i + 1}</td>
               <td className="py-1">
                 {today ? (

@@ -4,7 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { useRunningSession } from "./running.ts";
 
@@ -32,11 +32,16 @@ export function StartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <PageHeader
-        title="Start session"
-        back={{ to: "/", label: "Back to today" }}
-      />
+    <Screen
+      header={
+        <PageHeader
+          title="Start session"
+          back={{ to: "/", label: "Back to today" }}
+        />
+      }
+      scrollId="start"
+      width="narrow"
+    >
       {running && (
         <p className="mx-4 mb-3 rounded-xl bg-surface px-4 py-3 text-[0.9375rem] lg:mx-0">
           A session is still running.{" "}
@@ -69,13 +74,13 @@ export function StartPage() {
               aria-label="Routine"
               value={routine?.id ?? null}
               onValueChange={(value) => setRoutineId(value as string)}
-              className="flex gap-2 overflow-x-auto px-4 pb-1 lg:flex-wrap lg:px-0"
+              className="flex flex-wrap gap-2 px-4 lg:px-0"
             >
               {options.routines.map((r) => (
                 <Radio.Root
                   key={r.id}
                   value={r.id}
-                  className="h-10 shrink-0 rounded-full border border-rule px-4 font-medium text-ink-muted data-checked:border-ink data-checked:bg-ink data-checked:text-chalk"
+                  className="h-10 shrink-0 rounded-full border border-rule px-4 font-medium text-ink-muted data-checked:border-ink/60 data-checked:bg-raised data-checked:text-ink"
                 >
                   {r.name}
                 </Radio.Root>
@@ -112,7 +117,7 @@ export function StartPage() {
                           className={clsx(
                             "flex min-h-16 w-full items-center gap-3 rounded-xl px-4 text-left transition-colors",
                             next
-                              ? "bg-ink text-chalk hover:bg-ink/90"
+                              ? "bg-raised ring-2 ring-ink/60 hover:bg-surface"
                               : "bg-raised ring-1 ring-rule hover:bg-surface",
                           )}
                         >
@@ -147,6 +152,6 @@ export function StartPage() {
           Start ad hoc session
         </Button>
       </div>
-    </div>
+    </Screen>
   );
 }

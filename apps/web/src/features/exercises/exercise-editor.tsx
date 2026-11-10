@@ -10,7 +10,7 @@ import { MUSCLE_GROUPS } from "@workout-logger/exercises";
 import { clsx } from "clsx";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
@@ -23,13 +23,17 @@ export function EditExercisePage() {
   const exercise = useDbQuery("exerciseDetail", { exerciseId });
   if (!exercise) {
     return (
-      <>
-        <PageHeader
-          title="Exercise"
-          back={{ to: "/exercises", label: "Back to exercises" }}
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Exercise"
+            back={{ to: "/exercises", label: "Back to exercises" }}
+          />
+        }
+        scrollId="exercise-deleted"
+      >
         <Empty>This exercise was deleted.</Empty>
-      </>
+      </Screen>
     );
   }
   return <ExerciseForm key={exercise.id} exercise={exercise} />;
@@ -39,11 +43,17 @@ export function NewExercisePage() {
   return <ExerciseForm exercise={null} />;
 }
 
+/** No option chosen means the exercise doesn't target the muscle. */
 const FACTOR_OPTIONS = [
-  { value: "0", label: "–" },
   { value: "0.5", label: "Secondary" },
   { value: "1", label: "Primary" },
 ] as const;
+
+type FactorValue = (typeof FACTOR_OPTIONS)[number]["value"];
+
+function factorValue(factor: number | undefined): FactorValue | null {
+  return factor === 1 ? "1" : factor === 0.5 ? "0.5" : null;
+}
 
 function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
   const muscles = useDbQuery("muscles");
@@ -100,145 +110,159 @@ function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
   }
 
   return (
-    <form onSubmit={save} className="mx-auto max-w-3xl pb-8">
-      <PageHeader
-        title={exercise ? "Edit exercise" : "New exercise"}
-        subtitle={
-          exercise?.builtin
-            ? "Built in. Your changes are kept over catalog updates."
-            : undefined
-        }
-        back={{ to: "/exercises", label: "Back to exercises" }}
-      />
-      <div className="flex flex-col gap-5 px-4 lg:px-0">
-        <Field label="Name">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Row (Chest Supported)"
-            className={inputClass}
-          />
-        </Field>
-
-        <fieldset>
-          <legend className="pb-1.5 text-sm font-medium">
-            What a set records
-          </legend>
-          <div className="flex flex-col gap-1">
-            {(Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]).map((t) => (
-              <label
-                key={t}
-                className="flex h-10 items-center gap-3 rounded-lg px-2 hover:bg-surface"
-              >
-                <input
-                  type="radio"
-                  name="type"
-                  checked={type === t}
-                  onChange={() => setType(t)}
-                  className="size-4 accent-[var(--ink)]"
-                />
-                {EXERCISE_TYPE_LABELS[t]}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend className="pb-1.5 text-sm font-medium">Muscles</legend>
-          <p
-            className={clsx(
-              "pb-2 text-sm",
-              hasPrimary ? "text-ink-muted" : "text-danger",
-            )}
-          >
-            At least one primary muscle. Frequency stats count primary muscles.
-          </p>
-          <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-            {MUSCLE_GROUPS.map((group) => (
-              <div key={group}>
-                <h2 className="pb-1 text-sm text-ink-muted">{group}</h2>
-                {muscles
-                  .filter((m) => m.group === group)
-                  .map((muscle) => (
-                    <div
-                      key={muscle.id}
-                      className="flex h-10 items-center gap-2"
-                    >
-                      <span className="flex-1">{muscle.name}</span>
-                      <Segmented
-                        label={muscle.name}
-                        size="sm"
-                        value={String(targets[muscle.id] ?? 0)}
-                        options={FACTOR_OPTIONS}
-                        onChange={(value) =>
-                          setTargets({ ...targets, [muscle.id]: Number(value) })
-                        }
-                      />
-                    </div>
-                  ))}
-              </div>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Rest time" hint="m:ss. Empty uses your default.">
+    <Screen
+      scrollId="exercise"
+      width="medium"
+      header={
+        <PageHeader
+          title={exercise ? "Edit exercise" : "New exercise"}
+          subtitle={
+            exercise?.builtin
+              ? "Built in. Your changes are kept over catalog updates."
+              : undefined
+          }
+          back={{ to: "/exercises", label: "Back to exercises" }}
+        />
+      }
+    >
+      <form onSubmit={save} className="pb-8">
+        <div className="flex flex-col gap-5 px-4 lg:px-0">
+          <Field label="Name">
             <input
-              value={rest}
-              onChange={(e) => setRest(e.target.value)}
-              inputMode="numeric"
-              placeholder={formatDuration(settings.rest_default_s)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Row (Chest Supported)"
               className={inputClass}
             />
           </Field>
-          <Field
-            label={`Weight step (${unit})`}
-            hint="Empty uses your default."
-          >
-            <input
-              value={increment}
-              onChange={(e) => setIncrement(e.target.value)}
-              inputMode="decimal"
-              placeholder={String(
-                unit === "kg"
-                  ? settings.weight_increment_kg
-                  : settings.weight_increment_lb,
+
+          <fieldset>
+            <legend className="pb-1.5 text-sm font-medium">
+              What a set records
+            </legend>
+            <div className="flex flex-col gap-1">
+              {(Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]).map(
+                (t) => (
+                  <label
+                    key={t}
+                    className="flex h-10 items-center gap-3 rounded-lg px-2 hover:bg-surface"
+                  >
+                    <input
+                      type="radio"
+                      name="type"
+                      checked={type === t}
+                      onChange={() => setType(t)}
+                      className="size-4 accent-[var(--ink)]"
+                    />
+                    {EXERCISE_TYPE_LABELS[t]}
+                  </label>
+                ),
               )}
-              className={inputClass}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="pb-1.5 text-sm font-medium">Muscles</legend>
+            <p
+              className={clsx(
+                "pb-2 text-sm",
+                hasPrimary ? "text-ink-muted" : "text-danger",
+              )}
+            >
+              At least one primary muscle. Frequency stats count primary
+              muscles.
+            </p>
+            <div className="gap-x-8 sm:columns-2">
+              {MUSCLE_GROUPS.map((group) => (
+                <div key={group} className="break-inside-avoid pb-3">
+                  <h2 className="pb-1 text-sm text-ink-muted">{group}</h2>
+                  {muscles
+                    .filter((m) => m.group === group)
+                    .map((muscle) => (
+                      <div
+                        key={muscle.id}
+                        className="flex h-10 items-center gap-2"
+                      >
+                        <span className="flex-1">{muscle.name}</span>
+                        <Segmented
+                          label={muscle.name}
+                          size="sm"
+                          deselectable
+                          value={factorValue(targets[muscle.id])}
+                          options={FACTOR_OPTIONS}
+                          onChange={(value) =>
+                            setTargets({
+                              ...targets,
+                              [muscle.id]: value === null ? 0 : Number(value),
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                </div>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Rest time" hint="m:ss. Empty uses your default.">
+              <input
+                value={rest}
+                onChange={(e) => setRest(e.target.value)}
+                inputMode="numeric"
+                placeholder={formatDuration(settings.rest_default_s)}
+                className={inputClass}
+              />
+            </Field>
+            <Field
+              label={`Weight step (${unit})`}
+              hint="Empty uses your default."
+            >
+              <input
+                value={increment}
+                onChange={(e) => setIncrement(e.target.value)}
+                inputMode="decimal"
+                placeholder={String(
+                  unit === "kg"
+                    ? settings.weight_increment_kg
+                    : settings.weight_increment_lb,
+                )}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+
+          <Field label="Notes">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Seat height, grip, cues"
+              className={clsx(inputClass, "h-auto py-2")}
             />
           </Field>
-        </div>
 
-        <Field label="Notes">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Seat height, grip, cues"
-            className={clsx(inputClass, "h-auto py-2")}
-          />
-        </Field>
-
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" disabled={invalid}>
-            {exercise ? "Save exercise" : "Create exercise"}
-          </Button>
-          {exercise && (
-            <Button
-              onClick={async () => {
-                await command("updateExercise", {
-                  exerciseId: exercise.id,
-                  archived: !exercise.archived,
-                });
-                await navigate({ to: "/exercises" });
-              }}
-            >
-              {exercise.archived ? "Unarchive" : "Archive"}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" disabled={invalid}>
+              {exercise ? "Save exercise" : "Create exercise"}
             </Button>
-          )}
+            {exercise && (
+              <Button
+                onClick={async () => {
+                  await command("updateExercise", {
+                    exerciseId: exercise.id,
+                    archived: !exercise.archived,
+                  });
+                  await navigate({ to: "/exercises" });
+                }}
+              >
+                {exercise.archived ? "Unarchive" : "Archive"}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </Screen>
   );
 }
 

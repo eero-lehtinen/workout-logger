@@ -282,3 +282,21 @@ export const inPounds: Fixture = async (db) => {
   await db.run("setSetting", { key: "weight_unit", value: "lb" });
   return ids;
 };
+
+/** Two custom exercises the user has archived. */
+export const withArchived: Fixture = async (db) => {
+  const muscles = await db.client.query("muscles", undefined);
+  const chest = muscles.find((m) => m.name === "Chest")?.id ?? "";
+  for (const name of ["Cable Fly (Old Gym)", "Pec Deck (Old Gym)"]) {
+    const { result: exerciseId } = await db.run("createExercise", {
+      name,
+      type: "weight_reps",
+      defaultRestS: null,
+      weightIncrementKg: null,
+      notes: "",
+      muscles: { [chest]: 1 },
+    });
+    await db.run("updateExercise", { exerciseId, archived: true });
+  }
+  return {};
+};

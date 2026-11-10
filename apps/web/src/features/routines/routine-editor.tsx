@@ -11,7 +11,7 @@ import {
 import { useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { ExercisePicker } from "../exercises/picker.tsx";
@@ -34,16 +34,20 @@ export function RoutineEditor() {
   const routine = useDbQuery("routineDetail", { routineId });
   if (!routine) {
     return (
-      <>
-        <PageHeader
-          title="Routine"
-          back={{ to: "/routines", label: "Back to routines" }}
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Routine"
+            back={{ to: "/routines", label: "Back to routines" }}
+          />
+        }
+        scrollId="routine-deleted"
+      >
         <Empty>This routine was deleted.</Empty>
-      </>
+      </Screen>
     );
   }
-  return <Editor routine={routine} />;
+  return <Editor key={routine.id} routine={routine} />;
 }
 
 function Editor({ routine }: { routine: RoutineDetail }) {
@@ -74,45 +78,48 @@ function Editor({ routine }: { routine: RoutineDetail }) {
   }
 
   return (
-    <div>
-      <PageHeader
-        title={
-          <InlineName
-            label="Routine name"
-            value={routine.name}
-            onSave={(name) =>
-              command("updateRoutine", { routineId: routine.id, name })
-            }
-            className="w-full"
-          />
-        }
-        subtitle={routine.archived ? "Archived" : undefined}
-        back={{ to: "/routines", label: "Back to routines" }}
-        actions={
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                command("updateRoutine", {
-                  routineId: routine.id,
-                  archived: !routine.archived,
-                })
+    <Screen
+      scrollId="routine"
+      header={
+        <PageHeader
+          title={
+            <InlineName
+              label="Routine name"
+              value={routine.name}
+              onSave={(name) =>
+                command("updateRoutine", { routineId: routine.id, name })
               }
-            >
-              {routine.archived ? "Unarchive" : "Archive"}
-            </Button>
-            <IconButton
-              label="Delete routine"
-              variant="danger"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 size={19} />
-            </IconButton>
-          </>
-        }
-      />
-
+              className="w-full"
+            />
+          }
+          subtitle={routine.archived ? "Archived" : undefined}
+          back={{ to: "/routines", label: "Back to routines" }}
+          actions={
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  command("updateRoutine", {
+                    routineId: routine.id,
+                    archived: !routine.archived,
+                  })
+                }
+              >
+                {routine.archived ? "Unarchive" : "Archive"}
+              </Button>
+              <IconButton
+                label="Delete routine"
+                variant="danger"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 size={19} />
+              </IconButton>
+            </>
+          }
+        />
+      }
+    >
       {routine.days.length === 0 && (
         <Empty>Add the days of the cycle in the order you train them.</Empty>
       )}
@@ -309,6 +316,6 @@ function Editor({ routine }: { routine: RoutineDetail }) {
           },
         ]}
       />
-    </div>
+    </Screen>
   );
 }

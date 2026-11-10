@@ -1,5 +1,4 @@
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { clsx } from "clsx";
 import { Dumbbell, House, ListOrdered, Settings } from "lucide-react";
 import { Suspense } from "react";
 import { RestBar } from "../features/session/rest-bar.tsx";
@@ -17,6 +16,9 @@ const NAV = [
 /**
  * Phones: one pane with bottom navigation, hidden while logging so the entry
  * panel owns the thumb zone. Wide screens: a sidebar.
+ *
+ * The shell fills the viewport and never scrolls. Each screen scrolls only
+ * its own body (see Screen), so scrollbars stay beside what scrolls.
  */
 export function AppShell() {
   const matchRoute = useMatchRoute();
@@ -24,21 +26,16 @@ export function AppShell() {
     matchRoute({ to: "/sessions/$sessionId/$sessionExerciseId" }),
   );
   return (
-    <div className="lg:flex lg:min-h-dvh">
+    <div className="flex h-dvh">
       <Sidebar />
-      <div className="min-w-0 flex-1">
-        <main
-          className={clsx(
-            "mx-auto w-full max-w-6xl lg:px-8 lg:pb-10",
-            logging ? "pb-0" : "pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
-          )}
-        >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <main className="min-h-0 flex-1">
           <Suspense fallback={null}>
             <Outlet />
           </Suspense>
         </main>
+        {!logging && <BottomNav />}
       </div>
-      {!logging && <BottomNav />}
       {!logging && <RestBar />}
       <ToastLayer />
       <UpdatePrompt />
@@ -50,7 +47,7 @@ function Sidebar() {
   return (
     <nav
       aria-label="Main"
-      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 border-r border-rule px-3 py-6 lg:flex"
+      className="hidden w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r border-rule px-3 py-6 lg:flex"
     >
       <p className="px-3 pb-5 text-lg font-bold [font-stretch:80%]">
         Workout Logger
@@ -75,7 +72,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-rule bg-chalk/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      className="grid shrink-0 grid-cols-4 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {NAV.map((item) => (
         <Link

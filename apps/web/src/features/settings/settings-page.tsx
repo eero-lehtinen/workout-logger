@@ -1,7 +1,7 @@
 import type { SettingChange } from "@workout-logger/core";
 import { useRef, useState } from "react";
 import { Button } from "../../components/button.tsx";
-import { PageHeader } from "../../components/page.tsx";
+import { PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
@@ -17,91 +17,96 @@ export function SettingsPage() {
   const unit = settings.weight_unit;
 
   return (
-    <div className="mx-auto max-w-2xl pb-10">
-      <PageHeader title="Settings" />
-      <Section title="Units and steps">
-        <Row label="Weight unit" hint="Stored in kg either way.">
-          <Segmented
-            label="Weight unit"
-            value={unit}
-            options={[
-              { value: "kg", label: "kg" },
-              { value: "lb", label: "lb" },
-            ]}
-            onChange={(value) => set({ key: "weight_unit", value })}
-          />
-        </Row>
-        <Row
-          label={`Weight step (${unit})`}
-          hint="The +/− step, unless an exercise sets its own."
-        >
-          <SettingInput
-            label="Weight step"
-            value={
-              unit === "kg"
-                ? settings.weight_increment_kg
-                : settings.weight_increment_lb
-            }
-            format={String}
-            parse={parseNumber}
-            onSave={(value) =>
-              set(
+    <Screen
+      header={<PageHeader title="Settings" />}
+      scrollId="settings"
+      width="narrow"
+    >
+      <div className="pb-10">
+        <Section title="Units and steps">
+          <Row label="Weight unit" hint="Stored in kg either way.">
+            <Segmented
+              label="Weight unit"
+              value={unit}
+              options={[
+                { value: "kg", label: "kg" },
+                { value: "lb", label: "lb" },
+              ]}
+              onChange={(value) => set({ key: "weight_unit", value })}
+            />
+          </Row>
+          <Row
+            label={`Weight step (${unit})`}
+            hint="The +/− step, unless an exercise sets its own."
+          >
+            <SettingInput
+              label="Weight step"
+              value={
                 unit === "kg"
-                  ? { key: "weight_increment_kg", value }
-                  : { key: "weight_increment_lb", value },
-              )
-            }
-          />
-        </Row>
-      </Section>
+                  ? settings.weight_increment_kg
+                  : settings.weight_increment_lb
+              }
+              format={String}
+              parse={parseNumber}
+              onSave={(value) =>
+                set(
+                  unit === "kg"
+                    ? { key: "weight_increment_kg", value }
+                    : { key: "weight_increment_lb", value },
+                )
+              }
+            />
+          </Row>
+        </Section>
 
-      <Section title="Sessions">
-        <Row
-          label="Rest time"
-          hint="m:ss, unless an exercise or slot sets its own."
-        >
-          <SettingInput
+        <Section title="Sessions">
+          <Row
             label="Rest time"
-            value={settings.rest_default_s}
-            format={formatDuration}
-            parse={parseDuration}
-            onSave={(value) => set({ key: "rest_default_s", value })}
-          />
-        </Row>
-        <Row
-          label="Idle end (minutes)"
-          hint="A session ends at its last set after this long without a new one."
-        >
-          <SettingInput
-            label="Idle end in minutes"
-            value={settings.idle_threshold_s / 60}
-            format={String}
-            parse={(text) => {
-              const minutes = parseNumber(text);
-              return minutes === null ? null : Math.round(minutes * 60);
-            }}
-            onSave={(value) => set({ key: "idle_threshold_s", value })}
-          />
-        </Row>
-        <Row
-          label="e1RM rep limit"
-          hint="Sets with more reps get no e1RM and can't be PRs."
-        >
-          <SettingInput
+            hint="m:ss, unless an exercise or slot sets its own."
+          >
+            <SettingInput
+              label="Rest time"
+              value={settings.rest_default_s}
+              format={formatDuration}
+              parse={parseDuration}
+              onSave={(value) => set({ key: "rest_default_s", value })}
+            />
+          </Row>
+          <Row
+            label="Idle end (minutes)"
+            hint="A session ends at its last set after this long without a new one."
+          >
+            <SettingInput
+              label="Idle end in minutes"
+              value={settings.idle_threshold_s / 60}
+              format={String}
+              parse={(text) => {
+                const minutes = parseNumber(text);
+                return minutes === null ? null : Math.round(minutes * 60);
+              }}
+              onSave={(value) => set({ key: "idle_threshold_s", value })}
+            />
+          </Row>
+          <Row
             label="e1RM rep limit"
-            value={settings.e1rm_rep_cap}
-            format={String}
-            parse={(text) => {
-              const reps = parseNumber(text);
-              return reps === null ? null : Math.round(reps);
-            }}
-            onSave={(value) => set({ key: "e1rm_rep_cap", value })}
-          />
-        </Row>
-      </Section>
+            hint="Sets with more reps get no e1RM and can't be PRs."
+          >
+            <SettingInput
+              label="e1RM rep limit"
+              value={settings.e1rm_rep_cap}
+              format={String}
+              parse={(text) => {
+                const reps = parseNumber(text);
+                return reps === null ? null : Math.round(reps);
+              }}
+              onSave={(value) => set({ key: "e1rm_rep_cap", value })}
+            />
+          </Row>
+        </Section>
 
-      <DataSection />
-    </div>
+        <DataSection />
+      </div>
+    </Screen>
   );
 }
 
@@ -109,7 +114,7 @@ function Section(props: { title: string; children: React.ReactNode }) {
   return (
     <section className="pt-4">
       <h2 className="px-4 pb-1 text-lg font-semibold lg:px-0">{props.title}</h2>
-      <div className="divide-y divide-rule border-y border-rule lg:rounded-xl lg:border lg:bg-raised">
+      <div className="mx-2 flex flex-col rounded-2xl bg-raised py-1 lg:mx-0">
         {props.children}
       </div>
     </section>

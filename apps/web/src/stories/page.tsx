@@ -1,15 +1,11 @@
 import type { StoryObj } from "@storybook/react-vite";
-import {
-  createMemoryHistory,
-  createRouter,
-  RouterProvider,
-} from "@tanstack/react-router";
+import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { useState } from "react";
 import { within } from "storybook/test";
 import type { DbClient } from "../db/client.ts";
 import { type MemoryDb, openMemoryDb } from "../db/memory.ts";
 import { DbClientProvider } from "../db/react.tsx";
-import { routeTree } from "../routeTree.gen.ts";
+import { createAppRouter } from "../router.ts";
 import type { Fixture, FixtureIds } from "./fixtures.ts";
 
 interface Loaded {
@@ -31,6 +27,9 @@ export function pageStory(options: {
   return {
     loaders: [
       async (): Promise<Loaded> => {
+        // The router keeps scroll positions in sessionStorage, which every
+        // story in the browser shares.
+        sessionStorage.clear();
         const db = await openMemoryDb();
         return { db, url: options.url(await options.fixture(db)) };
       },
@@ -58,10 +57,7 @@ export function pageStory(options: {
 
 function Page(props: { client: DbClient; url: string }) {
   const [router] = useState(() =>
-    createRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: [props.url] }),
-    }),
+    createAppRouter(createMemoryHistory({ initialEntries: [props.url] })),
   );
   return (
     <DbClientProvider client={props.client}>

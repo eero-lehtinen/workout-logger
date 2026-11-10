@@ -9,6 +9,14 @@ Narrow screens get one pane with bottom navigation; wide screens (Tailwind
 `lg`) get a sidebar and side-by-side panes, e.g. the session's exercise list
 next to the logging pane.
 
+The window never scrolls. Every screen is a `Screen`: a fixed header, a body
+that alone scrolls, and an optional fixed footer (the set entry while
+logging). Scrollbars therefore run only beside what scrolls, and sticky
+elements never overlap content. Header, body, and footer span the full width
+with their content centered, so on a wide window the scrollbar stays at the
+edge. The router restores each screen body's scroll position when returning
+to the screen, keyed by path.
+
 ## Overview
 
 ```

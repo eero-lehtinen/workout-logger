@@ -14,7 +14,8 @@ import { clsx } from "clsx";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { listClass, rowClass } from "../../components/list.ts";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
@@ -38,21 +39,32 @@ export function SessionLayout() {
 
   if (!view) {
     return (
-      <>
-        <PageHeader
-          title="Session"
-          back={{ to: "/", label: "Back to today" }}
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Session"
+            back={{ to: "/", label: "Back to today" }}
+          />
+        }
+        scrollId="session-deleted"
+      >
         <Empty>This session was deleted.</Empty>
-      </>
+      </Screen>
     );
   }
+  // Wide screens: the list and the logging pane side by side, each scrolling
+  // on its own.
   return (
-    <div className="lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-10">
-      <div className={clsx(logging && "hidden lg:block")}>
-        <SessionPanel view={view} />
+    <div className="h-full lg:grid lg:grid-cols-[24rem_minmax(0,1fr)]">
+      <div
+        className={clsx(
+          "h-full lg:border-r lg:border-rule",
+          logging && "hidden lg:block",
+        )}
+      >
+        <SessionPanel key={view.session.id} view={view} />
       </div>
-      <div className={clsx(!logging && "hidden lg:block")}>
+      <div className={clsx("h-full", !logging && "hidden lg:block")}>
         <Outlet />
       </div>
     </div>
@@ -62,7 +74,7 @@ export function SessionLayout() {
 /** The right-hand pane on wide screens before an exercise is picked. */
 export function SessionIndex() {
   return (
-    <p className="hidden pt-24 text-center text-ink-muted lg:block">
+    <p className="hidden pt-32 text-center text-ink-muted lg:block">
       Pick an exercise to log its sets.
     </p>
   );
@@ -78,34 +90,40 @@ function SessionPanel({ view }: { view: SessionView }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <>
-      <PageHeader
-        title={session.dayName ?? "Ad hoc session"}
-        subtitle={[
-          formatSessionDate(session.startedAt, session.tz),
-          session.routineName,
-        ]
-          .filter(Boolean)
-          .join(", ")}
-        back={{ to: "/", label: "Back to today" }}
-        actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setEditing(!editing)}
-          >
-            {editing ? "Done" : "Edit"}
-          </Button>
-        }
-      />
-      <div className="px-4 lg:px-0">
-        <SessionTimer view={view} idleThresholdS={settings.idle_threshold_s} />
-      </div>
-
+    <Screen
+      scrollId="session"
+      width="pane"
+      header={
+        <PageHeader
+          title={session.dayName ?? "Ad hoc session"}
+          subtitle={[
+            formatSessionDate(session.startedAt, session.tz),
+            session.routineName,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+          back={{ to: "/", label: "Back to today" }}
+          actions={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditing(!editing)}
+            >
+              {editing ? "Done" : "Edit"}
+            </Button>
+          }
+        >
+          <SessionTimer
+            view={view}
+            idleThresholdS={settings.idle_threshold_s}
+          />
+        </PageHeader>
+      }
+    >
       {view.exercises.length === 0 ? (
         <Empty>Add the exercises you're doing.</Empty>
       ) : (
-        <ol className="mt-4 divide-y divide-rule border-y border-rule lg:rounded-xl lg:border lg:bg-raised">
+        <ol className={listClass}>
           {view.exercises.map((exercise, index) => (
             <li key={exercise.id} className="flex items-center">
               <Link
@@ -114,7 +132,7 @@ function SessionPanel({ view }: { view: SessionView }) {
                   sessionId: session.id,
                   sessionExerciseId: exercise.id,
                 }}
-                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-surface data-[status=active]:bg-surface lg:first:rounded-t-xl"
+                className={`${rowClass} flex min-w-0 flex-1 items-center gap-3 py-3 data-[status=active]:bg-surface`}
               >
                 <DoneMark done={exercise.sets.length > 0} />
                 <div className="min-w-0 flex-1">
@@ -234,7 +252,7 @@ function SessionPanel({ view }: { view: SessionView }) {
           },
         ]}
       />
-    </>
+    </Screen>
   );
 }
 
@@ -243,7 +261,7 @@ function DoneMark({ done }: { done: boolean }) {
     <span
       role="img"
       aria-label="Done"
-      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink text-chalk"
+      className="flex size-6 shrink-0 items-center justify-center rounded-full text-ink ring-2 ring-ink/60 ring-inset"
     >
       <Check size={15} strokeWidth={3} />
     </span>

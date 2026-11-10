@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { effectiveSessionEnd, type SessionSummary } from "@workout-logger/core";
 import { ChevronRight, Play } from "lucide-react";
 import { buttonClass } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { listClass, rowClass } from "../../components/list.ts";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import {
   formatDuration,
@@ -28,70 +29,71 @@ export function TodayPage() {
   const past = sessions.filter((s) => s !== running);
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
-      <section>
-        <PageHeader title="Today" />
-        <div className="px-4 pt-2 lg:px-0">
-          {running ? (
-            <RunningCard session={running} now={now} />
-          ) : (
-            <Link
-              to="/start"
-              className={`${buttonClass("primary", "lg")} w-full`}
-            >
-              <Play size={20} fill="currentColor" />
-              Start session
-            </Link>
-          )}
-        </div>
-      </section>
+    <Screen header={<PageHeader title="Today" />} scrollId="today">
+      <div className="pt-2 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
+        <section>
+          <div className="px-4 lg:px-0">
+            {running ? (
+              <RunningCard session={running} now={now} />
+            ) : (
+              <Link
+                to="/start"
+                className={`${buttonClass("primary", "lg")} w-full`}
+              >
+                <Play size={20} fill="currentColor" />
+                Start session
+              </Link>
+            )}
+          </div>
+        </section>
 
-      <section className="mt-8 lg:mt-0">
-        <h2 className="px-4 pb-2 text-lg font-semibold lg:px-0 lg:pt-7">
-          Past sessions
-        </h2>
-        {past.length === 0 ? (
-          <Empty>Sessions you log show up here.</Empty>
-        ) : (
-          <ul className="divide-y divide-rule border-y border-rule lg:rounded-xl lg:border lg:bg-raised">
-            {past.map((s) => {
-              const end = endOf(s);
-              return (
-                <li key={s.id}>
-                  <Link
-                    to="/sessions/$sessionId"
-                    params={{ sessionId: s.id }}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">
-                        {s.dayName ?? "Ad hoc"}
-                        {s.routineName && (
-                          <span className="font-normal text-ink-muted">
-                            {" "}
-                            in {s.routineName}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-sm text-ink-muted">
-                        {formatSessionDate(s.startedAt, s.tz)}, {s.setCount}{" "}
-                        {s.setCount === 1 ? "set" : "sets"}
-                      </p>
-                    </div>
-                    {!end.running && end.reason !== "unknown" && (
-                      <span className="tabular text-sm text-ink-muted">
-                        {formatDuration((end.endedAt - s.startedAt) / 1000)}
-                      </span>
-                    )}
-                    <ChevronRight size={18} className="text-ink-muted" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </div>
+        <section className="mt-8 lg:mt-0">
+          <h2 className="px-4 pb-2 text-lg font-semibold lg:px-0">
+            Past sessions
+          </h2>
+          {past.length === 0 ? (
+            <Empty>Sessions you log show up here.</Empty>
+          ) : (
+            <ul className={listClass}>
+              {past.map((s) => {
+                const end = endOf(s);
+                return (
+                  <li key={s.id}>
+                    <Link
+                      to="/sessions/$sessionId"
+                      params={{ sessionId: s.id }}
+                      className={`${rowClass} flex items-center gap-3 py-3`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">
+                          {s.dayName ?? "Ad hoc"}
+                          {s.routineName && (
+                            <span className="font-normal text-ink-muted">
+                              {" "}
+                              in {s.routineName}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-sm text-ink-muted">
+                          {formatSessionDate(s.startedAt, s.tz)}, {s.setCount}{" "}
+                          {s.setCount === 1 ? "set" : "sets"}
+                        </p>
+                      </div>
+                      {!end.running && end.reason !== "unknown" && (
+                        <span className="tabular text-sm text-ink-muted">
+                          {formatDuration((end.endedAt - s.startedAt) / 1000)}
+                        </span>
+                      )}
+                      <ChevronRight size={18} className="text-ink-muted" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+    </Screen>
   );
 }
 
@@ -101,7 +103,7 @@ function RunningCard(props: { session: SessionSummary; now: number }) {
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: session.id }}
-      className="block rounded-2xl bg-float p-5 text-on-float hover:bg-float/92"
+      className="block rounded-2xl border border-rule bg-raised p-5 text-ink hover:bg-surface/60"
     >
       <p className="text-sm opacity-70">
         Running since {formatTime(session.startedAt, session.tz)}

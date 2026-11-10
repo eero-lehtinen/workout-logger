@@ -3,7 +3,8 @@ import type { RoutineItem } from "@workout-logger/core";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
-import { Empty, PageHeader } from "../../components/page.tsx";
+import { listClass, rowClass } from "../../components/list.ts";
+import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 
 export function RoutinesPage() {
@@ -26,8 +27,11 @@ export function RoutinesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Routines" />
+    <Screen
+      header={<PageHeader title="Routines" />}
+      scrollId="routines"
+      width="medium"
+    >
       <p className="px-4 pb-4 text-[0.9375rem] text-ink-muted lg:px-0">
         A routine is a cycle of workout days. Each day lists what to train,
         never how much.
@@ -57,19 +61,19 @@ export function RoutinesPage() {
           <RoutineList routines={archived} />
         </section>
       )}
-    </div>
+    </Screen>
   );
 }
 
 function RoutineList({ routines }: { routines: RoutineItem[] }) {
   return (
-    <ul className="divide-y divide-rule border-y border-rule lg:rounded-xl lg:border lg:bg-raised">
+    <ul className={listClass}>
       {routines.map((r) => (
         <li key={r.id}>
           <Link
             to="/routines/$routineId"
             params={{ routineId: r.id }}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-surface"
+            className={`${rowClass} flex items-center gap-3 py-3`}
           >
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{r.name}</p>

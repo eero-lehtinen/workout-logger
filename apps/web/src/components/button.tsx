@@ -4,7 +4,8 @@ import type { ComponentProps } from "react";
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-ink text-chalk hover:bg-ink/90 active:bg-ink/80",
+  primary:
+    "border border-ink/30 bg-surface font-semibold text-ink hover:bg-rule/60 active:bg-rule",
   secondary:
     "border border-rule bg-raised text-ink hover:bg-surface active:bg-rule/60",
   ghost: "text-ink hover:bg-surface active:bg-rule/60",
