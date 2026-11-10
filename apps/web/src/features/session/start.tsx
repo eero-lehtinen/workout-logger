@@ -1,12 +1,44 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { clsx } from "clsx";
-import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { ChevronRight, Plus } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
+import { dayDotClass } from "../history/day-colors.ts";
 import { useRunningSession } from "./running.ts";
+
+const headingClass = "px-4 pb-2 font-semibold text-ink-muted lg:px-0";
+
+/** A row that starts a session when tapped. */
+function StartRow(props: {
+  title: string;
+  subtitle?: string;
+  mark: ReactNode;
+  note?: ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={props.disabled}
+      onClick={props.onClick}
+      className={`${rowClass} flex min-h-14 w-full items-center gap-3 py-3 text-left`}
+    >
+      {props.mark}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{props.title}</span>
+        {props.subtitle && (
+          <span className="block text-sm text-ink-muted">{props.subtitle}</span>
+        )}
+      </span>
+      {props.note}
+      <ChevronRight size={18} className="shrink-0 text-ink-muted" />
+    </button>
+  );
+}
 
 export function StartPage() {
   const options = useDbQuery("startOptions");
@@ -88,8 +120,8 @@ export function StartPage() {
             </RadioGroup>
           )}
           {routine && (
-            <section className="mt-4 px-4 lg:px-0">
-              <h2 className="pb-2 text-ink-muted">
+            <section className="pt-4">
+              <h2 className={headingClass}>
                 {options.routines.length === 1 ? routine.name : "Pick a day"}
               </h2>
               {routine.days.length === 0 ? (
@@ -105,37 +137,35 @@ export function StartPage() {
                   .
                 </Empty>
               ) : (
-                <ul className="flex flex-col gap-2">
-                  {routine.days.map((day) => {
-                    const next = day.id === routine.nextDayId;
-                    return (
-                      <li key={day.id}>
-                        <button
-                          type="button"
-                          disabled={starting}
-                          onClick={() => start(day.id)}
-                          className={clsx(
-                            "flex min-h-16 w-full items-center gap-3 rounded-xl px-4 text-left transition-colors",
-                            next
-                              ? "bg-raised ring-2 ring-ink/60 hover:bg-surface"
-                              : "bg-raised ring-1 ring-rule hover:bg-surface",
-                          )}
-                        >
-                          <span className="flex-1 text-lg font-semibold">
-                            {day.name}
-                          </span>
-                          {next && (
-                            <span className="text-sm opacity-80">Next</span>
-                          )}
-                          {day.id === routine.lastDayId && (
-                            <span className="text-sm text-ink-muted">
-                              Last time
+                <ul className={listClass}>
+                  {routine.days.map((day, dayIndex) => (
+                    <li key={day.id}>
+                      <StartRow
+                        disabled={starting}
+                        onClick={() => start(day.id)}
+                        mark={
+                          <span
+                            aria-hidden
+                            className={`size-3 shrink-0 rounded-full ${dayDotClass(dayIndex)}`}
+                          />
+                        }
+                        title={day.name}
+                        note={
+                          day.id === routine.nextDayId ? (
+                            <span className="rounded-full bg-surface px-2 py-0.5 text-sm font-medium">
+                              Next
                             </span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
+                          ) : (
+                            day.id === routine.lastDayId && (
+                              <span className="text-sm text-ink-muted">
+                                Last time
+                              </span>
+                            )
+                          )
+                        }
+                      />
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>
@@ -143,15 +173,26 @@ export function StartPage() {
         </>
       )}
 
-      <div className="mt-6 px-4 lg:px-0">
-        <Button
-          className="w-full"
-          disabled={starting}
-          onClick={() => start(null)}
-        >
-          Start ad hoc session
-        </Button>
-      </div>
+      <section className="pt-6">
+        <h2 className={headingClass}>Without a routine</h2>
+        <ul className={listClass}>
+          <li>
+            <StartRow
+              disabled={starting}
+              onClick={() => start(null)}
+              mark={
+                <Plus
+                  size={16}
+                  aria-hidden
+                  className="-mx-0.5 text-ink-muted"
+                />
+              }
+              title="Ad hoc session"
+              subtitle="Add exercises as you go"
+            />
+          </li>
+        </ul>
+      </section>
     </Screen>
   );
 }
