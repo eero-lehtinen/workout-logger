@@ -2,6 +2,7 @@ import type { ECharts, EChartsCoreOption } from "echarts/core";
 import { useEffect, useState } from "react";
 import { echarts } from "./echarts.ts";
 import { attachPinchZoom, currentWindow } from "./pinch.ts";
+import { attachTouchTooltip, hideTooltip } from "./touch-tooltip.ts";
 
 /**
  * An ECharts instance on `el`, sized to it, disposed with it.
@@ -27,19 +28,10 @@ export function useEChart(el: HTMLElement | null): ECharts | null {
     el.addEventListener("wheel", wheel, { capture: true });
     el.addEventListener("mousewheel", wheel, { capture: true });
     const detachPinch = attachPinchZoom(el, instance);
-    // Touch has no pointer leaving the chart, so a tooltip from a tap or a
-    // pinch would stay up: hide it on zoom and on a press anywhere else.
-    const hideTip = () => instance.dispatchAction({ type: "hideTip" });
-    instance.on("datazoom", hideTip);
-    const pressOutside = (e: PointerEvent) => {
-      if (!el.contains(e.target as Node)) hideTip();
-    };
-    document.addEventListener("pointerdown", pressOutside, { capture: true });
+    const detachTooltip = attachTouchTooltip(el, instance);
     setChart(instance);
     return () => {
-      document.removeEventListener("pointerdown", pressOutside, {
-        capture: true,
-      });
+      detachTooltip();
       detachPinch();
       resize.disconnect();
       el.removeEventListener("wheel", wheel, { capture: true });
@@ -96,7 +88,7 @@ export function useZoomReset(chart: ECharts | null, resetKey: string) {
   useEffect(() => {
     if (!chart || !resetKey) return;
     chart.dispatchAction({ type: "dataZoom", start: 0, end: 100 });
-    chart.dispatchAction({ type: "hideTip" });
+    hideTooltip(chart);
   }, [chart, resetKey]);
 
   return { zoomed, reset };
