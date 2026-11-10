@@ -1,4 +1,6 @@
 # pnpm
 /react-router
+/router-core
 /router-plugin
+/router-query
 # pnpm end

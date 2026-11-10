@@ -4,7 +4,9 @@ packages:
 
 permissions:
   "@tanstack/react-router":
-    skills: [react-router]
+    skills: [react-router, router-query]
+  "@tanstack/router-core":
+    skills: [router-core]
   "@tanstack/router-plugin":
     skills: [router-plugin]
 
