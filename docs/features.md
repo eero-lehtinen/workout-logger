@@ -60,8 +60,8 @@ The app is shared with a few invited users, each with their own private data. Se
 | Create routines with an ordered cycle of days | P0 | |
 | Each day has ordered slots; each slot has a default exercise | P0 | |
 | Per-slot alternatives | P0 | |
-| Per-slot rest override and free-text note | P1 | For example, a note like "heavy, 6-10" as a reminder. Never validated. |
-| Reorder, duplicate, archive routines, days, slots | P1 | |
+| Per-slot rest override and free-text note | P1 | For example, a note like "heavy, 6-10" as a reminder, shown above the sets while logging. Never validated. |
+| Reorder, duplicate, archive routines, days, slots | P1 | Routines and days can be duplicated; a copy keeps the slots, alternatives, notes, and rest overrides. Only routines can be archived; days and slots are deleted, with undo. |
 
 ## Starting a session
 
@@ -94,8 +94,8 @@ The app is shared with a few invited users, each with their own private data. Se
 | Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
 | Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Tapping a marker shows this set's value next to what it beat. Rules in [progress markers](#progress-markers). |
 | Edit and delete logged sets | P0 | |
-| History graph for the exercise | P1 | Metrics: best e1RM per session, e1RM of each set, top weight, volume, reps at a weight. |
-| Records table: best weight for 1..N reps, best e1RM, heaviest weight, most reps at a weight | P1 | Covers sets above the e1RM cap. |
+| History graph for the exercise | P1 | Metrics: best e1RM per session, e1RM of each set, top weight, volume, reps at a weight. Bodyweight exercises plot most reps without added weight instead of volume; reps, time, and distance exercises plot the best set and the session total. The exercise list and the logging view open the exercise's history screen, which also lists past sessions with their markers. |
+| Records table: best weight for 1..N reps, best e1RM, heaviest weight, most reps at a weight | P1 | Covers sets above the e1RM cap. By rep count: the heaviest weight for exactly that many reps. By weight: the most reps at that weight. A row is dimmed when another set had at least as much weight and as many reps. The first session to reach a value holds the record. |
 
 ## Progress markers
 
@@ -174,12 +174,12 @@ A page for tracking body data and other quantities next to training data.
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a setting). Several sessions per day are possible. Each mark is labeled and colored by the routine day, or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. |
+| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a setting). Several sessions per day are possible. Each mark is labeled and colored by the routine day (by its index in the cycle; six colors repeat), or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. Sessions from today open editable, since an idle end may only be a long rest. |
 | Year heatmap of training days | P2 | |
-| Sessions per week over time, with average | P1 | |
-| Days between sessions: average and distribution | P1 | |
-| Per muscle group: days trained per week | P1 | A day counts for a muscle group if any exercise with a primary muscle in the group was performed. |
-| Per routine day: how often each day was performed, last date performed | P1 | Shows whether the cycle is actually followed. |
+| Sessions per week over time, with average | P1 | Over the last 3 months, the last year, or all time; a period starts no earlier than the first session, so averages aren't diluted. |
+| Days between sessions: average and distribution | P1 | Between training days: several sessions on one date count once. Gaps of 14 days or more share one bucket. |
+| Per muscle group: days trained per week | P1 | A day counts for a muscle group if any exercise with a primary muscle in the group was performed, i.e. has a logged set. |
+| Per routine day: how often each day was performed, last date performed | P1 | Shows whether the cycle is actually followed. Archived routines are listed only if they were used in the period. |
 
 The measurements chart and the analytics page share the same charting and
 series code.

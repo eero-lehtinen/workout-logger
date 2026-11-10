@@ -33,8 +33,10 @@ a shared crosshair and the normalized overlay of phase 8 would be built, and
 the code needed. The winner is merged and recorded in
 [architecture.md](../architecture.md#tech-stack).
 
+- Routine editor: duplicate routines and days, slot notes and rest
+  overrides. The slot note shows while logging.
+- Past sessions from earlier days open read-only, with an Edit button.
+
 ## Remaining
 
-- Routine editor polish: duplicate routines and days, slot notes, rest
-  overrides.
-- Past sessions open read-only, with editing available.
+- Merge the chosen chart branch, record the choice, delete this plan.

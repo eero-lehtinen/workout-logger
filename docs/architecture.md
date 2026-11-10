@@ -68,6 +68,7 @@ Principles:
 | Components | Base UI (`@base-ui/react`) | Headless, accessible primitives from the Radix authors, actively released since v1; Radix Primitives releases have slowed. Styling is our own. Its bundled docs (`node_modules/@base-ui/react/docs`) match the installed version. |
 | React compilation | React Compiler (`babel-plugin-react-compiler` through `@rolldown/plugin-babel`) | Automatic memoization; no hand-written `useMemo`/`useCallback`. The native Rust port in `@vitejs/plugin-react` is still experimental. |
 | Icons | `lucide-react` | Tree-shaken SVG icons. |
+| Dates | `Temporal` (built in) | Calendar dates in a session's zone, week starts, and day counts in `core` without DST arithmetic or a date library. Shipped in Chrome 144, Firefox 139, and Node 26; the Android WebView follows Chrome. Safari doesn't have it yet, which matches the platform scope (no iOS). |
 | Validation | Valibot | Small and fast at runtime and in type-checking. Used where stored or imported data may come from another app version, e.g. settings. |
 | Worker RPC | Comlink | Calls into the DB worker and proxies change events back. |
 | Lint/format | Biome | One fast tool for both. |
@@ -119,7 +120,8 @@ store/       Store: write API, undo, change events, deterministic writes
 sync/        HLC, ids, protocol types, client push/pull/apply, the sync run
              (syncOnce) and its HTTP transport, account binding, clock repair
 sync/server/ server push/pull/snapshot, shared with apps/server
-domain/      pure functions: e1RM, markers, prefill, next day, session end, units
+domain/      pure functions: e1RM, markers, prefill, next day, session end, units,
+             calendar dates, history series and records, frequency stats
 queries/     read queries for the UI, each tagged with the tables it reads
 commands/    domain writes for the UI, each one write transaction
 settings.ts  setting keys, defaults, and validation
@@ -132,8 +134,9 @@ testing.ts   in-memory store and server, migration fixture helpers
 
 ```
 db/          DB worker, Comlink client, tab ownership, query and command hooks
-components/  Base UI wrappers and shared UI, styled with Tailwind
-features/    screens by area: session, exercises, routines, settings
+components/  Base UI wrappers and shared UI, styled with Tailwind; chart/ is
+             the chart API the screens use, independent of the library
+features/    screens by area: session, history, exercises, routines, settings
 lib/         formatting, the rest timer and its web and Android alarms,
              storage persistence, PWA install, the account and sign-in, the
              sync scheduler, and the Android-only parts: snapshot files, the
