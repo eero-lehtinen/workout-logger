@@ -1,5 +1,25 @@
 export { createKysely, type Driver, type Statement } from "./db/driver.ts";
 export { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./domain/e1rm.ts";
+export {
+  type MarkerOptions,
+  markPerformances,
+  type ProgressMarker,
+  type SetValues,
+} from "./domain/markers.ts";
+export { type DayRef, nextDay } from "./domain/next-day.ts";
+export {
+  compareOrder,
+  type Ordered,
+  positionBetween,
+  positionsBetween,
+} from "./domain/position.ts";
+export { prefillNextSet } from "./domain/prefill.ts";
+export {
+  DEFAULT_IDLE_THRESHOLD_MS,
+  type EffectiveEnd,
+  effectiveSessionEnd,
+} from "./domain/session-end.ts";
+export * from "./domain/units.ts";
 export { MIGRATIONS } from "./migrations/index.ts";
 export {
   type MigrateOptions,
