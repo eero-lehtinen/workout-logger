@@ -10,10 +10,8 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: phases 0–4 of [docs/implementation-plan.md](docs/implementation-plan.md)
-are done. Phase 5 (Android app) is built and partly verified on a device; a first
-release and the rest of the rest timer test matrix are open;
-phase 6 (server, sync) is next. `apps/web` is a local-only PWA
+Status: phases 0–5 of [docs/implementation-plan.md](docs/implementation-plan.md)
+are done; phase 6 (server, sync) is next. `apps/web` is a local-only PWA
 for logging workouts: the DB worker, tab ownership, sessions, the logging
 view, routines, exercises, settings, snapshots, and the web rest timer, with
 Storybook stories and Playwright tests. `packages/core` has the DB drivers,

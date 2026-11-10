@@ -358,7 +358,7 @@ In the UI, the rest timer (`lib/rest-timer.ts`) owns what is shown and delegates
 
 #### Device test results
 
-From the phase 1 spike. The app runs the same service and alert code, but the matrix has not been repeated in it yet. On the owner's OnePlus 12R (CPH2581), Android 16 (API 36.0), OxygenOS 16.0.10.601, app targeting API 36. Checked through `dumpsys` (audio player state, focus, ducking, vibration, wake locks), not by ear. Latency is the time from the scheduled end of the rest to the alert.
+From the phase 1 spike; the app runs the same service and alert code. On the owner's OnePlus 12R (CPH2581), Android 16 (API 36.0), OxygenOS 16.0.10.601, app targeting API 36. Checked through `dumpsys` (audio player state, focus, ducking, vibration, wake locks), not by ear. Latency is the time from the scheduled end of the rest to the alert.
 
 | Case | Countdown service |
 | --- | --- |

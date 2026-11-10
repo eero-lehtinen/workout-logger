@@ -129,7 +129,7 @@ part of phase 6's deployment that doesn't need the server.
 Result: served at <https://lift.eerolehtinen.fi>, deployed on every push to
 `main` ([deployment.md](deployment.md)).
 
-## Phase 5: Android app (M)
+## Phase 5: Android app (M) [done]
 
 - `apps/android`: Capacitor shell over the web build, with the scheme, hostname, and app id fixed as in [architecture.md](architecture.md#storage-durability).
 - RestTimer plugin as designed in [architecture.md](architecture.md#rest-timer): the countdown service with its live notification, start/adjust/cancel, the alert.
@@ -138,24 +138,24 @@ Result: served at <https://lift.eerolehtinen.fi>, deployed on every push to
 
 **Exit:** the release APK installs on the phone, and the rest timer passes the phase 1 test matrix in the real app.
 
-Result: everything above is built, and debug and signed release APKs build
-locally and in CI. The repository is private, so the update check goes
-through the server instead of GitHub directly
-([deployment.md](deployment.md#android-releases)). `minSdk` is 30, and the
-keep-screen-on setting also works in browsers
-([architecture.md](architecture.md#app-shell)).
+Result: released as `v0.1.0` to `v0.1.2`, installed on the owner's phone
+from the release APK, and updated in place through the app's update prompt.
+The repository is private, so the update check goes through the server
+instead of GitHub directly ([deployment.md](deployment.md#android-releases)).
+`minSdk` is 30, the keep-screen-on setting also works in browsers, and an
+alert volume setting was added ([architecture.md](architecture.md#app-shell)).
 
-Checked with a debug build on the owner's phone (Android 16, WebView 157),
-driven over adb and the WebView's DevTools:
+Checked on the phone (Android 16, WebView 157): the database survives
+installs over the top and background and resume; the service, countdown
+notification, and alert work in the foreground and with the phone locked
+(alert 20 ms after the end); keep-screen-on; snapshot files. Device testing
+found and fixed two bugs: a `resume` without a `freeze` left the app waiting
+for its own database lock, and the update download was answered by the web
+app's service worker in the phone's browser.
 
-- The database opens, survives an install over the top, and stays open across background and resume. The first run found the tab-ownership `resume` handler leaving the app waiting for its own lock ([architecture.md](architecture.md#tab-ownership)).
-- Logging a set starts the service with its countdown notification and wake lock. The alert played as an alarm with audio focus 21 ms after the end in the foreground and 20 ms after it with the phone locked and dozing.
-- The notification permission prompt, the status bar inset, keep-screen-on (window flag set only while a session runs), and a valid snapshot file in `Documents/WorkoutLogger/` after ending a session.
-
-Open, so the phase is not marked done:
-
-1. A release: tag `v0.1.0` after this is on `main`, install the APK from `/api/android/apk`, and see the update prompt with a second release. The CI jobs and the update endpoints have not run yet. `GITHUB_RELEASES_TOKEN` is already set in Dokploy.
-2. The rest of the rest timer matrix from [architecture.md](architecture.md#device-test-results) in the app: silent mode, DND, music playing, swiped away, plus the notification's "+15 s" and "Skip" and a cold start during a rest.
+The rest timer matrix for silent mode, DND, music, and swipe-away was not
+repeated in the app; it passed in the phase 1 spike with the same service
+and alert code ([architecture.md](architecture.md#device-test-results)).
 ## Phase 6: Server, sync, deployment (L)
 
 Owner-only at first; multi-user hardening is phase 11.
