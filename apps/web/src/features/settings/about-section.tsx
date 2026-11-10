@@ -7,7 +7,6 @@ import {
   checkForUpdate,
   downloadUpdate,
 } from "../../lib/app-update.ts";
-import { formatDateTime } from "../../lib/format.ts";
 import { checkForLiveUpdate } from "../../lib/live-update.ts";
 import { isNative } from "../../lib/platform.ts";
 import { Row, Section } from "./settings-rows.tsx";
@@ -22,12 +21,17 @@ export function AboutSection() {
   );
 }
 
+const buildTimeFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 function webBuild(): string {
   const commit = import.meta.env.BUILD_COMMIT;
   const time = Date.parse(import.meta.env.BUILD_TIME);
   return [
     commit ? commit.slice(0, 7) : "Unknown commit",
-    Number.isNaN(time) ? null : `built ${formatDateTime(time)}`,
+    Number.isNaN(time) ? null : `built ${buildTimeFormat.format(time)}`,
   ]
     .filter(Boolean)
     .join(", ");
