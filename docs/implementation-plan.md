@@ -12,6 +12,8 @@ Update this file as phases complete or the plan changes. Mark completed phases
 Sizes are relative: S ≈ a few sessions, M ≈ one to two weeks of evenings,
 L ≈ several weeks.
 
+These are human estimates. AI agents can do large phases very quickly.
+
 ## Milestones
 
 | Milestone | After phase | Meaning |
