@@ -1,4 +1,4 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
   type ExerciseDetail,
   type ExerciseType,
@@ -8,8 +8,9 @@ import {
 } from "@workout-logger/core";
 import { MUSCLE_GROUPS } from "@workout-logger/exercises";
 import { clsx } from "clsx";
+import { Copy } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { Button, buttonClass } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
@@ -54,8 +55,24 @@ export function EditExercisePage() {
   return <ExerciseForm key={exercise.id} exercise={exercise} back={back} />;
 }
 
+const newRoute = getRouteApi("/exercises/new");
+
 export function NewExercisePage() {
+  const { from } = newRoute.useSearch();
+  if (from) return <CopyExercise key={from} from={from} />;
   return <ExerciseForm exercise={null} back={TO_EXERCISES} />;
+}
+
+/** A new exercise prefilled from an existing one; nothing is saved until Create. */
+function CopyExercise({ from }: { from: string }) {
+  const source = useDbQuery("exerciseDetail", { exerciseId: from });
+  return (
+    <ExerciseForm
+      exercise={null}
+      initial={source && { ...source, name: `${source.name} (copy)` }}
+      back={TO_EXERCISES}
+    />
+  );
 }
 
 /** No option chosen means the exercise doesn't target the muscle. */
@@ -72,11 +89,16 @@ function factorValue(factor: number | undefined): FactorValue | null {
 
 function ExerciseForm({
   exercise,
+  initial,
   back,
 }: {
+  /** The exercise being edited; null creates a new one. */
   exercise: ExerciseDetail | null;
+  /** Starting values for a new exercise, e.g. a copy. */
+  initial?: ExerciseDetail | null;
   back: Back;
 }) {
+  const start = exercise ?? initial ?? null;
   const muscles = useDbQuery("muscles");
   const settings = useDbQuery("settings");
   const unit = settings.weight_unit;
@@ -87,22 +109,20 @@ function ExerciseForm({
       ? navigate({ to: back.to })
       : navigate({ to: back.to, params: back.params });
 
-  const [name, setName] = useState(exercise?.name ?? "");
-  const [type, setType] = useState<ExerciseType>(
-    exercise?.type ?? "weight_reps",
-  );
+  const [name, setName] = useState(start?.name ?? "");
+  const [type, setType] = useState<ExerciseType>(start?.type ?? "weight_reps");
   const [targets, setTargets] = useState<Record<string, number>>(
-    exercise?.muscles ?? {},
+    start?.muscles ?? {},
   );
   const [rest, setRest] = useState(
-    exercise?.defaultRestS == null ? "" : formatDuration(exercise.defaultRestS),
+    start?.defaultRestS == null ? "" : formatDuration(start.defaultRestS),
   );
   const [increment, setIncrement] = useState(
-    exercise?.weightIncrementKg == null
+    start?.weightIncrementKg == null
       ? ""
-      : String(roundTo(fromKg(exercise.weightIncrementKg, unit), 3)),
+      : String(roundTo(fromKg(start.weightIncrementKg, unit), 3)),
   );
-  const [notes, setNotes] = useState(exercise?.notes ?? "");
+  const [notes, setNotes] = useState(start?.notes ?? "");
 
   const hasPrimary = Object.values(targets).includes(1);
   const restS = rest.trim() ? parseDuration(rest) : null;
@@ -140,7 +160,13 @@ function ExerciseForm({
       width="medium"
       header={
         <PageHeader
-          title={exercise ? "Edit exercise" : "New exercise"}
+          title={
+            exercise
+              ? "Edit exercise"
+              : initial
+                ? "Copy exercise"
+                : "New exercise"
+          }
           subtitle={
             exercise?.builtin
               ? "Built in. Your changes are kept over catalog updates."
@@ -268,7 +294,12 @@ function ExerciseForm({
           </Field>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" disabled={invalid}>
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full sm:w-auto"
+              disabled={invalid}
+            >
               {exercise ? "Save exercise" : "Create exercise"}
             </Button>
             {exercise && (
@@ -283,6 +314,16 @@ function ExerciseForm({
               >
                 {exercise.archived ? "Unarchive" : "Archive"}
               </Button>
+            )}
+            {exercise && (
+              <Link
+                to="/exercises/new"
+                search={{ from: exercise.id }}
+                className={buttonClass()}
+              >
+                <Copy size={16} />
+                Copy as new
+              </Link>
             )}
           </div>
         </div>

@@ -67,6 +67,43 @@ export const WithArchived = pageStory({
   },
 });
 
+export const CopyAsNew = pageStory({
+  fixture: empty,
+  url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Copy as new" }),
+    );
+    await canvas.findByRole("heading", { name: "Copy exercise" });
+    const name = canvas.getByRole("textbox", { name: "Name" });
+    await expect(name).toHaveValue("Bench Press (Barbell) (copy)");
+    const chest = within(canvas.getByRole("group", { name: "Chest" }));
+    await expect(
+      chest.getByRole("button", { name: "Primary" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.clear(name);
+    await userEvent.type(name, "Bench Press (Close Grip Pause)");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Create exercise" }),
+    );
+
+    const search = await canvas.findByRole("searchbox", {
+      name: "Search exercises",
+    });
+    await userEvent.type(search, "bench press barbell");
+    await expect(
+      await canvas.findByText("Bench Press (Barbell)"),
+    ).toBeVisible();
+    await userEvent.clear(search);
+    await userEvent.type(search, "close grip pause");
+    await expect(
+      await canvas.findByText("Bench Press (Close Grip Pause)"),
+    ).toBeVisible();
+  },
+});
+
 export const BrowserPc = pageStory({
   fixture: empty,
   url: () => "/exercises",
