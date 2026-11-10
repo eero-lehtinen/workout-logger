@@ -1,17 +1,108 @@
 # The Dokploy compose service "workout-logger". CI fills in IMAGE_TAG with the
 # commit SHA and uploads this file on every deploy, so edits in the
 # Dokploy UI are overwritten. Dokploy adds the Traefik labels and
-# dokploy-network for the domain. See docs/deployment.md.
+# dokploy-network for the domain. Secrets are set in the service's
+# environment settings in Dokploy. See docs/deployment.md.
+
+x-litestream-env: &litestream-env
+  LITESTREAM_R2_ENDPOINT: ${LITESTREAM_R2_ENDPOINT:?}
+  LITESTREAM_R2_BUCKET: ${LITESTREAM_R2_BUCKET:?}
+  LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_R2_ACCESS_KEY_ID:?}
+  LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_R2_SECRET_ACCESS_KEY:?}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
+  # Restores app.db from the replica on a fresh volume; does nothing when the
+  # database exists or the replica is empty. Runs as root to hand the volumes
+  # to the node user (uid 1000), which the app and Litestream run as.
+  litestream-init:
+    image: litestream/litestream:0.5.18
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        litestream restore -config /etc/litestream.yml
+        -if-db-not-exists -if-replica-exists /data/app.db
+        && chown -R 1000:1000 /data /run/litestream
+    environment: *litestream-env
+    configs:
+      - source: litestream
+        target: /etc/litestream.yml
+    volumes:
+      - data:/data
+      - litestream-run:/run/litestream
+    logging: *logging
+
+  litestream:
+    image: litestream/litestream:0.5.18
+    user: "1000:1000"
+    command: ["replicate", "-config", "/etc/litestream.yml"]
+    restart: unless-stopped
+    depends_on:
+      litestream-init:
+        condition: service_completed_successfully
+    environment: *litestream-env
+    configs:
+      - source: litestream
+        target: /etc/litestream.yml
+    volumes:
+      - data:/data
+      - litestream-run:/run/litestream
+    logging: *logging
+
   app:
     image: ghcr.io/eero-lehtinen/workout-logger:${IMAGE_TAG}
     restart: unless-stopped
+    depends_on:
+      litestream-init:
+        condition: service_completed_successfully
+      litestream:
+        condition: service_started
     environment:
-      # Set in the service's environment settings in Dokploy. Empty turns the
-      # Android update endpoints off.
+      PUBLIC_URL: https://lift.eerolehtinen.fi
+      AUTH_SECRET: ${AUTH_SECRET:?}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?}
+      BACKUP_R2_ENDPOINT: ${BACKUP_R2_ENDPOINT:?}
+      BACKUP_R2_BUCKET: ${BACKUP_R2_BUCKET:?}
+      BACKUP_R2_ACCESS_KEY_ID: ${BACKUP_R2_ACCESS_KEY_ID:?}
+      BACKUP_R2_SECRET_ACCESS_KEY: ${BACKUP_R2_SECRET_ACCESS_KEY:?}
+      LITESTREAM_SOCKET: /run/litestream/litestream.sock
+      MIN_CLIENT_VERSION: ${MIN_CLIENT_VERSION:-}
+      # Empty turns the Android update endpoints off.
       GITHUB_RELEASES_TOKEN: ${GITHUB_RELEASES_TOKEN:-}
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "3"
+    volumes:
+      - data:/data
+      - litestream-run:/run/litestream
+    logging: *logging
+
+volumes:
+  data:
+  # Litestream's control socket; the app reads the replica's last sync from it.
+  litestream-run:
+
+configs:
+  # $$ keeps the variables for Litestream to expand at runtime, so the
+  # secrets never land in the file.
+  litestream:
+    content: |
+      socket:
+        enabled: true
+        path: /run/litestream/litestream.sock
+      snapshot:
+        interval: 24h
+        retention: 336h
+      dbs:
+        - path: /data/app.db
+          replica:
+            type: s3
+            endpoint: $${LITESTREAM_R2_ENDPOINT}
+            bucket: $${LITESTREAM_R2_BUCKET}
+            path: app.db
+            region: auto
+            sync-interval: 10s

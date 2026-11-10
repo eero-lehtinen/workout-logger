@@ -12,7 +12,8 @@ apps/android
 .claude
 docs
 
-# Personal training and health data; never sent to the build.
-data
+# Personal training and health data, including a local server database in
+# apps/server/data; never sent to the build.
+**/data
 **/*.fitnotes
 **/.env*
