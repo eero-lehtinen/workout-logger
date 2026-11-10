@@ -1,0 +1,21 @@
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+*.log
+*.iml
+.idea/
+.kotlin/
+captures/
+.cxx/
+
+# Written by `cap sync`: plugin wiring with paths into node_modules, and
+# the web build.
+capacitor.settings.gradle
+app/capacitor.build.gradle
+capacitor-cordova-android-plugins/
+app/src/main/assets/
+app/src/main/res/xml/config.xml

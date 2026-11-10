@@ -10,6 +10,7 @@
     "e2e",
     ".storybook",
     "vite.config.ts",
+    "capacitor.config.ts",
     "vitest.storybook.config.ts",
     "playwright.config.ts"
   ]

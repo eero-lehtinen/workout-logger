@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The web app's page background (the chalk token in styles.css), shown until the WebView paints. -->
+    <color name="chalk">#eceae6</color>
+    <color name="icon_background">#1b2226</color>
+    <color name="icon_plate">#eceeed</color>
+</resources>

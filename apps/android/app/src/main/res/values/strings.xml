@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Workouts</string>
+
+    <string name="rest_channel_countdown">Rest countdown</string>
+    <string name="rest_channel_alert">Rest over</string>
+    <string name="rest_countdown_title">Resting</string>
+    <string name="rest_action_add">+15 s</string>
+    <string name="rest_action_skip">Skip</string>
+    <string name="rest_over_title">Rest over</string>
+    <string name="rest_over_text">Time for the next set</string>
+</resources>

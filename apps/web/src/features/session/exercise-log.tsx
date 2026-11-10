@@ -20,6 +20,7 @@ import {
   formatTime,
   setUnit,
 } from "../../lib/format.ts";
+import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { type Entry, entryFromSet, setFromEntry } from "./entry.ts";
@@ -140,7 +141,11 @@ function Logger({ log }: { log: ExerciseLog }) {
   ) {
     const id = await command("logSet", { sessionExerciseId, values: set });
     if (id && settings.rest_timer_enabled) {
-      restTimer.start(log.restSeconds, { sessionId, sessionExerciseId });
+      restTimer.start(
+        log.restSeconds,
+        { sessionId, sessionExerciseId },
+        ALERT_VOLUMES[settings.rest_alert_volume],
+      );
     }
     return id;
   }

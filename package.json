@@ -16,6 +16,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "e2e": "pnpm --filter @workout-logger/web e2e",
+    "android:sync": "pnpm --filter @workout-logger/web build && pnpm --filter @workout-logger/web exec cap sync android",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e"
   },
   "devDependencies": {

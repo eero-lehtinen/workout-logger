@@ -6,6 +6,7 @@
 **/.tanstack
 **/.vitest
 **/*.tsbuildinfo
+apps/android
 .git
 .github
 .claude

@@ -1,36 +1,36 @@
 import { useSyncExternalStore } from "react";
+import { toasts } from "../components/toasts.tsx";
+import { isNative } from "./platform.ts";
+import {
+  type AlarmRest,
+  mergeAlarmRest,
+  type RestAlarm,
+  type RestFor,
+  type RestState,
+} from "./rest-alarm.ts";
+import { NativeRestAlarm } from "./rest-alarm-native.ts";
+import { WebRestAlarm } from "./rest-alarm-web.ts";
 
-/**
- * The web rest timer: in-page only, so it alerts only while the page is
- * visible (docs/architecture.md#rest-timer). Android replaces this with the
- * RestTimer plugin in phase 5.
- */
-export interface RestFor {
-  sessionId: string;
-  sessionExerciseId: string;
-}
-
-export interface RestState {
-  endsAt: number;
-  /** The full rest, for restart and progress. */
-  seconds: number;
-  finished: boolean;
-  /** The session exercise whose set started the rest. */
-  for: RestFor | null;
-}
+export type { RestFor, RestState };
 
 const STORAGE_KEY = "rest-timer";
 const MAX_SECONDS = 60 * 60;
 /** How long "Rest over" stays up before it clears itself. */
 export const FINISHED_VISIBLE_MS = 60_000;
 
+/**
+ * The rest countdown shown in the UI. The alert at its end comes from the
+ * alarm: in-page on the web, a foreground service on Android
+ * (docs/architecture.md#rest-timer).
+ */
 class RestTimer {
   #state: RestState | null = load();
   #listeners = new Set<() => void>();
-  #timeout: ReturnType<typeof setTimeout> | undefined;
-  #audio: AudioContext | undefined;
+  #alarm: RestAlarm;
+  #clearTimeout: ReturnType<typeof setTimeout> | undefined;
 
-  constructor() {
+  constructor(alarm: RestAlarm) {
+    this.#alarm = alarm;
     if (
       this.#state &&
       !this.#state.finished &&
@@ -39,9 +39,17 @@ class RestTimer {
       // Ended while the page was closed: show it as over, without an alert.
       this.#set({ ...this.#state, finished: true });
     }
-    this.#schedule();
+    alarm.connect(
+      {
+        finished: () => this.#finish(),
+        synced: (rest) => this.#sync(rest),
+        failed: () => this.#startFailed(),
+      },
+      this.#state,
+    );
+    this.#scheduleClear();
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") this.#schedule();
+      if (document.visibilityState === "visible") this.#scheduleClear();
     });
   }
 
@@ -52,20 +60,15 @@ class RestTimer {
 
   getState = () => this.#state;
 
-  /** Call from a user gesture, so audio is allowed to play at the end. */
-  start(seconds: number, restFor: RestFor | null) {
-    this.#unlockAudio();
+  /** Call from a user gesture; see RestAlarm.arm. */
+  start(seconds: number, restFor: RestFor | null, volume?: number) {
     if (seconds <= 0) {
       this.skip();
       return;
     }
-    this.#set({
-      endsAt: Date.now() + seconds * 1000,
-      seconds,
-      finished: false,
-      for: restFor,
-    });
-    this.#schedule();
+    const endsAt = Date.now() + seconds * 1000;
+    this.#set({ endsAt, seconds, finished: false, for: restFor });
+    this.#alarm.arm(endsAt, volume);
   }
 
   adjust(deltaSeconds: number) {
@@ -75,7 +78,7 @@ class RestTimer {
     const endsAt =
       Date.now() + Math.min(Math.max(remaining, 0), MAX_SECONDS * 1000);
     this.#set({ ...state, endsAt });
-    this.#schedule();
+    this.#alarm.arm(endsAt);
   }
 
   restart() {
@@ -83,62 +86,51 @@ class RestTimer {
   }
 
   skip() {
-    clearTimeout(this.#timeout);
+    this.#alarm.disarm();
     this.#set(null);
   }
 
-  #schedule() {
-    clearTimeout(this.#timeout);
-    const state = this.#state;
-    if (!state) return;
-    const next = state.finished ? () => this.skip() : () => this.#finish();
-    const delay =
-      state.endsAt + (state.finished ? FINISHED_VISIBLE_MS : 0) - Date.now();
-    if (delay <= 0) {
-      next();
-      return;
-    }
-    this.#timeout = setTimeout(next, delay);
+  /** Plays the alert's sound once at `volume` (0..1). Call from a user gesture. */
+  previewAlert(volume: number) {
+    this.#alarm.preview(volume);
   }
 
   #finish() {
     if (!this.#state || this.#state.finished) return;
     this.#set({ ...this.#state, finished: true });
-    this.#alert();
-    this.#schedule();
   }
 
-  #unlockAudio() {
-    try {
-      this.#audio ??= new AudioContext();
-      void this.#audio.resume();
-    } catch {
-      this.#audio = undefined;
+  #sync(rest: AlarmRest | null) {
+    const state = this.#state;
+    if (state?.endsAt === rest?.endsAt && state?.finished === rest?.finished) {
+      return;
     }
+    this.#set(mergeAlarmRest(state, rest, Date.now()));
   }
 
-  #alert() {
-    navigator.vibrate?.([250, 120, 250, 120, 400]);
-    const audio = this.#audio;
-    if (audio?.state !== "running") return;
-    const start = audio.currentTime + 0.02;
-    for (const [i, frequency] of [880, 880, 1175].entries()) {
-      const t = start + i * 0.22;
-      const osc = audio.createOscillator();
-      const gain = audio.createGain();
-      osc.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.4, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-      osc.connect(gain).connect(audio.destination);
-      osc.start(t);
-      osc.stop(t + 0.2);
-    }
+  #startFailed() {
+    this.#set(null);
+    toasts.add({
+      title: "The rest timer didn't start",
+      description: "Android only starts it while the app is open.",
+      type: "error",
+    });
+  }
+
+  /** A finished rest clears itself after FINISHED_VISIBLE_MS. */
+  #scheduleClear() {
+    clearTimeout(this.#clearTimeout);
+    const state = this.#state;
+    if (!state?.finished) return;
+    const delay = state.endsAt + FINISHED_VISIBLE_MS - Date.now();
+    if (delay <= 0) this.skip();
+    else this.#clearTimeout = setTimeout(() => this.skip(), delay);
   }
 
   #set(state: RestState | null) {
     this.#state = state;
     save(state);
+    this.#scheduleClear();
     for (const listener of this.#listeners) listener();
   }
 }
@@ -179,7 +171,9 @@ function save(state: RestState | null) {
   }
 }
 
-export const restTimer = new RestTimer();
+export const restTimer = new RestTimer(
+  isNative ? new NativeRestAlarm() : new WebRestAlarm(),
+);
 
 export function useRestTimer(): RestState | null {
   return useSyncExternalStore(restTimer.subscribe, restTimer.getState);

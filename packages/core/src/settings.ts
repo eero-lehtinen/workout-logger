@@ -28,8 +28,15 @@ export const SETTINGS = {
   },
   rest_default_s: { schema: integer(0, 3600), default: 120 },
   rest_timer_enabled: { schema: v.boolean(), default: true },
+  /** How loud the end-of-rest alert is, relative to the device's own volume. */
+  rest_alert_volume: {
+    schema: v.picklist(["low", "medium", "high"]),
+    default: "high",
+  },
   /** Display only: sessions keep their start and end times either way. */
   session_timer_shown: { schema: v.boolean(), default: true },
+  /** Keeps the screen on while a session is running. */
+  keep_screen_awake: { schema: v.boolean(), default: false },
   idle_threshold_s: {
     schema: integer(60, 24 * 3600),
     default: DEFAULT_IDLE_THRESHOLD_MS / 1000,
