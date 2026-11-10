@@ -18,29 +18,44 @@ import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
 
 const route = getRouteApi("/exercises/$exerciseId");
 
+/** Where the editor returns to: the exercise list, or the logging screen it was opened from. */
+type Back =
+  | { to: "/exercises"; label: string }
+  | {
+      to: "/sessions/$sessionId/$sessionExerciseId";
+      params: { sessionId: string; sessionExerciseId: string };
+      label: string;
+    };
+
+const TO_EXERCISES: Back = { to: "/exercises", label: "Back to exercises" };
+
 export function EditExercisePage() {
   const { exerciseId } = route.useParams();
+  const search = route.useSearch();
+  const back: Back =
+    "sessionId" in search
+      ? {
+          to: "/sessions/$sessionId/$sessionExerciseId",
+          params: search,
+          label: "Back to logging",
+        }
+      : TO_EXERCISES;
   const exercise = useDbQuery("exerciseDetail", { exerciseId });
   if (!exercise) {
     return (
       <Screen
-        header={
-          <PageHeader
-            title="Exercise"
-            back={{ to: "/exercises", label: "Back to exercises" }}
-          />
-        }
+        header={<PageHeader title="Exercise" back={back} />}
         scrollId="exercise-deleted"
       >
         <Empty>This exercise was deleted.</Empty>
       </Screen>
     );
   }
-  return <ExerciseForm key={exercise.id} exercise={exercise} />;
+  return <ExerciseForm key={exercise.id} exercise={exercise} back={back} />;
 }
 
 export function NewExercisePage() {
-  return <ExerciseForm exercise={null} />;
+  return <ExerciseForm exercise={null} back={TO_EXERCISES} />;
 }
 
 /** No option chosen means the exercise doesn't target the muscle. */
@@ -55,12 +70,22 @@ function factorValue(factor: number | undefined): FactorValue | null {
   return factor === 1 ? "1" : factor === 0.5 ? "0.5" : null;
 }
 
-function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
+function ExerciseForm({
+  exercise,
+  back,
+}: {
+  exercise: ExerciseDetail | null;
+  back: Back;
+}) {
   const muscles = useDbQuery("muscles");
   const settings = useDbQuery("settings");
   const unit = settings.weight_unit;
   const command = useCommand();
   const navigate = useNavigate();
+  const goBack = () =>
+    back.to === "/exercises"
+      ? navigate({ to: back.to })
+      : navigate({ to: back.to, params: back.params });
 
   const [name, setName] = useState(exercise?.name ?? "");
   const [type, setType] = useState<ExerciseType>(
@@ -103,9 +128,9 @@ function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
     };
     if (exercise) {
       await command("updateExercise", { exerciseId: exercise.id, ...fields });
-      await navigate({ to: "/exercises" });
+      await goBack();
     } else if (await command("createExercise", fields)) {
-      await navigate({ to: "/exercises" });
+      await goBack();
     }
   }
 
@@ -121,7 +146,7 @@ function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
               ? "Built in. Your changes are kept over catalog updates."
               : undefined
           }
-          back={{ to: "/exercises", label: "Back to exercises" }}
+          back={back}
         />
       }
     >
@@ -253,7 +278,7 @@ function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
                     exerciseId: exercise.id,
                     archived: !exercise.archived,
                   });
-                  await navigate({ to: "/exercises" });
+                  await goBack();
                 }}
               >
                 {exercise.archived ? "Unarchive" : "Archive"}

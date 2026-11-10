@@ -1,4 +1,4 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
   type EffectiveEnd,
   type ExerciseLog,
@@ -8,9 +8,9 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowLeftRight, ChevronDown } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, IconButton } from "../../components/button.tsx";
+import { Button, buttonClass, IconButton } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
@@ -187,6 +187,15 @@ function Logger({ log }: { log: ExerciseLog }) {
   const previous = log.previous[0];
   const earlier = log.previous.slice(1);
 
+  const settingsLink = {
+    to: "/exercises/$exerciseId",
+    params: { exerciseId: exercise.id },
+    search: {
+      sessionId: log.session.id,
+      sessionExerciseId: log.sessionExerciseId,
+    },
+  } as const;
+
   const header = (
     <>
       <PageHeader
@@ -198,18 +207,32 @@ function Logger({ log }: { log: ExerciseLog }) {
         }}
         className="lg:hidden"
         actions={
-          <IconButton
-            label="Substitute exercise"
-            onClick={() => setSubstituting(true)}
-          >
-            <ArrowLeftRight size={20} />
-          </IconButton>
+          <>
+            <Link
+              {...settingsLink}
+              aria-label="Exercise settings"
+              title="Exercise settings"
+              className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+            >
+              <SlidersHorizontal size={20} />
+            </Link>
+            <IconButton
+              label="Substitute exercise"
+              onClick={() => setSubstituting(true)}
+            >
+              <ArrowLeftRight size={20} />
+            </IconButton>
+          </>
         }
       />
       <div className="hidden items-center gap-2 pt-6 lg:flex">
         <h1 className="flex-1 truncate text-2xl font-semibold">
           {exercise.name}
         </h1>
+        <Link {...settingsLink} className={buttonClass("ghost", "sm")}>
+          <SlidersHorizontal size={17} />
+          Settings
+        </Link>
         <Button size="sm" variant="ghost" onClick={() => setSubstituting(true)}>
           <ArrowLeftRight size={17} />
           Substitute

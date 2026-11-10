@@ -121,6 +121,32 @@ export const EarlierSessions = pageStory({
   },
 });
 
+export const SettingsFromLogging = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Exercise settings" }),
+    );
+    await canvas.findByRole("heading", { name: "Edit exercise" });
+    await expect(
+      canvas.getByRole("link", { name: "Back to logging" }),
+    ).toBeVisible();
+    const rest = canvas.getByLabelText(/Rest time/);
+    await userEvent.clear(rest);
+    await userEvent.type(rest, "3:00");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save exercise" }),
+    );
+
+    await canvas.findByRole("button", { name: "Log set 3" });
+    await userEvent.click(canvas.getByRole("button", { name: "Log set 3" }));
+    // The countdown may already have ticked once.
+    await expect(await canvas.findByText(/^(3:00|2:5\d)$/)).toBeVisible();
+  },
+});
+
 export const EditSetInFooter = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
