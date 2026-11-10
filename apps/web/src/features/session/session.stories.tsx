@@ -36,6 +36,18 @@ export const PastSessionReadOnly = pageStory({
   },
 });
 
+export const PastSessionDark = pageStory({
+  fixture: withHistory,
+  url: (ids) => `/sessions/${ids.pastSessionId}`,
+  theme: "dark",
+});
+
+export const PastSessionPc = pageStory({
+  fixture: withHistory,
+  url: (ids) => `/sessions/${ids.pastSessionId}`,
+  viewport: "pc",
+});
+
 export const PastSessionToHistoryAndBack = pageStory({
   fixture: withHistory,
   url: (ids) => `/sessions/${ids.pastSessionId}`,

@@ -32,13 +32,12 @@ import { useDbQuery } from "../../db/react.tsx";
 import {
   dateFromIso,
   formatSessionDate,
-  formatSet,
   formatWeightWithUnit,
   todayIso,
 } from "../../lib/format.ts";
 import { usePreference, useSwitchPreference } from "../../lib/preference.ts";
 import { backToOrigin, type Origin, originOf } from "../exercises/origin.ts";
-import { Marker } from "../session/marker.tsx";
+import { SetLine } from "../session/set-line.tsx";
 import {
   formatMetric,
   formatTrendRate,
@@ -375,26 +374,12 @@ function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
               to="/sessions/$sessionId"
               params={{ sessionId: p.sessionId }}
               search={{ exerciseId: history.exercise.id }}
-              className={`${rowClass} block py-2`}
+              className={`${rowClass} block py-2.5`}
             >
-              <p className="text-sm text-ink-muted">
+              <p className="pb-1 text-sm font-medium">
                 {formatSessionDate(p.startedAt, p.tz)}
               </p>
-              <ul className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {p.sets.map((set) => (
-                  <li
-                    key={set.id}
-                    className="numerals inline-flex items-center gap-0.5 text-lg"
-                  >
-                    {formatSet(set, history.exercise.type, unit)}
-                    <Marker
-                      marker={set.marker}
-                      type={history.exercise.type}
-                      unit={unit}
-                    />
-                  </li>
-                ))}
-              </ul>
+              <SetLine sets={p.sets} type={history.exercise.type} unit={unit} />
             </Link>
           </li>
         ))}

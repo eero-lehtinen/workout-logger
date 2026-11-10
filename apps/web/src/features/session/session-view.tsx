@@ -12,7 +12,7 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
+import { Check, ChevronRight, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -31,6 +31,7 @@ import {
 } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
+import { SetLine } from "./set-line.tsx";
 
 const route = getRouteApi("/sessions/$sessionId");
 
@@ -57,6 +58,19 @@ export function SessionLayout() {
       </Screen>
     );
   }
+  return <SessionPanes key={view.session.id} view={view} logging={logging} />;
+}
+
+function SessionPanes(props: { view: SessionView; logging: boolean }) {
+  const { view, logging } = props;
+  const [editing, setEditing] = useState(false);
+  const readOnly = useReadOnly(view, editing) && !logging;
+  // A past session is a page of its own: there is nothing to log beside it.
+  if (readOnly) {
+    return (
+      <SessionPanel view={view} readOnly onEdit={() => setEditing(true)} />
+    );
+  }
   // Wide screens: the list and the logging pane side by side, each scrolling
   // on its own.
   return (
@@ -67,12 +81,37 @@ export function SessionLayout() {
           logging && "hidden lg:block",
         )}
       >
-        <SessionPanel key={view.session.id} view={view} />
+        <SessionPanel view={view} readOnly={false} />
       </div>
       <div className={clsx("h-full", !logging && "hidden lg:block")}>
         <Outlet />
       </div>
     </div>
+  );
+}
+
+/**
+ * Whether the session opens read-only: it has ended, on an earlier day.
+ * Today's sessions stay editable, since an idle end may only be a long rest.
+ */
+function useReadOnly(view: SessionView, editing: boolean): boolean {
+  const { session } = view;
+  const settings = useDbQuery("settings");
+  const now = useNow();
+  const ended = !effectiveSessionEnd(
+    {
+      started_at: session.startedAt,
+      ended_at: session.endedAt,
+      end_reason: session.endReason,
+    },
+    session.lastSetAt,
+    now,
+    settings.idle_threshold_s * 1000,
+  ).running;
+  return (
+    !editing &&
+    ended &&
+    localDate(session.startedAt, deviceTimeZone()) !== todayIso()
   );
 }
 
@@ -85,30 +124,18 @@ export function SessionIndex() {
   );
 }
 
-function SessionPanel({ view }: { view: SessionView }) {
+function SessionPanel(props: {
+  view: SessionView;
+  readOnly: boolean;
+  onEdit?: () => void;
+}) {
+  const { view, readOnly } = props;
   const { session } = view;
   const settings = useDbQuery("settings");
   const command = useCommand();
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const now = useNow();
-  const ended = !effectiveSessionEnd(
-    {
-      started_at: session.startedAt,
-      ended_at: session.endedAt,
-      end_reason: session.endReason,
-    },
-    session.lastSetAt,
-    now,
-    settings.idle_threshold_s * 1000,
-  ).running;
-  // Today's sessions stay editable: an idle end may only be a long rest.
-  const readOnly =
-    !editing &&
-    ended &&
-    localDate(session.startedAt, deviceTimeZone()) !== todayIso();
   const unit = settings.weight_unit as WeightUnit;
   const search = route.useSearch();
   const date = localDate(session.startedAt, session.tz);
@@ -129,7 +156,7 @@ function SessionPanel({ view }: { view: SessionView }) {
   return (
     <Screen
       scrollId="session"
-      width="pane"
+      width={readOnly ? "narrow" : "pane"}
       header={
         <PageHeader
           title={session.dayName ?? "Ad hoc session"}
@@ -142,11 +169,7 @@ function SessionPanel({ view }: { view: SessionView }) {
           back={back}
           actions={
             readOnly ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
+              <Button variant="ghost" size="sm" onClick={props.onEdit}>
                 <Pencil size={16} />
                 Edit
               </Button>
@@ -173,6 +196,7 @@ function SessionPanel({ view }: { view: SessionView }) {
             view={view}
             idleThresholdS={settings.idle_threshold_s}
             showElapsed={settings.session_timer_shown}
+            readOnly={readOnly}
           />
         </PageHeader>
       }
@@ -289,44 +313,51 @@ function SessionPanel({ view }: { view: SessionView }) {
 function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
   const { view, unit } = props;
   if (view.exercises.length === 0) return <Empty>No exercises.</Empty>;
+  const weighted = view.exercises.some(
+    (e) => e.type === "weight_reps" || e.type === "bodyweight_reps",
+  );
   return (
-    <ul className={listClass}>
-      {view.exercises.map((exercise) => (
-        <li key={exercise.id}>
-          <Link
-            to="/exercises/$exerciseId/history"
-            params={{ exerciseId: exercise.exerciseId }}
-            search={{ sessionId: view.session.id }}
-            className={`${rowClass} block py-2.5`}
-          >
-            <p className="font-medium">
-              {exercise.name}
-              {exercise.substitutesName && (
-                <span className="font-normal text-ink-muted">
-                  {" "}
-                  for {exercise.substitutesName}
-                </span>
-              )}
-            </p>
-            {exercise.sets.length === 0 ? (
-              <p className="text-sm text-ink-muted">No sets</p>
-            ) : (
-              <ol className="flex flex-wrap gap-x-3">
-                {exercise.sets.map((set, i) => (
-                  <li
-                    // biome-ignore lint/suspicious/noArrayIndexKey: sets in order, read only
-                    key={i}
-                    className="numerals text-lg"
-                  >
-                    {formatSet(set, exercise.type, unit)}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className={`${listClass} gap-1`}>
+        {view.exercises.map((exercise) => (
+          <li key={exercise.id}>
+            <Link
+              to="/exercises/$exerciseId/history"
+              params={{ exerciseId: exercise.exerciseId }}
+              search={{ sessionId: view.session.id }}
+              className={`${rowClass} flex items-center gap-3 py-3`}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="pb-1 font-medium">
+                  {exercise.name}
+                  {exercise.substitutesName && (
+                    <span className="font-normal text-ink-muted">
+                      {" "}
+                      for {exercise.substitutesName}
+                    </span>
+                  )}
+                </p>
+                {exercise.sets.length === 0 ? (
+                  <p className="text-sm text-ink-muted">No sets</p>
+                ) : (
+                  <SetLine
+                    sets={exercise.sets}
+                    type={exercise.type}
+                    unit={unit}
+                  />
+                )}
+              </div>
+              <ChevronRight size={18} className="shrink-0 text-ink-muted" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {weighted && (
+        <p className="px-4 pt-2 text-xs text-ink-muted lg:px-0">
+          Weights in {unit}.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -352,6 +383,8 @@ function SessionTimer(props: {
   view: SessionView;
   idleThresholdS: number;
   showElapsed: boolean;
+  /** A past session being viewed: a quiet summary, nothing to press. */
+  readOnly: boolean;
 }) {
   const { session } = props.view;
   const command = useCommand();
@@ -388,6 +421,16 @@ function SessionTimer(props: {
           End session
         </Button>
       </div>
+    );
+  }
+  if (props.readOnly) {
+    const sets = `${session.setCount} ${session.setCount === 1 ? "set" : "sets"}`;
+    return (
+      <p className="text-[0.9375rem] text-ink-muted">
+        {end.reason === "unknown"
+          ? `${sets}, duration not recorded`
+          : `${formatTime(session.startedAt, session.tz)}–${formatTime(end.endedAt, session.tz)} · ${formatSessionLength(end.endedAt - session.startedAt)} · ${sets}`}
+      </p>
     );
   }
   const ended =
