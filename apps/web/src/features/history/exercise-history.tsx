@@ -21,6 +21,7 @@ import {
   formatSet,
   formatWeightWithUnit,
 } from "../../lib/format.ts";
+import { backToOrigin, originOf } from "../exercises/origin.ts";
 import { Marker } from "../session/marker.tsx";
 import {
   formatMetric,
@@ -40,14 +41,8 @@ export function ExerciseHistoryPage() {
   const history = useDbQuery("exerciseHistory", { exerciseId });
   const settings = useDbQuery("settings");
   const unit = settings.weight_unit as WeightUnit;
-  const fromSession = "sessionId" in search ? search : null;
-  const back = fromSession
-    ? {
-        to: "/sessions/$sessionId/$sessionExerciseId" as const,
-        params: fromSession,
-        label: "Back to logging",
-      }
-    : { to: "/exercises" as const, label: "Back to exercises" };
+  const origin = originOf(search);
+  const back = backToOrigin(origin);
 
   if (!history) {
     return (
@@ -76,7 +71,7 @@ export function ExerciseHistoryPage() {
             <Link
               to="/exercises/$exerciseId"
               params={{ exerciseId }}
-              search={fromSession ?? {}}
+              search={{ ...origin, from: "history" }}
               aria-label="Edit exercise"
               title="Edit exercise"
               className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
@@ -206,6 +201,7 @@ function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
             <Link
               to="/sessions/$sessionId"
               params={{ sessionId: p.sessionId }}
+              search={{ exerciseId: history.exercise.id }}
               className={`${rowClass} block py-2`}
             >
               <p className="text-sm text-ink-muted">

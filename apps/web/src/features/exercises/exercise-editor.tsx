@@ -16,6 +16,7 @@ import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
+import { backToOrigin, type Origin, originOf } from "./origin.ts";
 
 const route = getRouteApi("/exercises/$exerciseId");
 
@@ -28,6 +29,7 @@ type Back =
   | {
       to: "/exercises/$exerciseId/history";
       params: { exerciseId: string };
+      search: Origin;
       label: string;
     }
   | {
@@ -41,16 +43,15 @@ const TO_EXERCISES: Back = { to: "/exercises", label: "Back to exercises" };
 export function EditExercisePage() {
   const { exerciseId } = route.useParams();
   const search = route.useSearch();
+  const origin = backToOrigin(search);
   const back: Back =
-    "sessionId" in search
-      ? {
-          to: "/sessions/$sessionId/$sessionExerciseId",
-          params: search,
-          label: "Back to logging",
-        }
+    search.from !== "history" &&
+    origin.to === "/sessions/$sessionId/$sessionExerciseId"
+      ? origin
       : {
           to: "/exercises/$exerciseId/history",
           params: { exerciseId },
+          search: originOf(search),
           label: "Back to history",
         };
   const exercise = useDbQuery("exerciseDetail", { exerciseId });

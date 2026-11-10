@@ -3,7 +3,7 @@ import { localDate } from "@workout-logger/core";
 import { exerciseId } from "@workout-logger/exercises";
 import { expect, userEvent, within } from "storybook/test";
 import { deviceTimeZone } from "../../lib/format.ts";
-import { empty, withHistory } from "../../stories/fixtures.ts";
+import { empty, running, withHistory } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
 export default {
@@ -83,6 +83,25 @@ export const ExerciseHistoryTrend = pageStory({
   },
 });
 
+export const ExerciseToSessionAndBack = pageStory({
+  fixture: withHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sessions = canvas.getByRole("heading", { name: "Sessions" })
+      .parentElement as HTMLElement;
+    const [newest] = within(sessions).getAllByRole("link");
+    if (!newest) throw new Error("no sessions listed");
+    await userEvent.click(newest);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Back to exercise" }),
+    );
+    await expect(
+      await canvas.findByRole("heading", { name: "Bench Press (Barbell)" }),
+    ).toBeVisible();
+  },
+});
+
 export const ExerciseNeverLogged = pageStory({
   fixture: empty,
   url: () => bench,
@@ -100,6 +119,26 @@ export const ExerciseNeverLogged = pageStory({
   },
 });
 
+/** Logging → history → editor → history → logging keeps the way back. */
+export const HistoryFromLogging = pageStory({
+  fixture: running,
+  url: (ids) =>
+    `${bench}?sessionId=${ids.sessionId}&sessionExerciseId=${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("link", { name: "Edit exercise" }));
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Back to history" }),
+    );
+    await expect(
+      await canvas.findByRole("link", { name: "Back to logging" }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/sessions\/[^/]+\/[^/]+$/),
+    );
+  },
+});
+
 export const Calendar = pageStory({
   fixture: withHistory,
   url: () => `/history?month=${lowerDay().slice(0, 7)}`,
@@ -110,9 +149,18 @@ export const Calendar = pageStory({
     await userEvent.click(cell);
     await expect(cell).toHaveAttribute("aria-pressed", "true");
     const sessions = await canvas.findByRole("region", { name: /^\w+day, / });
+    const session = within(sessions).getByRole("link", { name: /Lower/ });
+    await expect(session).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/sessions\//),
+    );
+    await userEvent.click(session);
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Back to history" }),
+    );
     await expect(
-      within(sessions).getByRole("link", { name: /Lower/ }),
-    ).toHaveAttribute("href", expect.stringMatching(/^\/sessions\//));
+      await canvas.findByRole("button", { name: /:\s*Lower$/, pressed: true }),
+    ).toBeVisible();
   },
 });
 

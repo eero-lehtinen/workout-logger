@@ -38,7 +38,7 @@ export function RecordsSection(props: {
             </p>
             <p className="text-sm text-ink-muted">
               {r.set && `${formatSet(r.set, exercise.type, unit)}, `}
-              <RecordDate at={r.at} />
+              <RecordDate at={r.at} exerciseId={exercise.id} />
             </p>
           </li>
         ))}
@@ -58,6 +58,7 @@ export function RecordsSection(props: {
           />
           {table === "reps" ? (
             <RecordTable
+              exerciseId={exercise.id}
               head={["Reps", "Weight", "e1RM", "Date"]}
               rows={records.byReps.map((r) => ({
                 key: String(r.reps),
@@ -74,6 +75,7 @@ export function RecordsSection(props: {
             />
           ) : (
             <RecordTable
+              exerciseId={exercise.id}
               head={["Weight", "Reps", "Date"]}
               rows={records.byWeight.map((r) => ({
                 key: String(r.weightKg),
@@ -93,6 +95,7 @@ export function RecordsSection(props: {
 }
 
 function RecordTable(props: {
+  exerciseId: string;
   head: string[];
   rows: { key: string; beaten: boolean; at: RecordAt; cells: string[] }[];
 }) {
@@ -129,7 +132,7 @@ function RecordTable(props: {
               </td>
             ))}
             <td className="py-1.5 text-sm">
-              <RecordDate at={row.at} />
+              <RecordDate at={row.at} exerciseId={props.exerciseId} />
             </td>
           </tr>
         ))}
@@ -138,11 +141,13 @@ function RecordTable(props: {
   );
 }
 
-function RecordDate({ at }: { at: RecordAt }) {
+/** Opens the session; its back button returns to this exercise. */
+function RecordDate({ at, exerciseId }: { at: RecordAt; exerciseId: string }) {
   return (
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: at.sessionId }}
+      search={{ exerciseId }}
       className="underline decoration-rule underline-offset-2 hover:decoration-ink"
     >
       {formatSessionDate(at.startedAt, at.tz)}

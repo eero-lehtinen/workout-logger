@@ -18,6 +18,8 @@ export function SessionRow(props: {
   when: "date" | "time";
   /** Shown before the name, e.g. the routine day's color. */
   mark?: ReactNode;
+  /** The session page's back button returns to the calendar. */
+  fromCalendar?: boolean;
 }) {
   const { session: s } = props;
   const end = effectiveSessionEnd(
@@ -30,6 +32,7 @@ export function SessionRow(props: {
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: s.id }}
+      search={props.fromCalendar ? { from: "calendar" } : {}}
       className={`${rowClass} flex items-center gap-3 py-3`}
     >
       {props.mark}

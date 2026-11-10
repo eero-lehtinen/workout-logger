@@ -110,6 +110,21 @@ function SessionPanel({ view }: { view: SessionView }) {
     ended &&
     localDate(session.startedAt, deviceTimeZone()) !== todayIso();
   const unit = settings.weight_unit as WeightUnit;
+  const search = route.useSearch();
+  const date = localDate(session.startedAt, session.tz);
+  const back = search.exerciseId
+    ? {
+        to: "/exercises/$exerciseId/history" as const,
+        params: { exerciseId: search.exerciseId },
+        label: "Back to exercise",
+      }
+    : search.from === "calendar"
+      ? {
+          to: "/history" as const,
+          search: { month: date.slice(0, 7), day: date },
+          label: "Back to history",
+        }
+      : { to: "/" as const, label: "Back to today" };
 
   return (
     <Screen
@@ -124,7 +139,7 @@ function SessionPanel({ view }: { view: SessionView }) {
           ]
             .filter(Boolean)
             .join(", ")}
-          back={{ to: "/", label: "Back to today" }}
+          back={back}
           actions={
             readOnly ? (
               <Button
@@ -281,6 +296,7 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
           <Link
             to="/exercises/$exerciseId/history"
             params={{ exerciseId: exercise.exerciseId }}
+            search={{ sessionId: view.session.id }}
             className={`${rowClass} block py-2.5`}
           >
             <p className="font-medium">

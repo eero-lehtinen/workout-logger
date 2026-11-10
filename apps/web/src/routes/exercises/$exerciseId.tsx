@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as v from "valibot";
 import { EditExercisePage } from "../../features/exercises/exercise-editor.tsx";
+import { originSearch } from "../../features/exercises/origin.ts";
 
 /**
- * Set when the editor was opened from the logging screen, so it returns
- * there. Both ids or neither.
+ * Opened from the history screen (`from`), the editor returns there and
+ * keeps the history's origin; otherwise it returns to the origin itself.
  */
-const search = v.union([
-  v.object({ sessionId: v.string(), sessionExerciseId: v.string() }),
-  v.object({}),
-]);
+const search = v.object({
+  ...originSearch.entries,
+  from: v.optional(v.literal("history")),
+});
 
 export const Route = createFileRoute("/exercises/$exerciseId")({
   validateSearch: search,

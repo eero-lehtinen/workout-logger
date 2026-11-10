@@ -123,6 +123,7 @@ function MonthSessions(props: {
                     now={now}
                     idleThresholdS={settings.idle_threshold_s}
                     when="time"
+                    fromCalendar
                     mark={
                       <span
                         aria-hidden
