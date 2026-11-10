@@ -8,16 +8,19 @@ and the VPS. Delete this file once every item is done and the phase is marked
 
 ## Before merging to `main`
 
-Pushing `main` deploys, and the compose file refuses to start without these
-variables (`${VAR:?}`), so set them first.
+Done on 2026-11-10: the production GitHub OAuth app; the R2 buckets
+`wl-litestream` and `wl-backups` (Western Europe) with their lifecycle rules
+and one Object Read & Write token each, checked to be refused on the other
+bucket; and every variable the compose file requires (`${VAR:?}`) in the
+Dokploy environment of the `workout-logger` compose service.
 
-1. **GitHub OAuth app** for production ([deployment.md](../deployment.md#github-oauth-app)). Note its client id and a client secret.
-2. **R2** ([backups.md](../backups.md#storage-isolation)):
-   - buckets `wl-litestream` and `wl-backups`;
-   - one API token per bucket with Object Read & Write on that bucket only;
-   - lifecycle rules: `wl-litestream` everything older than 16 days; `wl-backups` `daily/` after 30 days, `monthly/` after 365 days, `pre-migration/` after 90 days.
-3. **Dokploy** environment of the `workout-logger` compose service: `AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, the four `BACKUP_R2_*`, and the four `LITESTREAM_R2_*` ([deployment.md](../deployment.md#configuration)). Keep `GITHUB_RELEASES_TOKEN`.
-4. Run `docker compose version` on the VPS: `configs` with `content:` needs Compose 2.23.1+. Dokploy itself passes the section through (it parses the file with `yaml`, adds its labels and network, and writes it back). If the version is older, update Docker, or mount `litestream.yml` with Dokploy's file mounts and update the compose file and deployment.md.
+`configs` with `content:` needs Compose 2.23.1+. Dokploy (v0.31.0) runs
+Compose from its own image, which installs Docker 28.5.2 and the newest
+Compose plugin with `get.docker.com`, and it passes the `configs` section
+through (it parses the file with `yaml`, adds its labels and network, and
+writes it back). If the first deploy still fails on `configs`, mount
+`litestream.yml` with Dokploy's file mounts and update the compose file and
+deployment.md.
 
 Rehearsed locally on 2026-11-10 with the production image, `deploy/compose.yaml`
 as is, and SeaweedFS's S3 server in place of R2 (Docker Compose 5.7):
