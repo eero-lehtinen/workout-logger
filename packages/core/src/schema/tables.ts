@@ -156,7 +156,9 @@ export type SyncStateKey =
   | "last_hlc"
   | "server_epoch"
   | "cursor"
-  | "last_sync_at";
+  | "last_sync_at"
+  /** The account this device syncs with, kept after logout. */
+  | "user_id";
 
 /** Previous row versions of recent write transactions. */
 export interface UndoTable {

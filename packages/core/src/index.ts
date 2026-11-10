@@ -61,6 +61,12 @@ export {
   type Writer,
 } from "./store/write.ts";
 export {
+  type AccountMatch,
+  adoptAccount,
+  matchAccount,
+  repairClock,
+} from "./sync/account.ts";
+export {
   type ApplyOutcome,
   acknowledgePush,
   applyPull,
@@ -71,5 +77,19 @@ export {
   type SyncState,
 } from "./sync/client.ts";
 export * from "./sync/hlc.ts";
+export {
+  EXPECTED_USER_HEADER,
+  type HttpSyncConfig,
+  httpTransport,
+  type SyncFailure,
+  type SyncOutcome,
+  syncOverHttp,
+} from "./sync/http.ts";
 export * from "./sync/ids.ts";
 export type * from "./sync/protocol.ts";
+export {
+  type SyncOptions,
+  type SyncReport,
+  type SyncTransport,
+  syncOnce,
+} from "./sync/run.ts";

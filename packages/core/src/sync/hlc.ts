@@ -11,6 +11,9 @@ export interface Hlc {
 
 export const MAX_COUNTER = 99_999;
 
+/** The server rejects a pushed change whose wall is further ahead of its clock. */
+export const FUTURE_CLOCK_LIMIT_MS = 60 * 60 * 1000;
+
 /** The server's check for every pushed HLC. */
 export const HLC_PATTERN = /^\d{15}-\d{5}-[0-9a-z]{1,16}$/;
 

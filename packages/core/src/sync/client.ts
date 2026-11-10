@@ -11,6 +11,7 @@ import { TxClock } from "../store/clock.ts";
 import { readHlc, readRow, type Trx, upsertRow } from "../store/rows.ts";
 import type { Store } from "../store/store.ts";
 import { dropUndoFor } from "../store/undo.ts";
+import { writeSyncState } from "./local-state.ts";
 import type {
   Change,
   PulledChange,
@@ -37,10 +38,16 @@ export async function readSyncState(store: Store): Promise<SyncState> {
   return readState(store.db);
 }
 
-/** Up to `limit` queued rows in their current state, in queue order. */
+/**
+ * Up to `limit` queued rows in their current state, in queue order, after
+ * skipping the first `offset`: entries a push in the same run left queued.
+ * Drops entries that have nothing to send: a table this version doesn't
+ * sync, or a row that no longer exists.
+ */
 export async function collectPush(
   store: Store,
   limit = 500,
+  offset = 0,
 ): Promise<Change[]> {
   return store.db.transaction().execute(async (trx) => {
     const queued = await trx
@@ -48,12 +55,17 @@ export async function collectPush(
       .select(["table_name", "id"])
       .orderBy(sql`rowid`)
       .limit(limit)
+      .offset(offset)
       .execute();
     const changes: Change[] = [];
     for (const { table_name: table, id } of queued) {
-      if (!isSyncedTable(table)) continue;
-      const row = await readRow(trx, table, id);
-      if (!row) continue;
+      const row = isSyncedTable(table)
+        ? await readRow(trx, table, id)
+        : undefined;
+      if (!isSyncedTable(table) || !row) {
+        await removeFromOutbox(trx, table, id);
+        continue;
+      }
       changes.push({
         table,
         id,
@@ -92,7 +104,7 @@ export async function acknowledgePush(
     // epoch, or it can't notice a restore that loses these changes. A known
     // epoch is never replaced here: the next pull compares it and resets.
     if ((await readState(trx)).epoch === null) {
-      await writeState(trx, "server_epoch", response.epoch);
+      await writeSyncState(trx, "server_epoch", response.epoch);
     }
     const rejected: { change: Change; reason: RejectReason }[] = [];
     let acknowledged = 0;
@@ -131,8 +143,8 @@ export async function applyPull(
     const cursor = stopped
       ? (supported.at(-1)?.seq ?? state.cursor ?? 0)
       : page.cursor;
-    await writeState(trx, "server_epoch", page.epoch);
-    await writeState(trx, "cursor", String(cursor));
+    await writeSyncState(trx, "server_epoch", page.epoch);
+    await writeSyncState(trx, "cursor", String(cursor));
     return { status: stopped ? "update_required" : "applied", applied };
   });
 }
@@ -152,8 +164,8 @@ export async function applySnapshot(
       return { status: "epoch_changed" };
     }
     const applied = await applyChanges(store, trx, snapshot.changes, touched);
-    await writeState(trx, "server_epoch", snapshot.epoch);
-    await writeState(trx, "cursor", String(snapshot.cursor));
+    await writeSyncState(trx, "server_epoch", snapshot.epoch);
+    await writeSyncState(trx, "cursor", String(snapshot.cursor));
     return { status: "applied", applied };
   });
 }
@@ -222,8 +234,8 @@ async function resetForEpoch(trx: Trx, epoch: string, touched: Set<TableName>) {
       )
       .execute();
   }
-  await writeState(trx, "server_epoch", epoch);
-  await writeState(trx, "cursor", "0");
+  await writeSyncState(trx, "server_epoch", epoch);
+  await writeSyncState(trx, "cursor", "0");
   touched.add("_outbox");
 }
 
@@ -247,12 +259,4 @@ async function readState(db: Store["db"]): Promise<SyncState> {
     epoch: get("server_epoch") ?? null,
     cursor: cursor === undefined ? null : Number(cursor),
   };
-}
-
-async function writeState(trx: Trx, key: SyncStateKey, value: string) {
-  await trx
-    .insertInto("_sync_state")
-    .values({ key, value })
-    .onConflict((oc) => oc.column("key").doUpdateSet({ value }))
-    .execute();
 }

@@ -1,5 +1,5 @@
 import type { Kysely, Selectable, Transaction } from "kysely";
-import { isValidHlc, parseHlc } from "../hlc.ts";
+import { FUTURE_CLOCK_LIMIT_MS, isValidHlc, parseHlc } from "../hlc.ts";
 import type {
   Change,
   PulledChange,
@@ -17,8 +17,7 @@ import type { ChangeTable, HeadTable, ServerSyncTables } from "./schema.ts";
 export type ServerDb = Kysely<ServerSyncTables>;
 type ServerTrx = Transaction<ServerSyncTables>;
 
-/** A pushed change whose wall clock is further ahead than this is rejected. */
-export const FUTURE_CLOCK_LIMIT_MS = 60 * 60 * 1000;
+export { FUTURE_CLOCK_LIMIT_MS };
 export const MAX_PULL_LIMIT = 1000;
 
 const TABLE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;

@@ -9,6 +9,7 @@ import {
 import { routineDetail, routines } from "./routines.ts";
 import { recentSessions, sessionView, startOptions } from "./sessions.ts";
 import { settings } from "./settings.ts";
+import { syncStatus } from "./sync.ts";
 
 /** Every query the UI can run, by name. */
 export const QUERIES = {
@@ -23,6 +24,7 @@ export const QUERIES = {
   substitutionOptions,
   routines,
   routineDetail,
+  syncStatus,
 } satisfies Record<string, QueryDef<never, unknown>>;
 
 /** The queries to refetch after a commit that changed `tables`. */
@@ -62,3 +64,4 @@ export type {
   SessionView,
   StartOptions,
 } from "./sessions.ts";
+export type { SyncStatus } from "./sync.ts";
