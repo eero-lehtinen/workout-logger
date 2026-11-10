@@ -32,7 +32,7 @@ L ≈ several weeks.
 
 **Exit:** CI green on `main`. `pnpm dev` serves the web app.
 
-## Phase 1: Spikes (S each, in parallel)
+## Phase 1: Spikes (S each, in parallel) [done]
 
 Throwaway code in a `spikes/` directory, deleted once the findings are recorded
 in the design docs.
