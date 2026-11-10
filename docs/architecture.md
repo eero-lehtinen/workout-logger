@@ -23,6 +23,14 @@ Chrome and Firefox on Android). The shell's height (`h-dvh`) shrinks to the
 space above the keyboard, so the header stays and only the footer moves up
 with the keyboard. Safari ignores the setting and pans the page.
 
+Colors are `light-dark()` tokens in `styles.css`, so the system's color
+scheme picks the theme. Settings can force light or dark through
+`data-theme` on the root. The choice is a device view preference
+(`lib/theme.ts`), not a synced setting: a phone and a PC may differ, and it
+must apply before the database loads. An inline script in `index.html` sets
+it before the first paint; the app then pins the matching `theme-color`
+and, on Android, the system bar style.
+
 ## Overview
 
 ```
@@ -355,6 +363,7 @@ The native app exists for the rest timer and health data. The web cannot reliabl
 - **Build types:** debug builds have the id `fi.eerolehtinen.lift.debug` and the name "Workouts (debug)", so they install next to the release app with their own database. Release builds are signed in CI ([deployment.md](deployment.md#android-releases)); without the keystore they come out unsigned. A release build never falls back to the debug key: replacing an install signed with another key needs an uninstall, which deletes the database.
 - **No backups:** `allowBackup="false"`, `fullBackupContent="false"`, and data extraction rules that exclude everything from cloud backup and device-to-device transfer (Android 12+ ignores `allowBackup` for transfers). A restored database would carry another install's device id and sync state ([sync.md](sync.md#client-side)).
 - **Insets:** the app draws edge to edge (required when targeting API 36). Capacitor's default inset handling makes the WebView honor `viewport-fit=cover`, so the `env(safe-area-inset-*)` paddings the PWA already uses apply.
+- **System bars:** their icons follow the system theme, so a theme forced in Settings also sets them through Capacitor's built-in `SystemBars` plugin.
 - **Icon:** an adaptive icon from vector drawables, with a monochrome layer for themed icons.
 
 ### Rest timer

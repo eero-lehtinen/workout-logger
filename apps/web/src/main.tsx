@@ -8,6 +8,7 @@ import { initAccount } from "./lib/account.ts";
 import { runningInstalled, watchInstall } from "./lib/install.ts";
 import { isNative } from "./lib/platform.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
+import { initTheme } from "./lib/theme.ts";
 import { createAppRouter } from "./router.ts";
 import "./styles.css";
 
@@ -25,6 +26,7 @@ if (!isNative) {
   void requestPersistenceOnce(runningInstalled() ? "installed" : "browser");
 }
 
+initTheme();
 initAccount();
 
 createRoot(rootElement).render(

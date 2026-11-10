@@ -9,8 +9,18 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#eceeed" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#171c1f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eceeed" media="(prefers-color-scheme: light)" data-scheme="light" />
+    <meta name="theme-color" content="#171c1f" media="(prefers-color-scheme: dark)" data-scheme="dark" />
+    <!-- The chosen theme (src/lib/theme.ts), before the first paint, so a
+         forced theme doesn't flash the system one while the app loads. -->
+    <script>
+      try {
+        const theme = localStorage.getItem("theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.dataset.theme = theme;
+        }
+      } catch {}
+    </script>
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />

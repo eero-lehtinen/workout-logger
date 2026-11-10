@@ -11,6 +11,7 @@ import { keepAwakeSupported } from "../../lib/keep-awake.ts";
 import { isNative } from "../../lib/platform.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
+import { THEMES, useTheme } from "../../lib/theme.ts";
 import { AboutSection } from "./about-section.tsx";
 import { AccountSection } from "./account-section.tsx";
 import { DataSection } from "./data-section.tsx";
@@ -21,6 +22,7 @@ export function SettingsPage() {
   const command = useCommand();
   const set = (change: SettingChange) => command("setSetting", change);
   const unit = settings.weight_unit;
+  const [theme, setTheme] = useTheme();
 
   return (
     <Screen
@@ -170,6 +172,17 @@ export function SettingsPage() {
                 return reps === null ? null : Math.round(reps);
               }}
               onSave={(value) => set({ key: "e1rm_rep_cap", value })}
+            />
+          </Row>
+        </Section>
+
+        <Section title="Appearance">
+          <Row stacked label="Theme" hint="On this device only.">
+            <Segmented
+              label="Theme"
+              value={theme}
+              options={THEMES}
+              onChange={setTheme}
             />
           </Row>
         </Section>

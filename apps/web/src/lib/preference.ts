@@ -15,21 +15,28 @@ function subscribe(onChange: () => void) {
   return () => listeners.delete(onChange);
 }
 
+export function readPreference<T extends string>(
+  key: string,
+  allowed: readonly T[],
+  initial: T,
+): T {
+  let value: string | null | undefined;
+  try {
+    value = localStorage.getItem(key);
+  } catch {
+    value = fallback.get(key);
+  }
+  return allowed.includes(value as T) ? (value as T) : initial;
+}
+
 export function usePreference<T extends string>(
   key: string,
   allowed: readonly T[],
   initial: T,
 ): [T, (value: T) => void] {
-  const read = (): T => {
-    let value: string | null | undefined;
-    try {
-      value = localStorage.getItem(key);
-    } catch {
-      value = fallback.get(key);
-    }
-    return allowed.includes(value as T) ? (value as T) : initial;
-  };
-  const value = useSyncExternalStore(subscribe, read);
+  const value = useSyncExternalStore(subscribe, () =>
+    readPreference(key, allowed, initial),
+  );
   const set = (next: T) => {
     try {
       localStorage.setItem(key, next);

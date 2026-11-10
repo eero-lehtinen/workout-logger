@@ -87,6 +87,26 @@ export const KeepScreenOn = pageStory({
   },
 });
 
+/** Forcing a theme overrides the system one and is remembered. */
+export const ThemeChoice = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const root = canvasElement.ownerDocument.documentElement;
+    await expect(
+      canvas.getByRole("button", { name: "System" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(canvas.getByRole("button", { name: "Dark" }));
+    await waitFor(() => expect(root.dataset.theme).toBe("dark"));
+    await expect(localStorage.getItem("theme")).toBe("dark");
+    await expect(canvas.getByRole("button", { name: "Dark" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  },
+});
+
 const realFetch = globalThis.fetch;
 const realUserAgent = navigator.userAgent;
 
