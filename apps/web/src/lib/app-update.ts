@@ -7,8 +7,6 @@ const SERVER_URL: string =
 
 export interface AppUpdate {
   version: string;
-  /** Opens in the browser, which downloads the APK. */
-  url: string;
 }
 
 /** The installed app's versionName, e.g. "1.2.3". */
@@ -38,11 +36,19 @@ export async function checkForUpdate(): Promise<AppUpdate | null> {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`The server answered ${res.status}`);
   const { version } = (await res.json()) as { version: string };
-  if (!isUpdate(installed, version)) return null;
-  return { version, url: `${SERVER_URL}/api/android/apk` };
+  return isUpdate(installed, version) ? { version } : null;
 }
 
-/** Capacitor hands links to other hosts to the system browser. */
-export function downloadUpdate(update: AppUpdate) {
-  window.open(update.url, "_blank");
+/**
+ * Opens the latest APK in the system browser, which downloads it; Capacitor
+ * hands links to other hosts to the browser. The link goes to GitHub, not to
+ * the server: the browser may have the web app's service worker for the
+ * server's origin, which would answer with the app instead of the file.
+ * The URL is short-lived, so it is fetched when the download is asked for.
+ */
+export async function downloadUpdate(): Promise<void> {
+  const res = await fetch(`${SERVER_URL}/api/android/download`);
+  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  const { url } = (await res.json()) as { url: string };
+  window.open(url, "_blank");
 }

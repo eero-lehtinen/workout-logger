@@ -18,7 +18,7 @@ export function AppUpdatePrompt() {
           timeout: 0,
           actionProps: {
             children: "Download",
-            onClick: () => downloadUpdate(update),
+            onClick: () => void downloadUpdate().catch(reportDownloadFailure),
           },
         });
       },
@@ -31,4 +31,12 @@ export function AppUpdatePrompt() {
     };
   }, []);
   return null;
+}
+
+export function reportDownloadFailure(error: unknown) {
+  toasts.add({
+    title: "Couldn't start the download",
+    description: error instanceof Error ? error.message : String(error),
+    type: "error",
+  });
 }

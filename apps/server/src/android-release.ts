@@ -111,7 +111,18 @@ export function androidRoutes(releases: ReleaseSource | undefined): Hono {
     if (!release) return c.json({ error: "no release" }, 404);
     return c.json({ version: release.version });
   });
-  // Opened in the phone's browser, which downloads the file.
+  // For the app: a URL on GitHub's host to hand to the phone's browser.
+  // A link to this site could be answered by the service worker of the web
+  // app installed in that browser instead of reaching the server.
+  routes.get("/download", async (c) => {
+    const release = await releases.latest();
+    if (!release) return c.json({ error: "no release" }, 404);
+    return c.json({
+      version: release.version,
+      url: await releases.downloadUrl(release),
+    });
+  });
+  // For a first install, typed or linked in a browser.
   routes.get("/apk", async (c) => {
     const release = await releases.latest();
     if (!release) return c.json({ error: "no release" }, 404);

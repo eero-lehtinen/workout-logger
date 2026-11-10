@@ -136,9 +136,11 @@ A new version must be higher than the installed one: Android refuses to install 
 | Endpoint | Answer |
 | --- | --- |
 | `GET /api/android/latest` | `{ "version": "1.2.3" }`: the latest release that has an APK. 404 when there is none. |
-| `GET /api/android/apk` | A redirect to GitHub's short-lived signed URL of that APK, so the download doesn't pass through the VPS. |
+| `GET /api/android/download` | `{ "version": "1.2.3", "url": "…" }`: GitHub's short-lived signed URL of that APK. The app opens it in the phone's browser. |
+| `GET /api/android/apk` | A redirect to the same URL, for a first install from a browser. The download doesn't pass through the VPS either way. |
 
-- Both are public, like the web app. `/api/android/latest` allows CORS from `https://localhost`, the app's WebView origin.
+- All are public, like the web app, and allow CORS from `https://localhost`, the app's WebView origin.
+- The app never sends the browser to this site for the download. The browser may have the web app installed, and its service worker answers navigations on this origin with the app shell. The service worker also leaves `/api/*` navigations alone, so the `/apk` link works in such a browser once its service worker has updated.
 - The server caches the latest release for 5 minutes, so the public endpoints can't spend the token's rate limit.
 - `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it both endpoints answer 503, and the app shows no update prompt.
 - The first install is the same download: open `https://lift.eerolehtinen.fi/api/android/apk` in the phone's browser and allow the browser to install apps.

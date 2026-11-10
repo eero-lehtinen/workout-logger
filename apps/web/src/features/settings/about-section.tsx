@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { reportDownloadFailure } from "../../components/app-update-prompt.tsx";
 import { Button } from "../../components/button.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import {
@@ -25,7 +26,7 @@ export function AboutSection() {
           title: `Version ${update.version} is available`,
           actionProps: {
             children: "Download",
-            onClick: () => downloadUpdate(update),
+            onClick: () => void downloadUpdate().catch(reportDownloadFailure),
           },
         });
       } else {

@@ -41,6 +41,9 @@ export default defineConfig({
         // unused: the SAH-pool VFS runs in our worker.
         globIgnores: ["**/sqlite3-worker1*", "**/sqlite3-opfs-async-proxy*"],
         navigateFallback: "index.html",
+        // The server answers these itself, e.g. the APK download. Without
+        // this the service worker serves the app shell for them.
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

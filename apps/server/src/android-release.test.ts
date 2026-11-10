@@ -95,6 +95,16 @@ describe("/api/android", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 
+  it("gives the app GitHub's signed URL", async () => {
+    const res = await configured().request("/api/android/download", {
+      headers: { origin: "https://localhost" },
+    });
+    expect(await res.json()).toEqual({ version: "1.4.0", url: SIGNED_URL });
+    expect(res.headers.get("access-control-allow-origin")).toBe(
+      "https://localhost",
+    );
+  });
+
   it("redirects the download to GitHub's signed URL", async () => {
     const res = await configured().request("/api/android/apk");
     expect(res.status).toBe(302);
