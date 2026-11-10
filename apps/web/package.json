@@ -10,18 +10,31 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "@tanstack/react-query": "^5.107.1",
     "@tanstack/react-router": "^1.170.46",
     "@workout-logger/core": "workspace:*",
+    "@workout-logger/exercises": "workspace:*",
+    "clsx": "^2.1.1",
+    "comlink": "^4.4.2",
+    "lucide-react": "^1.70.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@babel/core": "^8.1.0",
+    "@rolldown/plugin-babel": "^0.3.0",
     "@tailwindcss/vite": "^4.3.5",
     "@tanstack/router-plugin": "^1.169.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
+    "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.3.5",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "vite-plugin-pwa": "^2.0.0",
+    "workbox-window": "^7.4.1"
   }
 }

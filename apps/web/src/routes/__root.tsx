@@ -1,13 +1,8 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute } from "@tanstack/react-router";
+import { AppShell } from "../components/app-shell.tsx";
+import { Empty } from "../components/page.tsx";
 
 export const Route = createRootRoute({
-  component: RootLayout,
+  component: AppShell,
+  notFoundComponent: () => <Empty>This page doesn't exist.</Empty>,
 });
-
-function RootLayout() {
-  return (
-    <div className="min-h-dvh bg-neutral-50 text-neutral-900">
-      <Outlet />
-    </div>
-  );
-}
