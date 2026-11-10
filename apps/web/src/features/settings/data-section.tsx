@@ -89,7 +89,13 @@ export function DataSection() {
         <input
           ref={fileInput}
           type="file"
-          accept=".sqlite3,.sqlite,.db,application/vnd.sqlite3"
+          // Capacitor turns extensions into MIME types through Android's
+          // table, which has none for SQLite, so the picker would only allow
+          // application/vnd.sqlite3: a type our exported files never get.
+          // The import rejects files that aren't snapshots.
+          {...(!isNative && {
+            accept: ".sqlite3,.sqlite,.db,application/vnd.sqlite3",
+          })}
           className="hidden"
           onChange={async (e) => {
             const file = e.target.files?.[0];
