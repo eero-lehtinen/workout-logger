@@ -11,7 +11,7 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { Check, ListOrdered, Plus, Trash2 } from "lucide-react";
+import { Check, ListOrdered, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -188,7 +188,6 @@ function SessionPanel({ view }: { view: SessionView }) {
           className="mt-4"
           onClick={() => setConfirmDelete(true)}
         >
-          <Trash2 size={16} />
           Delete session
         </Button>
       </div>

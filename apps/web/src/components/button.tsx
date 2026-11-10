@@ -9,7 +9,9 @@ const variants: Record<ButtonVariant, string> = {
   secondary:
     "border border-rule bg-raised text-ink hover:bg-surface active:bg-rule/60",
   ghost: "text-ink hover:bg-surface active:bg-rule/60",
-  danger: "text-danger hover:bg-danger/10 active:bg-danger/15",
+  // Deletes are rare: quiet until pointed at.
+  danger:
+    "text-ink-muted hover:bg-danger/10 hover:text-danger active:bg-danger/15 active:text-danger",
 };
 
 const sizes = {

@@ -8,12 +8,7 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import {
-  ArrowLeftRight,
-  ChevronDown,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeftRight, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, buttonClass, IconButton } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -373,7 +368,6 @@ function Logger({ log }: { log: ExerciseLog }) {
             });
           }}
         >
-          <Trash2 size={16} />
           Remove from session
         </Button>
       </div>
