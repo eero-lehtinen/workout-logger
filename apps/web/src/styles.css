@@ -106,6 +106,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Lines between a list's rows, inset to the rows' text. A highlighted
+ * `.row` (hovered, or the open one) hides the lines on both of its edges,
+ * which would otherwise cut through its rounded highlight.
+ */
+@layer components {
+  .dividers > li + li {
+    position: relative;
+  }
+
+  .dividers > li + li::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: var(--divider-inset, 0.75rem);
+    border-top: 1px solid var(--rule);
+  }
+
+  .dividers > li:has(.row:hover, .row[data-status="active"])::before,
+  .dividers > li:has(.row:hover, .row[data-status="active"]) + li::before {
+    opacity: 0;
+  }
+}
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;

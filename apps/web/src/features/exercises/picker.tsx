@@ -132,13 +132,13 @@ function PickerBody(props: {
               {section.title}
             </h3>
           )}
-          <ul>
+          <ul className="dividers [--divider-inset:1rem]">
             {section.items.map((exercise) => (
               <li key={exercise.id}>
                 <button
                   type="button"
                   onClick={() => props.onPick(exercise.id)}
-                  className="flex w-full flex-col items-start px-4 py-2.5 text-left hover:bg-surface"
+                  className="row flex w-full flex-col items-start px-4 py-2.5 text-left hover:bg-surface"
                 >
                   <span className="font-medium">{exercise.name}</span>
                   <span className="text-sm text-ink-muted">

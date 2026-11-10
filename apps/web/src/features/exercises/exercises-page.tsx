@@ -113,7 +113,10 @@ function ExerciseList(props: {
   muscles: Map<string, MuscleItem>;
 }) {
   return (
-    <ul className={`${listClass} lg:grid lg:grid-cols-2 lg:gap-x-2`}>
+    // In two columns, the second item starts the first row and gets no line.
+    <ul
+      className={`${listClass} lg:grid lg:grid-cols-2 lg:gap-x-2 lg:[&>li:nth-child(2)]:before:hidden`}
+    >
       {props.exercises.map((e) => (
         <li key={e.id}>
           <Link

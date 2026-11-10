@@ -313,7 +313,7 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
   );
   return (
     <>
-      <ul className={`${listClass} gap-1`}>
+      <ul className={listClass}>
         {view.exercises.map((exercise) => (
           <li key={exercise.id}>
             <Link
