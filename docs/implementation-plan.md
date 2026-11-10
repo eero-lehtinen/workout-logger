@@ -124,7 +124,7 @@ storage prompt) is untested.
 
 ## Phase 4: FitNotes import (S–M)
 
-- Host the static web build over HTTPS on the VPS, so the phone can use it: the part of phase 6's deployment that doesn't need the server.
+- Host the static web build over HTTPS on the VPS, so the phone can use it: the part of phase 6's deployment that doesn't need the server. [done: <https://lift.eerolehtinen.fi>, deployed on every push to `main`; [deployment.md](deployment.md)]
 - Importer in `core`, the exercise mapping file, the import report, re-import rules.
 - Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
 - Settings → Import.
