@@ -26,6 +26,7 @@ import { seriesColor } from "../../components/chart/theme.ts";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
+import { Select } from "../../components/select.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import {
@@ -175,9 +176,6 @@ function InPeriod(props: {
   );
 }
 
-const selectClass =
-  "h-10 min-w-0 rounded-lg bg-raised pr-2 pl-3 font-medium ring-1 ring-rule outline-none focus-visible:ring-2 focus-visible:ring-ink";
-
 function ProgressChart(props: {
   history: ExerciseHistory;
   /** The period's first date; null for all time. */
@@ -212,32 +210,22 @@ function ProgressChart(props: {
     <section className="px-4 pt-2 lg:px-0">
       <h2 className="sr-only">Progress</h2>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]">
-        <select
-          aria-label="Metric"
+        <Select
+          label="Metric"
           value={metric}
-          onChange={(e) => setMetric(e.target.value as HistoryMetric)}
-          className={selectClass}
-        >
-          {metrics.map((m) => (
-            <option key={m} value={m}>
-              {METRIC_LABELS[m]}
-            </option>
-          ))}
-        </select>
+          onChange={setMetric}
+          options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
+        />
         {metric === "reps_at_weight" && (
-          <select
-            aria-label="Weight"
+          <Select
+            label="Weight"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className={selectClass}
-          >
-            {weights.map((w) => (
-              <option key={w.weightKg} value={String(w.weightKg)}>
-                {formatWeightWithUnit(w.weightKg, unit)} ({w.sessions}{" "}
-                {w.sessions === 1 ? "session" : "sessions"})
-              </option>
-            ))}
-          </select>
+            onChange={setWeight}
+            options={weights.map((w) => ({
+              value: String(w.weightKg),
+              label: `${formatWeightWithUnit(w.weightKg, unit)} (${w.sessions} ${w.sessions === 1 ? "session" : "sessions"})`,
+            }))}
+          />
         )}
         {metric !== "weekly_sets" && metric !== "set_e1rm" && (
           <span className="flex items-center gap-3">
