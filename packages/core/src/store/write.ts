@@ -53,11 +53,17 @@ export interface Writer {
   delete(table: SyncedTableName, id: string): Promise<void>;
 }
 
+export interface WriteResult<T> {
+  result: T;
+  /** The undo transaction this write recorded, for `Store.undo(tx)`; null if nothing was recorded. */
+  undoTx: number | null;
+}
+
 export async function writeTransaction<T>(
   store: Store,
   fn: (w: Writer) => Promise<T>,
   options: WriteOptions = {},
-): Promise<T> {
+): Promise<WriteResult<T>> {
   const undoable = options.undoable ?? true;
   return store.transaction(async (trx, touched) => {
     const clock = await TxClock.load(trx, store.deviceId, store.now);
@@ -143,7 +149,7 @@ export async function writeTransaction<T>(
         .where("tx", "<=", undoTx - UNDO_DEPTH)
         .execute();
     }
-    return result;
+    return { result, undoTx: undoTx ?? null };
   });
 }
 

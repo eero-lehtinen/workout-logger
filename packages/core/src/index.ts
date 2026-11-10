@@ -46,7 +46,12 @@ export {
   Store,
   type StoreOptions,
 } from "./store/store.ts";
-export { UNDO_DEPTH, type WriteOptions, type Writer } from "./store/write.ts";
+export {
+  UNDO_DEPTH,
+  type WriteOptions,
+  type WriteResult,
+  type Writer,
+} from "./store/write.ts";
 export {
   type ApplyOutcome,
   acknowledgePush,

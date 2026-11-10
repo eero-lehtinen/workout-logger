@@ -205,6 +205,24 @@ describe("undo", () => {
     expect(await store.undo()).toBe(false);
   });
 
+  it("undoes a given transaction only while it is the latest", async () => {
+    const { store } = await setup();
+    const first = await store.writeUndoable((w) => w.insert("metric", metric));
+    const second = await store.writeUndoable((w) =>
+      w.update("metric", first.result, { name: "Two" }),
+    );
+    expect(second.undoTx).toBe((first.undoTx ?? 0) + 1);
+
+    expect(await store.undo(first.undoTx ?? 0)).toBe(false);
+    expect(await row(store, "metric", first.result)).toMatchObject({
+      name: "Two",
+    });
+    expect(await store.undo(second.undoTx ?? 0)).toBe(true);
+    expect(await row(store, "metric", first.result)).toMatchObject({
+      name: "Body fat",
+    });
+  });
+
   it("revives a deleted row", async () => {
     const { store } = await setup();
     const id = await store.write((w) => w.insert("metric", metric), {

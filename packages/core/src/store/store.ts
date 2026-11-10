@@ -6,7 +6,12 @@ import type { Database, TableName } from "../schema/tables.ts";
 import { newDeviceId } from "../sync/ids.ts";
 import type { Trx } from "./rows.ts";
 import { undoLast } from "./undo.ts";
-import { type WriteOptions, type Writer, writeTransaction } from "./write.ts";
+import {
+  type WriteOptions,
+  type WriteResult,
+  type Writer,
+  writeTransaction,
+} from "./write.ts";
 
 export interface StoreOptions extends MigrateOptions {
   /** Wall clock in epoch ms. Tests inject skewed clocks. */
@@ -32,13 +37,25 @@ export class Store {
   }
 
   /** Runs `fn` in a write transaction. See {@link Writer}. */
-  write<T>(fn: (w: Writer) => Promise<T>, options?: WriteOptions): Promise<T> {
-    return writeTransaction(this, fn, options);
+  async write<T>(
+    fn: (w: Writer) => Promise<T>,
+    options?: WriteOptions,
+  ): Promise<T> {
+    return (await writeTransaction(this, fn, options)).result;
   }
 
-  /** Reverts the most recent undoable write transaction. False if there is none. */
-  undo(): Promise<boolean> {
-    return undoLast(this);
+  /** Like `write`, plus the undo transaction id it recorded. */
+  writeUndoable<T>(fn: (w: Writer) => Promise<T>): Promise<WriteResult<T>> {
+    return writeTransaction(this, fn);
+  }
+
+  /**
+   * Reverts the most recent undoable write transaction, or, with `tx`, only
+   * that transaction and only while it is still the most recent. False if
+   * there was nothing to undo.
+   */
+  undo(tx?: number): Promise<boolean> {
+    return undoLast(this, tx);
   }
 
   subscribe(listener: ChangeListener): () => void {

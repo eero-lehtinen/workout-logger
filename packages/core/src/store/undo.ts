@@ -9,7 +9,10 @@ import type { Store } from "./store.ts";
  * transaction, as new changes with fresh HLCs, so the undo syncs like any edit.
  * A row the transaction created is soft-deleted.
  */
-export async function undoLast(store: Store): Promise<boolean> {
+export async function undoLast(
+  store: Store,
+  expectedTx?: number,
+): Promise<boolean> {
   return store.transaction(async (trx, touched) => {
     const latest = await trx
       .selectFrom("_undo")
@@ -17,6 +20,8 @@ export async function undoLast(store: Store): Promise<boolean> {
       .executeTakeFirst();
     const tx = latest?.tx;
     if (tx == null) return false;
+    // A later write, or a pull that dropped this transaction, came first.
+    if (expectedTx !== undefined && tx !== expectedTx) return false;
 
     const entries = await trx
       .selectFrom("_undo")
