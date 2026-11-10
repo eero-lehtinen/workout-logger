@@ -368,6 +368,9 @@ export const EXERCISES: readonly CatalogExercise[] = [
   ex("cable_lateral_raise", "Lateral Raise (Cable)", "weight_reps", {
     side_delts: 1,
   }),
+  ex("machine_lateral_raise", "Lateral Raise (Machine)", "weight_reps", {
+    side_delts: 1,
+  }),
   ex(
     "dumbbell_front_raise",
     "Front Raise (Dumbbell)",

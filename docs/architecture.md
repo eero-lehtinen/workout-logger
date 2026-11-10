@@ -325,7 +325,7 @@ directly.
 
 ## Exercise catalog seed
 
-`packages/exercises` holds a hand-curated catalog of 110 common gym exercises,
+`packages/exercises` holds a hand-curated catalog of 111 common gym exercises,
 drawn from [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
 (public domain, the Unlicense). Entries record the source id they were curated
 from, where the dataset has one.
