@@ -19,6 +19,16 @@ variables (`${VAR:?}`), so set them first.
 3. **Dokploy** environment of the `workout-logger` compose service: `AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, the four `BACKUP_R2_*`, and the four `LITESTREAM_R2_*` ([deployment.md](../deployment.md#configuration)). Keep `GITHUB_RELEASES_TOKEN`.
 4. Check that Dokploy's Docker Compose supports `configs` with `content:` (Compose 2.23.1+). If not, mount `litestream.yml` with Dokploy's file mounts instead and update the compose file and deployment.md.
 
+Rehearsed locally on 2026-11-10 with the production image, `deploy/compose.yaml`
+as is, and SeaweedFS's S3 server in place of R2 (Docker Compose 5.7):
+
+- a fresh stack with an empty replica: no restore, migrations, the daily copy at startup, Litestream uploading, and `/api/status` reporting both layers through the control socket with `backupsOk: true`;
+- "VPS lost" (data volume deleted): `litestream-init` restored all changes, the owner, and the sessions; the app started a new epoch before serving; Litestream kept replicating afterwards;
+- a plain restart: same epoch, nothing lost;
+- the daily copy restored into an empty volume with the marker: a new epoch, and Litestream replicated the restored database over the old replica without errors; a later "VPS lost" restored that newer state. The copy lacked the owner and the sessions created after it, which the recovery table now says.
+
+What this can't show: Dokploy's handling of the compose file, R2 itself, and GitHub sign-in.
+
 ## After the first deploy
 
 1. In the `app` container's terminal: `node server/dist/cli.js create-owner --email <email>`, where the email is the GitHub account's public profile email, or its primary email if the profile shows none.
