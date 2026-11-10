@@ -162,7 +162,7 @@ section unless it was prefilled from a predefined set.
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
-| `exercise` | `exercise` | Via the [exercise mapping file](#exercise-mapping-file): matched to a built-in exercise or created as a custom exercise, renamed, merged, or split by date. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults; the report counts them. |
+| `exercise` | `exercise` | Via the [exercise mapping file](#exercise-mapping-file): matched to a built-in exercise or created as a custom exercise, renamed, merged, split by date, or skipped. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults; the report counts them. |
 | `exercise_type_id` 0 | `weight_reps` or `bodyweight_reps` | The mapping file decides. For `bodyweight_reps`, `metric_weight` is the added weight. |
 | `exercise_type_id` 1 | `distance_time` | |
 | `exercise_type_id` 3 | `time` | |
@@ -278,6 +278,7 @@ history often has:
 - **Inconsistent names.** A `create` entry sets the name of the new custom exercise.
 - **Duplicates.** Several FitNotes exercises map to the same target.
 - **One FitNotes exercise used for different variants over time**, e.g. a pushdown done with a straight bar and later with a rope. Mixed together, records and progress markers compare different movements. A FitNotes exercise maps to a list of targets, each covering sets up to an `until` date (inclusive); the last entry has no `until` and covers the rest.
+- **History not worth keeping**, e.g. a one-off home exercise. A `skip` target leaves the exercise and its sets out; the import report lists them with set counts.
 
 Example (synthetic):
 
@@ -289,7 +290,8 @@ Example (synthetic):
       { "builtin": "rope_pushdown" }
     ],
     "Flat Bench": [{ "builtin": "barbell_bench_press" }],
-    "Bench Press": [{ "builtin": "barbell_bench_press" }]
+    "Bench Press": [{ "builtin": "barbell_bench_press" }],
+    "Towel Curl": [{ "skip": true }]
   }
 }
 ```
