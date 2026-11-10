@@ -36,7 +36,7 @@ const TOKENS: ChartColor[] = [
   "day-6",
 ];
 
-let cached: ChartTheme | undefined;
+let cached: { key: string; theme: ChartTheme } | undefined;
 
 /**
  * Canvas and SVG charts can't use CSS variables or `light-dark()` directly,
@@ -65,27 +65,37 @@ function resolve(): ChartTheme {
   return theme;
 }
 
+const darkScheme = matchMedia("(prefers-color-scheme: dark)");
+
+/** What decides the theme: a forced `data-theme`, else the system's. */
+function themeKey() {
+  return `${document.documentElement.dataset.theme ?? ""}|${darkScheme.matches}`;
+}
+
 function subscribe(onChange: () => void) {
-  const changed = () => {
-    cached = undefined;
-    onChange();
-  };
-  const media = matchMedia("(prefers-color-scheme: dark)");
-  media.addEventListener("change", changed);
-  const observer = new MutationObserver(changed);
+  darkScheme.addEventListener("change", onChange);
+  const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme", "class", "style"],
+    attributeFilter: ["data-theme"],
   });
   return () => {
-    media.removeEventListener("change", changed);
+    darkScheme.removeEventListener("change", onChange);
     observer.disconnect();
   };
 }
 
+/**
+ * The cache is keyed by the theme rather than cleared by the listeners: a
+ * chart that mounts after a theme change, with no chart mounted to hear it,
+ * would otherwise get the old colors.
+ */
+function snapshot(): ChartTheme {
+  const key = themeKey();
+  if (cached?.key !== key) cached = { key, theme: resolve() };
+  return cached.theme;
+}
+
 export function useChartTheme(): ChartTheme {
-  return useSyncExternalStore(subscribe, () => {
-    cached ??= resolve();
-    return cached;
-  });
+  return useSyncExternalStore(subscribe, snapshot);
 }
