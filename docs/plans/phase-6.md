@@ -22,7 +22,7 @@ variables (`${VAR:?}`), so set them first.
 ## After the first deploy
 
 1. In the `app` container's terminal: `node server/dist/cli.js create-owner --email <email>`, where the email is the GitHub account's public profile email, or its primary email if the profile shows none.
-2. Sign in on the web; the existing browser data uploads on the first sync.
+2. Settings → Export snapshot on every device that has data, then sign in on the web; the existing browser data uploads on the first sync. The first sync is the riskiest moment for existing data.
 3. Check `/api/status` while signed in: Litestream's last upload within a minute, a daily copy from the startup catch-up, and objects in both buckets.
 4. External uptime monitor on `https://lift.eerolehtinen.fi/api/status`, alerting when it is down or the body lacks `"backupsOk":true`.
 5. Release an APK (`v0.2.0`), install it over the current app, sign in, and check that the phone and the web stay in sync both ways. The sign-in's Custom Tab return and the deep link are only testable on a device.
@@ -30,4 +30,4 @@ variables (`${VAR:?}`), so set them first.
 ## Exit checks
 
 - Phone and web stay in sync over a few real days.
-- Rehearse the "VPS lost" procedure once ([deployment.md](../deployment.md#recovery-procedures)): restore the replica into a scratch volume (or a scratch VPS), start the image on it, and compare row counts with the live database. Record the result and anything the procedure missed in deployment.md.
+- Before inviting anyone, rehearse the "VPS lost" procedure once ([deployment.md](../deployment.md#recovery-procedures)): restore the replica into a scratch volume (or a scratch VPS), start the image on it, check that it started a new epoch, and compare row counts with the live database. Then restore the newest daily copy the same way. Record the results and anything the procedures missed in deployment.md.
