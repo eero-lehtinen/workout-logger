@@ -137,8 +137,8 @@ don't count.
 | --- | --- | --- |
 | Starts automatically when a set is logged | P0 | Duration from slot override > exercise default > global default (2:00). |
 | Adjust with +/-15 s, skip, restart | P0 | |
-| Vibration and sound on finish, including in the background and over music | P0 (Android) | Web: works only while the page is visible. Web is best effort. |
-| Countdown in a notification or on the lock screen while running | P1 (Android) | |
+| Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at alarm volume in silent mode and DND; music is ducked during the alert. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
+| Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. |
 
 ## Measurements (custom data)
 

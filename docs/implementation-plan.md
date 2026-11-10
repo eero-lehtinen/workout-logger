@@ -37,9 +37,10 @@ L ≈ several weeks.
 Throwaway code in a `spikes/` directory, deleted once the findings are recorded
 in the design docs.
 
-1. **RestTimer plugin.** A minimal Capacitor app with a Kotlin plugin: an exact alarm, a `USAGE_ALARM` sound, and a vibrator.
+1. **RestTimer plugin** [done]. A minimal Capacitor app with a Kotlin plugin: an exact alarm, a `USAGE_ALARM` sound, and a vibrator.
    - Test matrix on your phone: music playing (Spotify), silent mode, DND, screen locked, app swiped away, exact-alarm permission revoked.
    - Exit: all pass, or the failures are documented with a workaround.
+   - Result: all pass with a FitNotes-style countdown service instead of an exact alarm. Design and results in [architecture.md](architecture.md#rest-timer).
 2. **SQLite WASM storage** [done]. The official build with the OPFS SAH-pool VFS in a worker. Test in Chrome, Firefox, and the Android WebView inside the Capacitor app:
    - persistence across reload, app restart, and app update;
    - `navigator.storage.persist()`;
@@ -113,7 +114,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 ## Phase 5: Android app (M)
 
 - `apps/android`: Capacitor shell over the web build, with the scheme, hostname, and app id fixed as in [architecture.md](architecture.md#storage-durability).
-- RestTimer plugin, productionized from the spike: start/adjust/cancel, permission check on resume. The foreground-service countdown can wait for P1.
+- RestTimer plugin as designed in [architecture.md](architecture.md#rest-timer): the countdown service with its live notification, start/adjust/cancel, the alert.
 - Keep-awake toggle, on-device snapshots after each session, `allowBackup=false`.
 - CI: APK build on tags, attached to the GitHub release; an in-app update check.
 
@@ -179,7 +180,6 @@ Owner-only at first; multi-user hardening is phase 10.
 
 - Analytics page: weekly weighted sets per muscle, volume, durations, PR list.
 - Multi-step undo/redo, year heatmap, scatter plots, relative strength, kg/lb display polish.
-- Rest countdown notification (foreground service).
 - Server push notifications (SSE) instead of polling.
 
 ## Ways of working

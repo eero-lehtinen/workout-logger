@@ -10,7 +10,7 @@ current docs before we commit to them.
  │  Web (PWA, browser)                Android (Capacitor shell)           │
  │  ┌──────────────┐                  ┌──────────────┐ ┌───────────────┐  │
  │  │  UI (React)  │                  │  UI (React)  │ │ native plugins│  │
- │  ├──────────────┤                  ├──────────────┤ │ rest alarm,   │  │
+ │  ├──────────────┤                  ├──────────────┤ │ rest timer,   │  │
  │  │ core: domain,│                  │ core         │ │ health connect│  │
  │  │ queries, sync│                  │              │ │ keep-awake    │  │
  │  ├──────────────┤                  ├──────────────┤ └───────────────┘  │
@@ -214,23 +214,59 @@ Full design: [backups.md](backups.md).
 
 The native app exists for the rest timer and health data. The web cannot reliably alert while the page is backgrounded or the screen is locked, and it has no access to Health Connect.
 
-### Rest alarm
+### Rest timer
 
-A custom Capacitor plugin in Kotlin, `RestTimer`, is the primary implementation. The stock local-notifications plugin quietly falls back to inexact alarms, loses scheduled alarms when the exact-alarm permission is revoked, and can't do the P1 countdown.
+A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` before `super.onCreate`. It works like FitNotes: a foreground service stays alive for the whole rest and counts down itself. There is no alarm and no exact-alarm permission.
 
-- **API:** `start(endsAt)`, `adjust(endsAt)`, `cancel()`, and events back to JS.
-- **Firing:** an exact alarm via `AlarmManager` (`setAlarmClock`, *candidate*: exact, and allowed in Doze). When it fires:
-  - play the sound with `AudioAttributes.USAGE_ALARM`, so it plays over music and isn't muted by notification volume;
-  - drive the vibrator directly with a pattern;
-  - show a notification.
-- **Countdown (P1):** a foreground service with an ongoing notification that shows the remaining time.
-- **Permission:** `USE_EXACT_ALARM` (acceptable for a timer app outside the Play Store). On every resume, check that exact alarms are still allowed; if not, warn in the UI.
-- **Test first on a device:**
-  - over music
-  - in silent mode and Do Not Disturb
-  - with the screen locked
-  - with the app swiped away
+- **API:** `start(endsAt)`, `adjust(endsAt)`, `cancel()`, and events back to JS (`finished`, `cancelled`, `startFailed`). The pending `endsAt` is also persisted natively, so the UI can show the countdown, or a finished rest, after a cold start.
+- **Start:** `start` runs when a set is logged, with the app visible. It starts `RestTimerService` with `startForegroundService` (`foregroundServiceType="mediaPlayback"`; permissions `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`). Android only allows this while the app is visible. Otherwise it throws `ForegroundServiceStartNotAllowedException`, which the plugin catches and reports as `startFailed`. The UI shows that the timer didn't start, instead of the app crashing.
+- **Countdown:** the service acquires a non-reference-counted `PARTIAL_WAKE_LOCK` with a timeout of the remaining time plus 30 s, and posts the end on a main-thread `Handler`. The wake lock keeps the CPU running in Doze, so the handler fires on time. `adjust` re-arms the handler, extends the wake lock, and re-posts the notification.
+- **Countdown notification** (the foreground-service notification):
+  - channel with default importance, sound and vibration disabled;
+  - ongoing, `CATEGORY_STOPWATCH`, `VISIBILITY_PUBLIC`, title and "next set at" text, `BigTextStyle`;
+  - `setUsesChronometer(true)`, `setChronometerCountDown(true)`, `setWhen(endsAt)`, so the system draws the live countdown without reposting;
+  - actions "+15 s" and "Skip", delivered to the service through `PendingIntent.getService`;
+  - `setRequestPromotedOngoing(true)` (AndroidX `NotificationCompat`, core 1.17.0+) and the `POST_PROMOTED_NOTIFICATIONS` permission. This asks for an Android 16 QPR1 (API 36.1) Live Update, a status-bar chip with the countdown. It needs `BigTextStyle` or another allowed style, a title, ongoing, and no colorization. Not verified on a device yet; the test phone runs API 36.0, where `canPostPromotedNotifications()` is false.
+- **End of rest:** the service
+  - requests `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` and plays a short (~1.5 s) bundled sound through `MediaPlayer` with `USAGE_ALARM` / `CONTENT_TYPE_SONIFICATION`, so it uses the alarm volume and ignores the ringer mode;
+  - vibrates with `VibrationAttributes.USAGE_ALARM` (API 33+; `AudioAttributes` with `USAGE_ALARM` below);
+  - posts a "rest over" notification on a high-importance channel with sound and vibration disabled;
+  - after playback, abandons focus, removes the countdown notification, releases the wake lock, and stops itself.
+
+  Audio focus works because the service is in the foreground. On Android 15+, apps targeting API 35+ get focus only as the top app or with a foreground service; without focus, music isn't ducked.
+- **Notifications permission:** without `POST_NOTIFICATIONS` the countdown and the alert still run, but no notification is shown. Request it on first use.
+- **Known gap:** if the process dies during a rest (force stop, crash, an OEM killer), that alert is lost. This is accepted: missing an alert in rare cases isn't harmful, and a foreground service with a wake lock survived swipe-away and deep Doze in testing. On the next app start, the UI shows a rest whose `endsAt` has passed as finished.
 - **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible.
+
+#### Alternatives tested and rejected
+
+- **`AlarmManager.setAlarmClock`, firing an alert service.** Exact in every case, including after swipe-away (cold start, ~300 ms). Rejected because it needs `USE_EXACT_ALARM` and replaces the user's wake-up alarm as the system's next alarm clock while a rest runs. Revoking `SCHEDULE_EXACT_ALARM` kills the app and deletes pending alarms.
+- **`setExactAndAllowWhileIdle`.** Not exact on OxygenOS: alarm batching delivered one 27 s early and another 8 s late.
+- **Inexact alarms** (`setAndAllowWhileIdle`): about 3 minutes late on a locked phone.
+- **Playing the alert from a `BroadcastReceiver`.** The audio focus request fails on Android 15+, so music isn't ducked.
+- **The stock local-notifications plugin.** It falls back to inexact alarms and can't show a countdown.
+
+#### Device test results
+
+Phase 1 spike, on the owner's OnePlus 12R (CPH2581), Android 16 (API 36.0), OxygenOS 16.0.10.601, app targeting API 36. Checked through `dumpsys` (audio player state, focus, ducking, vibration, wake locks), not by ear. Latency is the time from the scheduled end of the rest to the alert.
+
+| Case | Countdown service |
+| --- | --- |
+| Screen locked | Pass, 30 ms. |
+| Forced deep Doze, 2 min | Pass, 51 ms. Wake lock held throughout. |
+| App swiped away from recents | Pass, 31 ms. The task is removed; the process stays alive with its foreground service. |
+| Process killed mid-rest | No alert (the accepted gap). |
+| Started while the phone was locked | Refused by Android (`ForegroundServiceStartNotAllowedException`). |
+
+The alert itself, measured with the same alert code started by an alarm:
+
+| Case | Result |
+| --- | --- |
+| Alert slider on vibrate or silent | Pass. Sound plays unmuted on the speaker; vibration plays in full. |
+| DND (priority mode, alarms allowed) | Pass. |
+| Music playing (YouTube Music on the speaker) | Pass from a foreground service: music ducks to 20% for the alert and resumes. |
+
+Not tested: Bluetooth earbuds (where an alarm-usage sound is routed), DND configured to block alarms, battery saver, the "+15 s" and "Skip" notification actions, the Live Update chip. The alarm stream volume on this phone can't go below 1.
 
 ### Health Connect
 
