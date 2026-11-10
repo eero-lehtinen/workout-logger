@@ -30,9 +30,10 @@ export function SetLine(props: {
           className="tabular inline-flex items-center gap-1"
         >
           {i > 0 && (
-            <span aria-hidden className="pr-1 text-ink-muted/50">
-              ·
-            </span>
+            <span
+              aria-hidden
+              className="mr-1 size-1 shrink-0 rounded-full bg-ink-muted/35"
+            />
           )}
           {formatSet(set, props.type, props.unit)}
           {set.marker && (
