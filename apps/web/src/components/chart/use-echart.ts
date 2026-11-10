@@ -27,8 +27,19 @@ export function useEChart(el: HTMLElement | null): ECharts | null {
     el.addEventListener("wheel", wheel, { capture: true });
     el.addEventListener("mousewheel", wheel, { capture: true });
     const detachPinch = attachPinchZoom(el, instance);
+    // Touch has no pointer leaving the chart, so a tooltip from a tap or a
+    // pinch would stay up: hide it on zoom and on a press anywhere else.
+    const hideTip = () => instance.dispatchAction({ type: "hideTip" });
+    instance.on("datazoom", hideTip);
+    const pressOutside = (e: PointerEvent) => {
+      if (!el.contains(e.target as Node)) hideTip();
+    };
+    document.addEventListener("pointerdown", pressOutside, { capture: true });
     setChart(instance);
     return () => {
+      document.removeEventListener("pointerdown", pressOutside, {
+        capture: true,
+      });
       detachPinch();
       resize.disconnect();
       el.removeEventListener("wheel", wheel, { capture: true });
@@ -56,8 +67,8 @@ export function useChartOption(
 
 /**
  * Whether the chart is zoomed in, and a way back to the full range. A new
- * `resetKey` (other series) also goes back to the full range, and so does a
- * double click.
+ * `resetKey` (other data) also goes back to the full range and closes the
+ * tooltip, which would describe the old data; so does a double click.
  */
 export function useZoomReset(chart: ECharts | null, resetKey: string) {
   const [zoomed, setZoomed] = useState(false);
@@ -83,8 +94,9 @@ export function useZoomReset(chart: ECharts | null, resetKey: string) {
   }, [chart]);
 
   useEffect(() => {
-    if (resetKey)
-      chart?.dispatchAction({ type: "dataZoom", start: 0, end: 100 });
+    if (!chart || !resetKey) return;
+    chart.dispatchAction({ type: "dataZoom", start: 0, end: 100 });
+    chart.dispatchAction({ type: "hideTip" });
   }, [chart, resetKey]);
 
   return { zoomed, reset };

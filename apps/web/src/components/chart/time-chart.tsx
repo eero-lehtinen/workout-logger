@@ -33,9 +33,10 @@ export default function EChartsTimeChart(props: TimeChartProps) {
     return trend ? [{ series: s, trend }] : [];
   });
   const option = timeChartOption(props, theme, trends);
-  const zoom = useZoomReset(chart, props.series.map((s) => s.id).join());
-  const { onSelect } = props;
+  // Before the zoom reset, so the reset applies to the new data.
   useChartOption(chart, option);
+  const zoom = useZoomReset(chart, dataKey(props.series));
+  const { onSelect } = props;
 
   useEffect(() => {
     if (!chart || !onSelect) return;
@@ -85,6 +86,20 @@ export default function EChartsTimeChart(props: TimeChartProps) {
       )}
     </>
   );
+}
+
+/**
+ * Changes when other data is shown, e.g. another metric or period: the zoom
+ * then goes back to the full range, since the old window may not even
+ * overlap the new data.
+ */
+function dataKey(series: readonly TimeSeries[]) {
+  return series
+    .map(
+      (s) =>
+        `${s.id}:${s.points.length}:${s.points[0]?.t}:${s.points.at(-1)?.t}`,
+    )
+    .join();
 }
 
 /** The x range in view, in epoch ms; null before the first zoom. */

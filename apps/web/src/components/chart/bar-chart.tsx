@@ -28,8 +28,13 @@ export default function EChartsBarChart(props: BarChartProps) {
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const chart = useEChart(el);
   const option = barChartOption(props, theme);
-  const zoom = useZoomReset(chart, props.xKind);
+  // Before the zoom reset, so the reset applies to the new bars.
   useChartOption(chart, option);
+  // Other bars, e.g. another period, go back to the full range.
+  const zoom = useZoomReset(
+    chart,
+    `${props.xKind}:${props.bars.length}:${props.bars[0]?.x}:${props.bars.at(-1)?.x}`,
+  );
 
   return (
     <ChartFrame
