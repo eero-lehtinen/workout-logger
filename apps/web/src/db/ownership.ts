@@ -32,6 +32,18 @@ export class DbOwner {
   #release: (() => void) | undefined;
   #wake: (() => void) | undefined;
   #started = false;
+  /** Set while the database is released for a freeze. */
+  #frozen = false;
+  #releaseOnFreeze: boolean;
+
+  /**
+   * `releaseOnFreeze: false` where no other context can want the database,
+   * i.e. in the Android app: there, releasing only costs a reopen and a
+   * remounted UI each time the phone was locked.
+   */
+  constructor(options: { releaseOnFreeze?: boolean } = {}) {
+    this.#releaseOnFreeze = options.releaseOnFreeze ?? true;
+  }
 
   subscribe = (listener: () => void) => {
     this.#listeners.add(listener);
@@ -44,10 +56,10 @@ export class DbOwner {
   start() {
     if (this.#started) return;
     this.#started = true;
-    document.addEventListener("freeze", () => this.#freeze());
-    document.addEventListener("resume", () =>
-      this.#request({ ifAvailable: true }),
-    );
+    if (this.#releaseOnFreeze) {
+      document.addEventListener("freeze", () => this.#freeze());
+      document.addEventListener("resume", () => this.#resume());
+    }
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") this.#wake?.();
     });
@@ -170,12 +182,24 @@ export class DbOwner {
    * over. Let go now; `resume` opens again or waits.
    */
   #freeze() {
+    this.#frozen = true;
     this.#waiting?.abort();
     this.#waiting = undefined;
     this.#close();
     this.#release?.();
     this.#release = undefined;
     this.#set({ status: "starting" });
+  }
+
+  /**
+   * Only after a freeze that released the database. A `resume` can arrive
+   * without one (seen in the Android WebView); asking for the lock while
+   * holding it would leave this tab waiting for itself.
+   */
+  #resume() {
+    if (!this.#frozen) return;
+    this.#frozen = false;
+    this.#request({ ifAvailable: true });
   }
 
   #close() {

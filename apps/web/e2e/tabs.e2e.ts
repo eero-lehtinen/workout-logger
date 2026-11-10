@@ -41,6 +41,16 @@ test("a tab lets go of the database when the browser freezes it", async ({
   await expect(page.getByText("Open in another tab")).toBeVisible();
 });
 
+test("a resume without a freeze keeps the database", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+
+  await page.evaluate(() => document.dispatchEvent(new Event("resume")));
+  // Asking for the lock it already holds would show "Open in another tab".
+  await page.getByRole("link", { name: "Settings" }).first().click();
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.getByText("Open in another tab")).toBeHidden();
+});
 test("taking over from a tab that can't let go waits for it", async ({
   page,
   context,

@@ -20,6 +20,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { toasts } from "../components/toasts.tsx";
+import { isNative } from "../lib/platform.ts";
 import type { DbClient } from "./client.ts";
 import { DbOwner, type DbState } from "./ownership.ts";
 
@@ -104,7 +105,7 @@ export function DatabaseProvider(props: {
   children: ReactNode;
   fallback: GateView;
 }) {
-  const [owner] = useState(() => new DbOwner());
+  const [owner] = useState(() => new DbOwner({ releaseOnFreeze: !isNative }));
   useEffect(() => owner.start(), [owner]);
   const state = useSyncExternalStore(owner.subscribe, owner.getState);
 
