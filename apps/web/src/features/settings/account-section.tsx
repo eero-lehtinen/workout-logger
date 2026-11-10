@@ -126,7 +126,7 @@ function SyncRow(props: { sync: SyncState }) {
       ? ""
       : ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} not synced yet.`;
   return (
-    <Row stacked label="Sync" hint={`${problem(sync) ?? last}${pending}`}>
+    <Row label="Sync" hint={`${problem(sync) ?? last}${pending}`}>
       <Button disabled={sync.running} onClick={() => void syncNow()}>
         {sync.running ? "Syncing…" : "Sync now"}
       </Button>
