@@ -10,29 +10,17 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: phases 0–5 and 7 of [docs/implementation-plan.md](docs/implementation-plan.md)
-are done; phase 6 (server, sync) is built and waits for its rollout
-([docs/plans/phase-6.md](docs/plans/phase-6.md)). `apps/web` is a
-local-first PWA for logging workouts: the DB worker, tab ownership, sessions,
-the logging view, routines, exercises, exercise history with ECharts graphs
-and records, the calendar and frequency stats, settings, snapshots, the web
-rest timer, GitHub sign-in, and sync, with Storybook stories and Playwright
-tests.
-`packages/core` has the DB drivers, schema v1 and migrations, the write API,
-the sync client and run and the shared server sync module, the domain
-functions, and the UI's queries and commands; `packages/exercises` has the
-seed catalog. `apps/android` is the Capacitor shell around the same web
-build, with the Kotlin `RestTimer` plugin; a `v*` tag releases a signed APK.
-Between releases the app replaces its web build with the server's (live
-updates, phase 9b: built, not yet released or tested on a phone;
-[docs/plans/live-updates.md](docs/plans/live-updates.md)).
-`apps/server` serves the web build, `/api/status`, the Android update
-endpoints, Better Auth, and sync, copies its database to R2, and has the
-`server` command; every push to `main` deploys it to
-<https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
-Invites, quotas, measurements, and the CLI are not built yet. The owner's
-FitNotes history is converted to a snapshot by a private script outside this
-repo ([docs/fitnotes-import.md](docs/fitnotes-import.md)).
+What is built and what is next is in
+[docs/implementation-plan.md](docs/implementation-plan.md).
+
+- `apps/web`: the local-first PWA, with Storybook stories and Playwright tests.
+- `packages/core`: the DB drivers, schema and migrations, the write API, the sync client and the shared server sync module, the domain functions, and the UI's queries and commands.
+- `packages/exercises`: the seed catalog.
+- `apps/android`: the Capacitor shell around the same web build, with the Kotlin `RestTimer` plugin. A `v*` tag releases a signed APK; between releases the app replaces its web build with the server's (live updates).
+- `apps/server`: serves the web build, `/api/status`, the Android update endpoints, Better Auth, and sync, copies its database to R2, and has the `server` command. Every push to `main` deploys it to <https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
+
+The owner's FitNotes history is converted to a snapshot by a private script
+outside this repo ([docs/fitnotes-import.md](docs/fitnotes-import.md)).
 
 ## Read first
 

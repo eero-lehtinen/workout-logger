@@ -157,7 +157,7 @@ The rest timer matrix for silent mode, DND, music, and swipe-away was not
 repeated in the app; it passed in the phase 1 spike with the same service
 and alert code ([architecture.md](architecture.md#device-test-results)).
 
-## Phase 6: Server, sync, deployment (L)
+## Phase 6: Server, sync, deployment (L) [done]
 
 Owner-only at first; multi-user hardening is phase 11.
 
@@ -182,8 +182,7 @@ Owner-only at first; multi-user hardening is phase 11.
 
 **Exit:** phone and web stay in sync. You've rehearsed the "VPS lost" procedure once.
 
-Status: built and tested; the rollout and the exit checks are in
-[plans/phase-6.md](plans/phase-6.md). Sign-in is GitHub only, instead of email
+Result: sign-in is GitHub only, instead of email
 and password: the Android app signs in through a Custom Tab and a deep link
 ([accounts.md](accounts.md#login)). The Playwright suite syncs two browser
 devices through the real server. The restore rehearsal job and the warning
@@ -228,19 +227,17 @@ private `workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it
 matches FitNotes per exercise on set count, session count, and best e1RM.
 Left: the real import, the check on the phone, and the cutover.
 
-## Phase 9b: Android live updates (S) [next]
+## Phase 9b: Android live updates (S) [done]
 
 - The Android app downloads newer web builds from the server and runs them from the same origin, so web changes, including schema migrations, need no APK release.
 - A bundle declares the oldest native shell it works with; a bundle that fails to start rolls back.
 
 **Exit:** a push to `main` reaches the phone without installing an APK, and a broken bundle rolls back on the phone.
 
-Status: built ([architecture.md](architecture.md#live-updates),
+Result ([architecture.md](architecture.md#live-updates),
 [deployment.md](deployment.md#live-updates)): the Capawesome live-update
 plugin, a signed bundle in the server image, its endpoints, and the app's
-check, confirmation, and rollback handling. Left: the signing secret in
-GitHub, the first APK release with the plugin, and the tests on the phone
-([plans/live-updates.md](plans/live-updates.md)).
+check and rollback handling. `v0.5.0` is the first APK with the plugin.
 
 ## Phase 10: CLI (S–M)
 
