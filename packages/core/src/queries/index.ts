@@ -45,6 +45,7 @@ export type { QueryDef } from "./define.ts";
 export {
   type ExerciseLog,
   type LoggedSet,
+  type MarkerExplanation,
   type Performance,
   PREVIOUS_PERFORMANCES,
 } from "./exercise-log.ts";

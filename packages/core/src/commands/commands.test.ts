@@ -165,7 +165,21 @@ describe("logging", () => {
     // Weight of this session's set 1, reps of the previous set 2.
     expect(log?.prefill).toEqual(set(102.5, 7));
     expect(log?.sets).toMatchObject([
-      { weight_kg: 102.5, reps: 8, marker: "pr" },
+      {
+        weight_kg: 102.5,
+        reps: 8,
+        marker: "pr",
+        markerBasis: {
+          measure: "e1rm",
+          against: {
+            weight_kg: 100,
+            reps: 8,
+            setNumber: 1,
+            startedAt: T0,
+            sameSession: false,
+          },
+        },
+      },
     ]);
   });
 

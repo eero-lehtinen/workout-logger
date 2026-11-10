@@ -3,6 +3,9 @@ export * from "./commands/index.ts";
 export { createKysely, type Driver, type Statement } from "./db/driver.ts";
 export { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./domain/e1rm.ts";
 export {
+  explainPerformances,
+  type MarkerBasis,
+  type MarkerMeasure,
   type MarkerOptions,
   markPerformances,
   type ProgressMarker,

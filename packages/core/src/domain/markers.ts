@@ -15,6 +15,33 @@ export interface MarkerOptions {
 }
 
 /**
+ * What a marker compared. `weight_and_reps` is the set record above the
+ * e1RM cap: at least as much weight and reps, and strictly more of one.
+ */
+export type MarkerMeasure =
+  | "e1rm"
+  | "reps"
+  | "duration"
+  | "distance"
+  | "weight"
+  | "weight_and_reps";
+
+/** Why a set got its marker. */
+export interface MarkerBasis {
+  marker: ProgressMarker;
+  measure: MarkerMeasure;
+  /** This set's value of the measure (kg, reps, s, m); null for weight_and_reps. */
+  value: number | null;
+  /** The value it beat; null for weight_and_reps. */
+  compared: number | null;
+  /**
+   * The set it was compared with, as indexes into the performances: the
+   * previous best for a PR, the reference set otherwise.
+   */
+  against: { performance: number; set: number };
+}
+
+/**
  * Markers for every set of one exercise's performances, oldest first. A
  * performance is the exercise's sets in one session, ordered by position,
  * without deleted sets. Each set is judged against the history before it, so
@@ -25,37 +52,66 @@ export function markPerformances(
   performances: readonly (readonly SetValues[])[],
   options: MarkerOptions = {},
 ): (ProgressMarker | null)[][] {
+  return explainPerformances(type, performances, options).map((sets) =>
+    sets.map((basis) => basis?.marker ?? null),
+  );
+}
+
+/** Like `markPerformances`, with what each marker was based on. */
+export function explainPerformances(
+  type: ExerciseType,
+  performances: readonly (readonly SetValues[])[],
+  options: MarkerOptions = {},
+): (MarkerBasis | null)[][] {
   const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
-  // Best PR score per comparable kind, over all earlier sets.
-  const best = new Map<ScoreKind, number>();
+  // Best PR score per comparable kind over all earlier sets, and where it was.
+  const best = new Map<
+    ScoreKind,
+    { value: number; at: MarkerBasis["against"] }
+  >();
   let previous: readonly SetValues[] | undefined;
 
   return performances.map((sets, index) => {
-    const markers = sets.map((set, i) => {
+    const bases = sets.map((set, i): MarkerBasis | null => {
       const score = prScore(type, set, cap);
       const bestBefore = score && best.get(score.kind);
-      if (score)
-        best.set(score.kind, Math.max(bestBefore ?? score.value, score.value));
+      if (score && (!bestBefore || score.value > bestBefore.value)) {
+        best.set(score.kind, {
+          value: score.value,
+          at: { performance: index, set: i },
+        });
+      }
 
       // The first performance would be all PRs.
-      if (
-        index > 0 &&
-        score &&
-        bestBefore !== undefined &&
-        greater(score.value, bestBefore)
-      ) {
-        return "pr";
+      if (index > 0 && score && bestBefore) {
+        if (greater(score.value, bestBefore.value)) {
+          return {
+            marker: "pr",
+            measure: score.kind,
+            value: score.value,
+            compared: bestBefore.value,
+            against: bestBefore.at,
+          };
+        }
       }
       const reference = previous?.[i];
       if (!reference) return null;
-      if (isSetRecord(type, set, reference, cap)) return "set_record";
+      const against = { performance: index - 1, set: i };
+      const record = setRecord(type, set, reference, cap);
+      if (record) return { marker: "set_record", ...record, against };
       if (isWeightType(type) && greater(weight(set), weight(reference))) {
-        return "weight_increase";
+        return {
+          marker: "weight_increase",
+          measure: "weight",
+          value: weight(set),
+          compared: weight(reference),
+          against,
+        };
       }
       return null;
     });
     previous = sets;
-    return markers;
+    return bases;
   });
 }
 
@@ -88,45 +144,63 @@ function prScore(
   }
 }
 
-function isSetRecord(
+type Comparison = Pick<MarkerBasis, "measure" | "value" | "compared">;
+
+/** The set record comparison that holds, if any. */
+function setRecord(
   type: ExerciseType,
   set: SetValues,
   reference: SetValues,
   cap: number,
-): boolean {
+): Comparison | null {
   switch (type) {
     case "reps":
-      return greater(set.reps ?? 0, reference.reps ?? 0);
+      return beats("reps", set.reps ?? 0, reference.reps ?? 0);
     case "time":
-      return greater(set.duration_s ?? 0, reference.duration_s ?? 0);
+      return beats("duration", set.duration_s ?? 0, reference.duration_s ?? 0);
     case "distance_time":
-      return greater(set.distance_m ?? 0, reference.distance_m ?? 0);
+      return beats("distance", set.distance_m ?? 0, reference.distance_m ?? 0);
     case "bodyweight_reps":
       if (!hasAddedWeight(set) && !hasAddedWeight(reference)) {
-        return greater(set.reps ?? 0, reference.reps ?? 0);
+        return beats("reps", set.reps ?? 0, reference.reps ?? 0);
       }
-      return isWeightSetRecord(set, reference, cap);
+      return weightSetRecord(set, reference, cap);
     case "weight_reps":
-      return isWeightSetRecord(set, reference, cap);
+      return weightSetRecord(set, reference, cap);
   }
 }
 
-function isWeightSetRecord(set: SetValues, reference: SetValues, cap: number) {
+function beats(
+  measure: MarkerMeasure,
+  value: number,
+  compared: number,
+): Comparison | null {
+  return greater(value, compared) ? { measure, value, compared } : null;
+}
+
+function weightSetRecord(
+  set: SetValues,
+  reference: SetValues,
+  cap: number,
+): Comparison | null {
   const e1 = e1rm(set, cap);
   const e1Reference = e1rm(reference, cap);
-  if (e1 !== undefined && e1Reference !== undefined)
-    return greater(e1, e1Reference);
+  if (e1 !== undefined && e1Reference !== undefined) {
+    return beats("e1rm", e1, e1Reference);
+  }
   // Above the cap the estimate isn't trusted: require at least as much weight
   // and reps, and strictly more of one.
   const w = weight(set);
   const wRef = weight(reference);
   const r = set.reps ?? 0;
   const rRef = reference.reps ?? 0;
-  return (
+  const dominates =
     !greater(wRef, w) &&
     !greater(rRef, r) &&
-    (greater(w, wRef) || greater(r, rRef))
-  );
+    (greater(w, wRef) || greater(r, rRef));
+  return dominates
+    ? { measure: "weight_and_reps", value: null, compared: null }
+    : null;
 }
 
 function isWeightType(type: ExerciseType) {

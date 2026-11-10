@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { markPerformances, type SetValues } from "./markers.ts";
+import {
+  explainPerformances,
+  markPerformances,
+  type SetValues,
+} from "./markers.ts";
 import { toKg } from "./units.ts";
 
 const s = (weight_kg: number | null, reps: number | null): SetValues => ({
@@ -177,5 +181,66 @@ describe("other exercise types", () => {
     expect(
       last("distance_time", [[cardio(5000, 1500)], [cardio(6000, 2000)]]),
     ).toEqual(["pr"]);
+  });
+});
+
+describe("explainPerformances", () => {
+  it("points a PR at the previous best set, wherever it was", () => {
+    const history = [[s(100, 8)], [s(90, 8)], [s(102.5, 8)]];
+    expect(explainPerformances("weight_reps", history).at(-1)).toEqual([
+      {
+        marker: "pr",
+        measure: "e1rm",
+        value: 102.5 * (1 + 8 / 30),
+        compared: 100 * (1 + 8 / 30),
+        against: { performance: 0, set: 0 },
+      },
+    ]);
+  });
+
+  it("points set records and weight increases at the reference set", () => {
+    const history = [
+      [s(120, 8), s(100, 7), s(100, 6)],
+      [s(110, 5), s(100, 8), s(105, 4)],
+    ];
+    const [, record, increase] =
+      explainPerformances("weight_reps", history).at(-1) ?? [];
+    expect(record).toEqual({
+      marker: "set_record",
+      measure: "e1rm",
+      value: 100 * (1 + 8 / 30),
+      compared: 100 * (1 + 7 / 30),
+      against: { performance: 0, set: 1 },
+    });
+    expect(increase).toEqual({
+      marker: "weight_increase",
+      measure: "weight",
+      value: 105,
+      compared: 100,
+      against: { performance: 0, set: 2 },
+    });
+  });
+
+  it("says when a set record above the e1RM cap is by weight and reps", () => {
+    const history = [[s(60, 15)], [s(60, 16)]];
+    expect(explainPerformances("weight_reps", history).at(-1)).toEqual([
+      {
+        marker: "set_record",
+        measure: "weight_and_reps",
+        value: null,
+        compared: null,
+        against: { performance: 0, set: 0 },
+      },
+    ]);
+  });
+
+  it("compares timed sets by duration", () => {
+    const history = [[timed(40)], [timed(45)]];
+    expect(explainPerformances("time", history).at(-1)?.[0]).toMatchObject({
+      marker: "pr",
+      measure: "duration",
+      value: 45,
+      compared: 40,
+    });
   });
 });

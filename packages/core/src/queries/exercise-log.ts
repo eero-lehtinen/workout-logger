@@ -1,6 +1,7 @@
 import type { Kysely } from "kysely";
 import {
-  markPerformances,
+  explainPerformances,
+  type MarkerMeasure,
   type ProgressMarker,
   type SetValues,
 } from "../domain/markers.ts";
@@ -17,6 +18,24 @@ export interface LoggedSet extends SetValues {
   id: string;
   loggedAt: number;
   marker: ProgressMarker | null;
+  /** Why the set got its marker; null without one. */
+  markerBasis: MarkerExplanation | null;
+}
+
+/** A marker's basis with the compared set resolved, for showing to the user. */
+export interface MarkerExplanation {
+  measure: MarkerMeasure;
+  /** kg for e1rm and weight, reps, s, or m; null for weight_and_reps. */
+  value: number | null;
+  compared: number | null;
+  /** The set it was compared with. */
+  against: SetValues & {
+    setNumber: number;
+    startedAt: number;
+    tz: string;
+    /** True if it was an earlier set of the same session. */
+    sameSession: boolean;
+  };
 }
 
 export interface Performance {
@@ -100,16 +119,39 @@ export const exerciseLog = defineQuery(
       row.sessionId,
       row.startedAt,
     );
-    const markers = markPerformances(
+    const bases = explainPerformances(
       row.type,
       performances.map((p) => p.sets),
       { e1rmRepCap: settings.e1rm_rep_cap },
     );
+    const explain = (i: number, j: number): MarkerExplanation | null => {
+      const basis = bases[i]?.[j];
+      if (!basis) return null;
+      const where = performances[basis.against.performance];
+      const set = where?.sets[basis.against.set];
+      if (!where || !set) return null;
+      return {
+        measure: basis.measure,
+        value: basis.value,
+        compared: basis.compared,
+        against: {
+          weight_kg: set.weight_kg,
+          reps: set.reps,
+          duration_s: set.duration_s,
+          distance_m: set.distance_m,
+          setNumber: basis.against.set + 1,
+          startedAt: where.startedAt,
+          tz: where.tz,
+          sameSession: basis.against.performance === i,
+        },
+      };
+    };
     const marked = performances.map((p, i) => ({
       ...p,
       sets: p.sets.map((set, j) => ({
         ...set,
-        marker: markers[i]?.[j] ?? null,
+        marker: bases[i]?.[j]?.marker ?? null,
+        markerBasis: explain(i, j),
       })),
     }));
     const current =
@@ -156,7 +198,9 @@ function stripSessionExercise({
   return set;
 }
 
-type RawSet = Omit<LoggedSet, "marker"> & { sessionExerciseId: string };
+type RawSet = Omit<LoggedSet, "marker" | "markerBasis"> & {
+  sessionExerciseId: string;
+};
 
 /**
  * Every performance of the exercise from the first one through the given
