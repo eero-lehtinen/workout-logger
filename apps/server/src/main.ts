@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { githubReleases } from "./android-release.ts";
 import { createApp } from "./app.ts";
 
 const port = Number(process.env.PORT ?? 3000);
@@ -7,7 +8,20 @@ const webRoot =
   process.env.WEB_ROOT ??
   fileURLToPath(new URL("../../web/dist", import.meta.url));
 
-const app = createApp({ webRoot, commit: process.env.GIT_COMMIT || undefined });
+const releasesToken = process.env.GITHUB_RELEASES_TOKEN;
+
+const app = createApp({
+  webRoot,
+  commit: process.env.GIT_COMMIT || undefined,
+  releases: releasesToken
+    ? githubReleases({
+        repository:
+          process.env.GITHUB_RELEASES_REPOSITORY ??
+          "eero-lehtinen/workout-logger",
+        token: releasesToken,
+      })
+    : undefined,
+});
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`Serving ${webRoot} on port ${info.port}`);

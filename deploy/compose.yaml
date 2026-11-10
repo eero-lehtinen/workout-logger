@@ -6,6 +6,10 @@ services:
   app:
     image: ghcr.io/eero-lehtinen/workout-logger:${IMAGE_TAG}
     restart: unless-stopped
+    environment:
+      # Set in the service's environment settings in Dokploy. Empty turns the
+      # Android update endpoints off.
+      GITHUB_RELEASES_TOKEN: ${GITHUB_RELEASES_TOKEN:-}
     logging:
       driver: json-file
       options:

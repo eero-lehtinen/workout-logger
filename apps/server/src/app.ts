@@ -2,12 +2,15 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type MiddlewareHandler } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
+import { androidRoutes, type ReleaseSource } from "./android-release.ts";
 
 export interface AppOptions {
   /** Directory with the built web app (`apps/web/dist`). */
   webRoot: string;
   /** Commit SHA the image was built from, if known. */
   commit?: string | undefined;
+  /** Android releases, if the server is configured to read them. */
+  releases?: ReleaseSource | undefined;
 }
 
 export interface Status {
@@ -30,7 +33,7 @@ const cacheControl =
     if (c.res.ok) c.header("Cache-Control", value);
   };
 
-export function createApp({ webRoot, commit }: AppOptions): Hono {
+export function createApp({ webRoot, commit, releases }: AppOptions): Hono {
   const app = new Hono();
 
   app.use(secureHeaders());
@@ -45,6 +48,8 @@ export function createApp({ webRoot, commit }: AppOptions): Hono {
   app.get("/api/status", (c) =>
     c.json<Status>({ version: pkg.version, commit: commit ?? null }),
   );
+
+  app.route("/api/android", androidRoutes(releases));
   app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
   app.get(
