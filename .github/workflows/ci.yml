@@ -94,7 +94,8 @@ jobs:
       - name: Wait for the new version
         run: |
           for _ in $(seq 60); do
-            commit=$(curl --silent "$APP_URL/api/status" | jq -r '.commit // empty' || true)
+            # Until the container is up, Traefik answers with a plain-text 404.
+            commit=$(curl --silent "$APP_URL/api/status" | jq -r '.commit // empty' 2> /dev/null || true)
             if [ "$commit" = "$GITHUB_SHA" ]; then
               echo "$APP_URL serves $commit"
               exit 0
