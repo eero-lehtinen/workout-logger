@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GateView } from "../db/react.tsx";
+import { applyLiveUpdate, markAppReady } from "../lib/live-update.ts";
+import { isNative } from "../lib/platform.ts";
 import { Button } from "./button.tsx";
 
 /** Shown until this tab owns an open database. */
@@ -10,6 +12,12 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
     const id = setTimeout(() => setSlow(true), 400);
     return () => clearTimeout(id);
   }, []);
+
+  const tooNew = error instanceof Error && error.name === "SchemaTooNewError";
+  useEffect(() => {
+    // A rollback would only reach an even older build.
+    if (tooNew) markAppReady();
+  }, [tooNew]);
 
   if (state === "starting") {
     return (
@@ -46,7 +54,6 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
       </Centered>
     );
   }
-  const tooNew = error instanceof Error && error.name === "SchemaTooNewError";
   return (
     <Centered>
       <h1 className="text-xl font-semibold">
@@ -54,12 +61,18 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
       </h1>
       <p className="max-w-sm text-ink-muted">
         {tooNew
-          ? "Your data was saved by a newer version. Reload to get it."
+          ? `Your data was saved by a newer version. ${isNative ? "Update" : "Reload"} to get it.`
           : `Your data is untouched. ${error instanceof Error ? error.message : String(error)}`}
       </p>
       {tooNew ? (
-        <Button variant="primary" onClick={() => location.reload()}>
-          Reload
+        <Button
+          variant="primary"
+          // No database is open here, so switching builds interrupts nothing.
+          onClick={() =>
+            isNative ? void applyLiveUpdate() : location.reload()
+          }
+        >
+          {isNative ? "Update" : "Reload"}
         </Button>
       ) : (
         <Button variant="primary" onClick={retry}>

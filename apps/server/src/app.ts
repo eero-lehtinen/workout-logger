@@ -4,7 +4,12 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
-import { androidRoutes, type ReleaseSource } from "./android-release.ts";
+import { bundleRoutes } from "./android-bundle.ts";
+import {
+  ANDROID_ORIGIN,
+  androidRoutes,
+  type ReleaseSource,
+} from "./android-release.ts";
 import { type Auth, sessionUser } from "./auth/auth.ts";
 import {
   type AuthEnv,
@@ -20,6 +25,8 @@ import { syncRoutes } from "./sync-routes.ts";
 export interface AppOptions {
   /** Directory with the built web app (`apps/web/dist`). */
   webRoot: string;
+  /** Directory with the web build's live-update bundle (`apps/web/live-bundle`). */
+  bundleRoot: string;
   /** Commit SHA the image was built from, if known. */
   commit?: string | undefined;
   /** Android releases, if the server is configured to read them. */
@@ -38,9 +45,6 @@ export interface AppOptions {
 // releases, so browsers must revalidate it or they never see an update.
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const REVALIDATE = "no-cache";
-
-/** The Android app's WebView origin (docs/architecture.md#storage-durability). */
-const ANDROID_ORIGIN = "https://localhost";
 
 // Set after the response exists: serveStatic's onFound runs after it has built
 // the response, and headers set there are dropped.
@@ -113,6 +117,9 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   app.get("/api/me", (c) => c.json(c.get("user")));
   app.route("/api/sync/v1", syncRoutes(syncDb(options.db), now));
 
+  // Before the APK routes, which answer everything under /api/android with
+  // 503 when no release token is configured.
+  app.route("/api/android/bundle", bundleRoutes(options.bundleRoot));
   app.route("/api/android", androidRoutes(options.releases));
   app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 

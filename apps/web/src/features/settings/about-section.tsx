@@ -8,6 +8,7 @@ import {
   downloadUpdate,
 } from "../../lib/app-update.ts";
 import { formatDateTime } from "../../lib/format.ts";
+import { checkForLiveUpdate } from "../../lib/live-update.ts";
 import { isNative } from "../../lib/platform.ts";
 import { Row, Section } from "./settings-rows.tsx";
 
@@ -42,7 +43,10 @@ function AppVersionRow() {
   async function check() {
     setChecking(true);
     try {
-      const update = await checkForUpdate();
+      const [update, waiting] = await Promise.all([
+        checkForUpdate(),
+        checkForLiveUpdate(),
+      ]);
       if (update) {
         toasts.add({
           title: `Version ${update.version} is available`,
@@ -50,6 +54,11 @@ function AppVersionRow() {
             children: "Download",
             onClick: () => void downloadUpdate().catch(reportDownloadFailure),
           },
+        });
+      } else if (waiting) {
+        toasts.add({
+          title: "An update is downloaded",
+          description: "It is in use the next time the app starts.",
         });
       } else {
         toasts.add({ title: "The app is up to date" });

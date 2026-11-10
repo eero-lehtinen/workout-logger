@@ -232,9 +232,15 @@ Left: the real import, the check on the phone, and the cutover.
 
 - The Android app downloads newer web builds from the server and runs them from the same origin, so web changes, including schema migrations, need no APK release.
 - A bundle declares the oldest native shell it works with; a bundle that fails to start rolls back.
-- Plan: [plans/live-updates.md](plans/live-updates.md).
 
 **Exit:** a push to `main` reaches the phone without installing an APK, and a broken bundle rolls back on the phone.
+
+Status: built ([architecture.md](architecture.md#live-updates),
+[deployment.md](deployment.md#live-updates)): the Capawesome live-update
+plugin, a signed bundle in the server image, its endpoints, and the app's
+check, confirmation, and rollback handling. Left: the signing secret in
+GitHub, the first APK release with the plugin, and the tests on the phone
+([plans/live-updates.md](plans/live-updates.md)).
 
 ## Phase 10: CLI (S–M)
 

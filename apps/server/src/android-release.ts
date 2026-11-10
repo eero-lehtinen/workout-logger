@@ -89,8 +89,8 @@ export function githubReleases(options: GithubReleasesOptions): ReleaseSource {
   };
 }
 
-// The Android app's WebView origin (docs/architecture.md#storage-durability).
-const ANDROID_ORIGIN = "https://localhost";
+/** The Android app's WebView origin (docs/architecture.md#storage-durability). */
+export const ANDROID_ORIGIN = "https://localhost";
 
 /** The Android app's update check and APK download, mounted at /api/android. */
 export function androidRoutes(releases: ReleaseSource | undefined): Hono {

@@ -6,6 +6,7 @@ import { SyncRunner } from "./components/sync-runner.tsx";
 import { DatabaseProvider } from "./db/react.tsx";
 import { initAccount } from "./lib/account.ts";
 import { runningInstalled, watchInstall } from "./lib/install.ts";
+import { startLiveUpdates } from "./lib/live-update.ts";
 import { isNative } from "./lib/platform.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
 import { initTheme } from "./lib/theme.ts";
@@ -28,6 +29,7 @@ if (!isNative) {
 
 initTheme();
 initAccount();
+startLiveUpdates();
 
 createRoot(rootElement).render(
   <StrictMode>

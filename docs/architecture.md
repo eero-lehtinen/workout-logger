@@ -90,6 +90,7 @@ Principles:
 | Property tests | fast-check | Shrinking finds minimal failing sequences; used by the sync fuzz test. |
 | Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#reactive-queries). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
+| Android live updates | `@capawesome/capacitor-live-update` (pinned 8.8.1) | Downloads a zip of the web build from our own server and runs it from the same origin. See [live updates](#live-updates). |
 | Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
 | Auth | Better Auth (pinned 1.7.18), GitHub sign-in | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
@@ -106,7 +107,8 @@ Principles:
 ```
 apps/
   web/        React app; also the Capacitor web asset source, with the
-              Capacitor config and plugin dependencies
+              Capacitor config and plugin dependencies, and the script
+              that packs the build for live updates
   android/    Gradle project of the Android app: the Capacitor shell and
               the RestTimer plugin (Kotlin)
   server/     Hono server: the web build, /api/status, Android updates,
@@ -151,7 +153,7 @@ lib/         formatting, device-only view preferences (`localStorage`, not
              synced), the rest timer and its web and Android alarms,
              storage persistence, PWA install, the account and sign-in, the
              sync scheduler, and the Android-only parts: snapshot files, the
-             update check, the token store
+             APK update check, live updates, the token store
 routes/      TanStack Router file routes; thin, they render feature components
 ```
 
@@ -295,9 +297,40 @@ The weight unit is a per-user display setting. Storage is always kg.
 ### Updates and version compatibility
 
 - **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode, so a new version waits until the app switches to it. The app does that without asking (`WebUpdate`): when a new version has finished installing, no session is running, and the page is hidden (another tab or app, or the screen off). The reload happens out of sight and never mid-workout. During a session the new version waits until the session ends, manually or by idle auto-end. Logged sets are in the database either way; a reload would only lose what is on screen. Closing every tab of the app also switches.
-- **Build identity:** every web build carries its commit SHA and build time (`import.meta.env.BUILD_COMMIT`, `BUILD_TIME`), shown in Settings → About on every platform. Docker passes the commit as `GIT_COMMIT`, the APK build has `GITHUB_SHA`, and a local build asks `git`.
-- **APK:** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. The APK carries its own web build and registers no service worker. See [deployment.md](deployment.md#android-releases).
+- **Build identity:** every web build carries its commit SHA and build time (`import.meta.env.BUILD_COMMIT`, `BUILD_TIME`), shown in Settings → About on every platform. Docker passes the commit as `GIT_COMMIT`, the APK build has `GITHUB_SHA`, and a local build asks `git`. The commit is also the version of the [live-update](#live-updates) bundle.
+- **Android, web build:** replaced by [live updates](#live-updates), without an APK and without a prompt. The app registers no service worker.
+- **Android, shell (APK):** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. Needed only for native changes. See [deployment.md](deployment.md#android-releases).
 - **Server:** the Android app sends its version in `X-Client-Version` on `/api/sync/*` and `/api/me`. Below `MIN_CLIENT_VERSION` the server returns 426, and Settings shows "update the app". Local builds (`0.0.0`) pass. The web app sends no version: the server it talks to serves it, and a stale PWA switches to the new version as above. Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+
+### Live updates
+
+The Android app downloads newer web builds from the server and runs them instead of the one in the APK. Almost all code is web code, and every APK is a manual install on each phone. Build, endpoints, and signing: [deployment.md](deployment.md#live-updates).
+
+- **Same origin.** The plugin unpacks a bundle into the app's files directory and points Capacitor's local server at it (`Bridge.setServerBasePath`). The WebView still loads `https://localhost`, so the database, `localStorage`, and the secure-storage token are the same ones. Pointing the WebView at the live site with Capacitor's `server.url` was rejected: another origin starts with an empty database, there would be no copy for offline starts, and Capacitor documents it for development only.
+- **Versions.** A web build's version is its commit (`BUILD_COMMIT`). A bundle also names the oldest shell it runs in (`minNative`). The app compares its shell's version (`versionName`) with that, so a build that calls a plugin the installed APK lacks is never run there; the APK prompt covers it.
+- **Check.** Once per start, after the running build is confirmed (below), `lib/live-update.ts` asks the server for its bundle and decides (`planUpdate` in `lib/live-update-plan.ts`):
+  - nothing, if the phone runs that commit, has it waiting, has rolled it back before, or has a shell below `minNative`;
+  - otherwise download it in the background and set it as the next bundle.
+
+  Commits are compared for equality, not order: the phone runs what the server serves, like a browser does, also after a server rollback. Local builds (`0.0.0`) are below every `minNative` and keep their own web build.
+- **Switch.** Only at a cold start, when Capacitor reads the next bundle's path. The app never reloads into a new build while it is open, so a running session is never interrupted. Unlike the PWA, it doesn't switch while hidden either. One exception: the "Update the app" screen shown for a database from a newer build offers the switch, because no database is open there.
+- **Confirmation and rollback.** The shell gives a build 20 s of foreground time (`readyTimeout`) to call `ready()`. The app calls it when the database is open and the app shell has rendered (`markAppReady`), or when the database turns out to be from a newer build, which a rollback wouldn't cure. Without the call, the plugin switches back to the web build in the APK, reloads, and blocks the failed bundle: it is never downloaded again. That build may be far older than the bundle that ran before the failed one, which is still on the phone, so the app stages it again for the next start (`planAfterReady`). A migration runs inside the 20 s; if the rollback interrupts one, its transaction rolls back like after any killed worker.
+- **A rolled-back build and the database.** A bundle that migrated the database and then failed leaves a database that older builds refuse to open (`SchemaTooNewError`, "Update the app"). The data is untouched, and the next good build opens it. For that case the update check also runs 30 s after a start that never got confirmed.
+- **Storage.** At most two bundles stay on the phone: the running one and the one waiting. Installing an APK makes Capacitor start from the APK's web build again.
+- **Integrity.** The plugin verifies the zip's RSA-SHA256 signature against a public key in the Capacitor config before unpacking. The app validates the version string, because it becomes a directory name.
+
+**Plugin choice.** Checked against the 8.8.1 docs and Android source:
+
+- `@capawesome/capacitor-live-update`, chosen:
+  - MIT, supports Capacitor 8, actively released.
+  - `downloadBundle` takes any URL. Only `sync`, `fetchLatestBundle`, and `fetchChannels` talk to Capawesome Cloud, and they fail without an `appId`, which we don't set. The automatic update strategy is off by default.
+  - Signature verification with a key we hold.
+  - Uses Capacitor's own server-path mechanism, so there is no second web server and no origin change, and Capacitor's reset on a new APK applies.
+  - Sends an `X-Capawesome-Device-Id` header (a random id it generates) with the download, to our server only.
+- `@capgo/capacitor-updater` in manual mode, rejected:
+  - MPL-2.0.
+  - Built around Capgo's service: the update, statistics, and channel URLs default to Capgo's servers and each has to be turned off or redirected.
+  - Its manual-update guide leaves checksum and signature checks of a self-hosted bundle to the app.
 
 ## Charts
 
@@ -355,11 +388,11 @@ The native app exists for the rest timer and health data. The web cannot reliabl
 
 ### App shell
 
-`apps/android` is a Capacitor 8 shell around the web build. It is the same build as the PWA: the app checks `Capacitor.isNativePlatform()` at runtime where the two differ (the rest alarm, snapshot files, updates, no service worker, no install or storage-persistence rows in Settings).
+`apps/android` is a Capacitor 8 shell around the web build. It is the same build as the PWA: the app checks `Capacitor.isNativePlatform()` at runtime where the two differ (the rest alarm, snapshot files, updates, no service worker, no install or storage-persistence rows in Settings). The APK carries a copy of the web build, which [live updates](#live-updates) replace.
 
 - **Capacitor lives in `apps/web`:** `capacitor.config.ts` and the plugin packages are there, because the CLI finds native plugins through the dependencies of the package that holds the config. `android.path` points at `../android`.
 - **`pnpm android:sync`** builds the web app and runs `cap sync`: it copies `dist` into the Gradle project and writes the plugin wiring (`capacitor.settings.gradle`, `app/capacitor.build.gradle`). Those files hold pnpm store paths with version numbers, so they are generated, not committed, and Gradle needs a sync first.
-- **Plugins:** `@capacitor/app` (the installed version, deep links), `@capacitor/browser` (the GitHub sign-in in a Custom Tab), `@aparajita/capacitor-secure-storage` (the session token in Keystore-backed storage), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, and the app's own `RestTimer`.
+- **Plugins:** `@capacitor/app` (the installed version, deep links), `@capacitor/browser` (the GitHub sign-in in a Custom Tab), `@aparajita/capacitor-secure-storage` (the session token in Keystore-backed storage), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, `@capawesome/capacitor-live-update` ([live updates](#live-updates)), and the app's own `RestTimer`.
 - **Deep link:** `MainActivity` handles `<application id>://auth`, where the sign-in returns ([accounts.md](accounts.md#login)). The scheme is the application id, so the debug build has its own.
 - **Versions:** `minSdk` 30 (Android 11), where writing to the shared Documents folder needs no storage permission; target and compile SDK 36. `versionName` is the release tag and `versionCode` is `major * 1 000 000 + minor * 1 000 + patch`.
 - **Build types:** debug builds have the id `fi.eerolehtinen.lift.debug` and the name "Workouts (debug)", so they install next to the release app with their own database. Release builds are signed in CI ([deployment.md](deployment.md#android-releases)); without the keystore they come out unsigned. A release build never falls back to the debug key: replacing an install signed with another key needs an uninstall, which deletes the database.
@@ -435,7 +468,7 @@ Not tested: Bluetooth earbuds (where an alarm-usage sound is routed), DND config
 
 - **Keep screen on:** the `keep_screen_awake` setting keeps the screen on while a session is running, through `@capacitor-community/keep-awake`: `FLAG_KEEP_SCREEN_ON` on Android, the Screen Wake Lock API in browsers that have it. The setting is hidden elsewhere.
 - **Snapshot files:** after each session ends, the app writes a snapshot to `Documents/WorkoutLogger/` and keeps the newest 10 ([backups.md](backups.md#layers)). Settings → Export snapshot writes to the same folder, because a WebView can't download a file.
-- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK, which the server hands out ([deployment.md](deployment.md#android-releases)).
+- **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK, which the server hands out ([deployment.md](deployment.md#android-releases)). Web changes reach installed apps as [live updates](#live-updates).
 
 ## CLI
 

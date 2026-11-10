@@ -6,12 +6,13 @@ import {
   ListOrdered,
   Settings,
 } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { KeepScreenAwake } from "../features/session/keep-screen-awake.tsx";
 import { RestBar } from "../features/session/rest-bar.tsx";
 import { useRunningSession } from "../features/session/running.ts";
 import { AccountChoice } from "../features/settings/account-section.tsx";
 import { AutoSnapshot } from "../features/settings/auto-snapshot.tsx";
+import { markAppReady } from "../lib/live-update.ts";
 import { isNative } from "../lib/platform.ts";
 import { useBackupWarning } from "../lib/server-status.ts";
 import { AppUpdatePrompt } from "./app-update-prompt.tsx";
@@ -38,6 +39,8 @@ export function AppShell() {
   const logging = Boolean(
     matchRoute({ to: "/sessions/$sessionId/$sessionExerciseId" }),
   );
+  // The shell renders only over an open database, so this web build works.
+  useEffect(markAppReady, []);
   return (
     <div className="flex h-dvh">
       <Sidebar />
@@ -51,8 +54,8 @@ export function AppShell() {
       </div>
       {!logging && <RestBar />}
       <ToastLayer />
-      {/* The APK carries its own web build, so it has no service worker to
-          update; it is replaced as a whole. */}
+      {/* The Android app has no service worker: its web build is replaced
+          by live updates, and its shell by a new APK. */}
       {isNative ? <AppUpdatePrompt /> : <WebUpdate />}
       <Suspense fallback={null}>
         <KeepScreenAwake />

@@ -5,6 +5,7 @@ import type { R2Config } from "./backup/r2.ts";
 export interface ServerConfig {
   port: number;
   webRoot: string;
+  bundleRoot: string;
   commit: string | undefined;
   databasePath: string;
   /** The origin users reach, e.g. `https://lift.eerolehtinen.fi`. */
@@ -53,6 +54,9 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port,
     webRoot:
       env.WEB_ROOT ?? fileURLToPath(new URL("../../web/dist", import.meta.url)),
+    bundleRoot:
+      env.BUNDLE_ROOT ??
+      fileURLToPath(new URL("../../web/live-bundle", import.meta.url)),
     commit: env.GIT_COMMIT || undefined,
     databasePath: env.DATABASE_PATH ?? "data/app.db",
     publicUrl: env.PUBLIC_URL ?? `http://localhost:${port}`,

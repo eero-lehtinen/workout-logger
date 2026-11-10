@@ -26,6 +26,7 @@ export async function openTestApp(
   const auth = createAuth(settings);
   const app = createApp({
     webRoot: "unused",
+    bundleRoot: "unused",
     databasePath: ":memory:",
     backupsConfigured: false,
     ...overrides,

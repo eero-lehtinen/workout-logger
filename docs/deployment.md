@@ -6,7 +6,8 @@ provider, so losing either the VPS or the bucket loses no data.
 
 **Current state (phase 6):** the `app` container serves the static web build,
 `GET /api/status`, the Android app's update endpoints
-([Android releases](#android-releases)), GitHub sign-in, and sync, with its
+([Android releases](#android-releases), [live updates](#live-updates)),
+GitHub sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
 daily job copies it there too. The restore rehearsal and quotas are phase 11.
 
@@ -84,7 +85,7 @@ the service worker and offline use.
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), on push to `main`:
 
 1. `check`: lint, type checks, tests, build, and e2e, as on every branch and PR.
-2. `image`: builds the [Dockerfile](../Dockerfile) and pushes it to `ghcr.io/eero-lehtinen/workout-logger`, tagged with the commit SHA. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous.
+2. `image`: builds the [Dockerfile](../Dockerfile) and pushes it to `ghcr.io/eero-lehtinen/workout-logger`, tagged with the commit SHA. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous. The build signs the Android app's [live-update bundle](#live-updates).
 3. `deploy`: uploads [`deploy/compose.yaml`](../deploy/compose.yaml) with `IMAGE_TAG` replaced by the SHA (`compose.update` in the Dokploy API), queues a deploy (`compose.deploy`), and waits until `/api/status` reports the new commit.
 
 Dokploy's deploy webhooks can't choose a tag (the compose webhook only
@@ -95,8 +96,8 @@ reach only this service, because Dokploy API keys can't be scoped themselves.
 The image is two stages on `node:24-slim`. The build stage installs the
 workspace from the lockfile, builds the web app, bundles the server, and
 `pnpm deploy`s the server package with production dependencies only. The
-runtime stage holds the server and `web/dist`, runs as the `node` user, and
-has a health check on `/api/status`.
+runtime stage holds the server, `web/dist`, and `web/live-bundle`, runs as
+the `node` user, and has a health check on `/api/status`.
 
 The server is bundled with esbuild (`apps/server/build.ts`) into
 `dist/main.js` and `dist/cli.js`: Node doesn't strip types under
@@ -167,15 +168,52 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The debug build has its own application id and database, so it never touches the release app's data. To build a release APK locally, set `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` and run `./gradlew assembleRelease -PappVersion=<version>`.
 
+## Live updates
+
+The Android app replaces its web build without an APK. It downloads the server's web build as a zip and runs it from the next start on, from the same origin ([architecture.md](architecture.md#live-updates)). A push to `main` reaches a phone after two starts of the app: one with a connection, which downloads, and the next, which switches. A start is a cold start; Android can keep the app's process for days.
+
+**Bundle.** `pnpm build` runs `apps/web/scripts/build-bundle.ts` after Vite. It writes `apps/web/live-bundle/`, which the image holds as `web/live-bundle`:
+
+- `bundle.zip`: `dist` as it is, about 1.4 MB.
+- `manifest.json`: what the first endpoint below answers.
+
+The version is the build's commit, the same value the app has compiled in and shows in Settings → About (`BUILD_COMMIT`, from `buildCommit` in `apps/web/build-info.ts`). A build that knows no commit gets no bundle.
+
+| Endpoint | Answer |
+| --- | --- |
+| `GET /api/android/bundle` | `{ "version": "<commit>", "minNative": "1.2.3", "checksum": "<SHA-256, hex>", "signature": "<base64>" }`. `signature` is null for an unsigned build. 404 when the build has no bundle. |
+| `GET /api/android/bundle/<version>.zip` | The zip. 404 for any version but the current one, so a deploy between the app's two requests can't hand it the wrong build. |
+
+Both are public, allow CORS from `https://localhost`, and need no GitHub token. The download passes through the VPS.
+
+**When an APK is still needed.** A web build runs in every shell from `minNative` on. That is `MIN_NATIVE` in `apps/web/build-info.ts`. Raise it to the next release's version in the change that makes the web code depend on something only that APK has:
+
+- a Capacitor plugin the web code newly calls, or a new method or event of `RestTimer`;
+- a native setting the web code relies on: a permission, the manifest, the Capacitor config;
+- a new signing key for live updates (below).
+
+A shell below `minNative` keeps its web build, and the APK prompt offers the release, so tag the release when such a change lands on `main`. A change in `apps/android` that the web code doesn't depend on needs a release to reach phones, but no higher `minNative`. Installing an APK puts the phone back on the web build inside it; the next start downloads the server's build again.
+
+**Signing.** The app only installs a bundle whose signature (RSA with SHA-256 over the zip) verifies against the public key in `apps/web/capacitor.config.ts`. A compromised VPS or Cloudflare account therefore can't run code in the app; whoever can build a signed bundle can, which is the same trust as the APK's signing key in GitHub Actions.
+
+- The private key is on the owner's PC in `~/Documents/ai-doc/workout-logger/android-release/live-update-private.pem`, next to the APK keystore, and is never committed. Keep a second copy with the keystore's.
+- CI reads it from the GitHub Actions secret `LIVE_UPDATE_PRIVATE_KEY` (the PEM file's content) and passes it to the image build as a BuildKit secret, so it is in no image layer. The `image` job fails without the secret: an unsigned bundle would deploy fine and every phone would refuse it.
+- The build fails if the key doesn't match the public key in the app config.
+- Builds without the key, such as local ones and CI's `check` job, make an unsigned bundle. To test live updates against a local server, set `LIVE_UPDATE_PRIVATE_KEY` for `pnpm build`.
+- The signature covers the zip, not the manifest. A server could at worst hand out an older signed build, or claim a `minNative` that keeps phones from updating.
+
+**A bundle that fails.** A bundle that doesn't open the database and render within 20 s of foreground time is rolled back by the shell and never downloaded again; the phone waits for the next commit ([architecture.md](architecture.md#live-updates)). A bundle that starts but misbehaves is a bad deploy ([recovery procedures](#recovery-procedures)).
+
 ## Configuration
 
 Set in the image:
 
 | Variable | Purpose |
 | --- | --- |
-| `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status`, and baked into the web build for Settings → About |
+| `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status`, and baked into the web build for Settings → About and as the version of its live-update bundle |
 | `PORT` | `3000`; the Dokploy domain points at it |
 | `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
+| `BUNDLE_ROOT` | Optional; defaults to `web/live-bundle` next to the server, as in the repo |
 
 Set as Dokploy environment variables, never committed. `deploy/compose.yaml`
 passes each one to its container by name; the required ones are marked
@@ -199,7 +237,9 @@ falls back to a fixed development `AUTH_SECRET`, `data/app.db`, and
 
 The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
 The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
-with the workflow's own `GITHUB_TOKEN`.
+with the workflow's own `GITHUB_TOKEN`. The other GitHub secrets are the
+Android keystore's ([Android releases](#android-releases)) and
+`LIVE_UPDATE_PRIVATE_KEY` ([live updates](#live-updates)).
 
 ### GitHub OAuth app
 
@@ -248,7 +288,9 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 
 | Situation | Procedure |
 | --- | --- |
-| Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. |
+| Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. Android apps follow the server back to that build within two starts. |
+| Bad web build with a domain schema migration | Fix forward. Browsers and phones that ran the bad build have migrated their database, and an older build refuses a newer database ("Update the app") until a build with that schema version is deployed. |
+| Live-update bundle doesn't start on phones | Nothing to do on the phone: it rolls back and never downloads that commit again. Push a fix. |
 | Bad deploy with a migration | Stop `app`. Restore the deploy's `pre-migration/` copy (gunzip it to `/data/app.db`) into the volume, or restore Litestream to before the deploy. Run `new-epoch` with the previous SHA's image ([the server command](#the-server-command)). Redeploy the previous SHA. |
 | Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` ([backups.md](backups.md#restore-procedures)). |
 | VPS crashed (power loss, kernel panic, hard reset) | Once it is back, run `new-epoch`: the last seconds of commits may be gone ([Litestream](#litestream)), and devices re-upload them. Not needed after a clean reboot or a container restart. |
@@ -256,4 +298,5 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 | VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start, and the app starts a new epoch itself. |
 | Bad Android release | Delete the GitHub release (or its APK); within 5 minutes the server offers the previous release again. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
 | Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
+| Live-update signing key lost or leaked | Create a key pair (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072`, `openssl pkey -pubout`). Put the public key in `apps/web/capacitor.config.ts` and the private key in `LIVE_UPDATE_PRIVATE_KEY`, raise `MIN_NATIVE` to the next version, and release an APK. Older apps stay on their web build until they install it. A leaked key is only useful to someone who also controls the server or the connection to it. |
 | R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy covers the gap. |

@@ -73,23 +73,29 @@ So unsynced edits made on the old version survive the upgrade without special ha
 
 ## Mixed versions across devices
 
-The web app updates as soon as the user reloads; a sideloaded APK updates
-later. Until all of a user's devices run the same schema:
+The web app updates as soon as the user reloads. The Android app downloads
+the new web build on its next start with a connection and runs it from the
+start after that ([architecture.md](architecture.md#live-updates)). Until all
+of a user's devices run the same schema:
 
 | Device | Push | Pull |
 | --- | --- | --- |
 | Newer app | Normal | Older rows are upgraded on apply |
 | Older app | Rejected as `schema_outdated` once the server has seen a newer `v` from this user. Otherwise an older app would reset columns it doesn't know. | Pauses at the first row with a newer `v` |
 
-The older app keeps working locally, and its outbox is kept. The app prompts to
-update. After updating, the migration upgrades its pending rows and sync
-resumes.
+The older app keeps working locally, and its outbox is kept. A browser prompts
+to reload; the Android app updates itself. After updating, the migration
+upgrades its pending rows and sync resumes.
 
-The cost: every domain schema change forces each user's other devices to update
-before they sync again. To keep this rare:
+The cost: every domain schema change stops each user's other devices from
+syncing until they have updated. On Android that is two starts of the app,
+with no install. An APK is needed only when the same change also needs a
+newer shell ([deployment.md](deployment.md#live-updates)); then the app
+prompts for it, and sync waits for the install.
 
-- batch schema changes into releases;
-- the APK checks GitHub releases on start and prompts to update.
+A device never goes back across a schema change: a build older than the
+database refuses to open it and asks for an update, without touching the
+data.
 
 ## Data fixes
 

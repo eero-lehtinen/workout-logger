@@ -9,6 +9,8 @@
     "src",
     "e2e",
     ".storybook",
+    "scripts",
+    "build-info.ts",
     "vite.config.ts",
     "capacitor.config.ts",
     "vitest.storybook.config.ts",

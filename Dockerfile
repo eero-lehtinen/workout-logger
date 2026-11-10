@@ -12,9 +12,12 @@ RUN pnpm fetch
 
 COPY . .
 RUN pnpm install --offline --frozen-lockfile
-# The web build shows the commit in Settings; the image has no .git.
+# The web build shows the commit in Settings; the image has no .git. It also
+# packs itself for the Android app's live updates, signed when the key is
+# given (docs/deployment.md#live-updates).
 ARG GIT_COMMIT
-RUN GIT_COMMIT=${GIT_COMMIT} pnpm --filter @workout-logger/web build
+RUN --mount=type=secret,id=live_update_private_key,env=LIVE_UPDATE_PRIVATE_KEY \
+  GIT_COMMIT=${GIT_COMMIT} pnpm --filter @workout-logger/web build
 RUN pnpm --filter @workout-logger/server build
 # Not --offline: deploy re-checks the release-age policy against registry
 # metadata, which pnpm fetch doesn't store.
@@ -25,11 +28,12 @@ FROM node:24-slim
 ENV NODE_ENV=production PORT=3000 DATABASE_PATH=/data/app.db
 WORKDIR /app
 
-# The bundle finds the web build at ../../web/dist, as in the repo. The
-# server package holds the bundle and better-sqlite3, its one runtime
-# dependency.
+# The bundle finds the web build at ../../web/dist and its live-update zip
+# at ../../web/live-bundle, as in the repo. The server package holds the
+# bundle and better-sqlite3, its one runtime dependency.
 COPY --from=build /out/server server
 COPY --from=build /repo/apps/web/dist web/dist
+COPY --from=build /repo/apps/web/live-bundle web/live-bundle
 
 # A new named volume takes this directory's owner, so the app can write it.
 RUN mkdir /data && chown node:node /data
