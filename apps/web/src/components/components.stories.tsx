@@ -42,13 +42,14 @@ export const Markers: StoryObj = {
   render: () => (
     <ul className="flex flex-col gap-2">
       <li className="flex items-center gap-2">
-        <Marker marker="pr" /> Personal record
+        <Marker marker="pr" type="weight_reps" unit="kg" /> Personal record
       </li>
       <li className="flex items-center gap-2">
-        <Marker marker="set_record" /> Set record
+        <Marker marker="set_record" type="weight_reps" unit="kg" /> Set record
       </li>
       <li className="flex items-center gap-2">
-        <Marker marker="weight_increase" /> Weight increase
+        <Marker marker="weight_increase" type="weight_reps" unit="kg" /> Weight
+        increase
       </li>
     </ul>
   ),

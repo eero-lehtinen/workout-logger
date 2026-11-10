@@ -83,11 +83,31 @@ export const LoggingWithMarkers = pageStory({
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const today = await canvas.findByRole("button", { name: /^Edit set 1/ });
-    await expect(today).toHaveAccessibleName(/Personal record/);
-    await expect(
-      canvas.getByRole("button", { name: /^Edit set 2/ }),
-    ).toHaveAccessibleName(/Weight increase/);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole("button", { name: /^Edit set 1/ });
+
+    // Today's set 1 is a PR over last time's set 1 (100 × 8).
+    const [todayPr] = canvas.getAllByRole("button", {
+      name: "Personal record",
+    });
+    await userEvent.click(todayPr as HTMLElement);
+    const pr = await body.findByRole("dialog", { name: /Personal record/ });
+    await expect(pr).toHaveTextContent(
+      /This set129\.8 kg e1RMBest before126\.7 kg e1RM100 × 8 on /,
+    );
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Weight increase" }),
+    );
+    const increase = await body.findByRole("dialog", {
+      name: /Weight increase/,
+    });
+    await expect(increase).toHaveTextContent(
+      /This set102\.5 kgLast time, set 2100 kg100 × 8 on /,
+    );
+    await userEvent.keyboard("{Escape}");
+
     await userEvent.click(canvas.getByRole("button", { name: "Log set 3" }));
     await expect(
       await canvas.findByRole("button", { name: /^Edit set 3/ }),

@@ -90,7 +90,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | Fast weight and reps entry | P0 | Steppers plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). Duration and distance follow the reps rule. |
 | Tap a previous-performance row to copy it into the input | P0 | |
 | Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
-| Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Rules in [progress markers](#progress-markers). |
+| Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Tapping a marker shows this set's value next to what it beat. Rules in [progress markers](#progress-markers). |
 | Edit and delete logged sets | P0 | |
 | History graph for the exercise | P1 | Metrics: best e1RM per session, e1RM of each set, top weight, volume, reps at a weight. |
 | Records table: best weight for 1..N reps, best e1RM, heaviest weight, most reps at a weight | P1 | Covers sets above the e1RM cap. |

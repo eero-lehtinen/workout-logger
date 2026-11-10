@@ -456,18 +456,25 @@ function Ledger(props: {
               <td className="tabular py-1 text-sm text-ink-muted">{i + 1}</td>
               <td className="py-1">
                 {today ? (
-                  <button
-                    type="button"
-                    onClick={() => props.onEdit(today)}
-                    aria-pressed={props.editingId === today.id}
-                    className="-ml-2 flex h-12 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
-                  >
-                    <span className="sr-only">Edit set {i + 1}: </span>
-                    <span className="numerals truncate text-2xl">
-                      {formatSet(today, log.exercise.type, unit)}
-                    </span>
-                    <Marker marker={today.marker} />
-                  </button>
+                  <div className="-ml-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => props.onEdit(today)}
+                      aria-pressed={props.editingId === today.id}
+                      className="flex h-12 min-w-0 items-center rounded-lg px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
+                    >
+                      <span className="sr-only">Edit set {i + 1}: </span>
+                      <span className="numerals truncate text-2xl">
+                        {formatSet(today, log.exercise.type, unit)}
+                      </span>
+                    </button>
+                    <Marker
+                      marker={today.marker}
+                      basis={today.markerBasis}
+                      type={log.exercise.type}
+                      unit={unit}
+                    />
+                  </div>
                 ) : (
                   <span className="flex h-12 items-center text-ink-muted">
                     {isNext ? "next" : ""}
@@ -476,17 +483,24 @@ function Ledger(props: {
               </td>
               <td className="py-1 pl-3">
                 {before && (
-                  <button
-                    type="button"
-                    onClick={() => props.onCopy(before)}
-                    aria-label={`Use ${formatSet(before, log.exercise.type, unit)} for the next set`}
-                    className="-ml-2 flex h-12 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
-                  >
-                    <span className="numerals truncate text-xl">
-                      {formatSet(before, log.exercise.type, unit)}
-                    </span>
-                    <Marker marker={before.marker} />
-                  </button>
+                  <div className="-ml-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => props.onCopy(before)}
+                      aria-label={`Use ${formatSet(before, log.exercise.type, unit)} for the next set`}
+                      className="flex h-12 min-w-0 items-center rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+                    >
+                      <span className="numerals truncate text-xl">
+                        {formatSet(before, log.exercise.type, unit)}
+                      </span>
+                    </button>
+                    <Marker
+                      marker={before.marker}
+                      basis={before.markerBasis}
+                      type={log.exercise.type}
+                      unit={unit}
+                    />
+                  </div>
                 )}
               </td>
             </tr>
@@ -518,18 +532,23 @@ function EarlierPerformance(props: {
         {performance.sets.map((set, i) => {
           const text = formatSet(set, log.exercise.type, unit);
           return (
-            <li key={set.id}>
+            <li key={set.id} className="-ml-2 flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => props.onCopy(set)}
-                className="-ml-2 flex h-10 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+                className="flex h-10 min-w-0 items-center gap-2 rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
               >
                 <span className="sr-only">Use set </span>
                 <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>
                 <span className="numerals truncate text-lg">{text}</span>
                 <span className="sr-only"> from {date}</span>
-                <Marker marker={set.marker} />
               </button>
+              <Marker
+                marker={set.marker}
+                basis={set.markerBasis}
+                type={log.exercise.type}
+                unit={unit}
+              />
             </li>
           );
         })}
