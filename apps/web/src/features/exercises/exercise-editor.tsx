@@ -156,7 +156,7 @@ function ExerciseForm({ exercise }: { exercise: ExerciseDetail | null }) {
           <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
             {MUSCLE_GROUPS.map((group) => (
               <div key={group}>
-                <h3 className="pb-1 text-sm text-ink-muted">{group}</h3>
+                <h2 className="pb-1 text-sm text-ink-muted">{group}</h2>
                 {muscles
                   .filter((m) => m.group === group)
                   .map((muscle) => (

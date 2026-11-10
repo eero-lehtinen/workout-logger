@@ -319,21 +319,16 @@ function Ledger(props: {
                   <button
                     type="button"
                     onClick={() => props.onEdit(today)}
-                    aria-label={`Edit set ${i + 1}`}
                     className="-ml-2 flex h-12 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left hover:bg-surface"
                   >
+                    <span className="sr-only">Edit set {i + 1}: </span>
                     <span className="numerals truncate text-2xl">
                       {formatSet(today, log.exercise.type, unit)}
                     </span>
                     <Marker marker={today.marker} />
                   </button>
                 ) : (
-                  <span
-                    className={clsx(
-                      "flex h-12 items-center text-ink-muted/60",
-                      isNext && "text-ink-muted",
-                    )}
-                  >
+                  <span className="flex h-12 items-center text-ink-muted">
                     {isNext ? "next" : ""}
                   </span>
                 )}
