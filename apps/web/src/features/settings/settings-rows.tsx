@@ -22,16 +22,18 @@ export function Row(props: {
     <div
       className={clsx(
         "flex gap-x-4 gap-y-2 px-4 py-3",
-        props.stacked
-          ? "flex-col items-start lg:flex-row lg:items-center"
-          : "items-center",
+        props.stacked ? "flex-col lg:flex-row lg:items-center" : "items-center",
       )}
     >
       <div className="min-w-0 flex-1">
         <p className="font-medium">{props.label}</p>
         {props.hint && <p className="text-sm text-ink-muted">{props.hint}</p>}
       </div>
-      {props.children}
+      {props.stacked ? (
+        <div className="self-end lg:self-auto">{props.children}</div>
+      ) : (
+        props.children
+      )}
     </div>
   );
 }

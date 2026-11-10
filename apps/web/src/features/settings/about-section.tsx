@@ -46,6 +46,7 @@ export function AboutSection() {
   return (
     <Section title="About">
       <Row
+        stacked
         label="Version"
         hint={`${version ?? "…"}. Updates are also checked when the app starts.`}
       >
