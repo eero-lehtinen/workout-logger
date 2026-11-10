@@ -1,0 +1,396 @@
+import { describe, expect, it } from "vitest";
+import { runCommand, runQuery } from "../api.ts";
+import type { SetValues } from "../domain/markers.ts";
+import { openTestStore } from "../testing.ts";
+import type { CommandArgs, CommandName } from "./index.ts";
+
+const T0 = Date.UTC(2026, 0, 5, 17);
+const MIN = 60_000;
+
+async function setup() {
+  let now = T0;
+  const store = await openTestStore({ now: () => now });
+  const run = async <N extends CommandName>(name: N, args: CommandArgs<N>) =>
+    (await runCommand(store, name, args, { now, tz: "Europe/Helsinki" }))
+      .result;
+  const advance = (ms: number) => {
+    now += ms;
+  };
+  const muscle = (id: string, name: string, group: string) =>
+    store.db
+      .insertInto("muscle")
+      .values({
+        id,
+        hlc: "000000000000000-00000-seed",
+        deleted: 0,
+        name,
+        group_name: group,
+      })
+      .execute();
+  await muscle("chest", "Chest", "Chest");
+  await muscle("triceps", "Triceps", "Arms");
+  await muscle("quads", "Quads", "Legs");
+
+  const exercise = (name: string, muscles: Record<string, number>) =>
+    run("createExercise", {
+      name,
+      type: "weight_reps",
+      defaultRestS: null,
+      weightIncrementKg: null,
+      notes: "",
+      muscles,
+    });
+  const bench = await exercise("Bench Press (Barbell)", {
+    chest: 1,
+    triceps: 0.5,
+  });
+  const dbBench = await exercise("Bench Press (Dumbbell)", { chest: 1 });
+  const dips = await exercise("Dip", { chest: 1, triceps: 1 });
+  const squat = await exercise("Squat (Barbell)", { quads: 1 });
+
+  const routineId = await run("createRoutine", { name: "Upper/Lower" });
+  const upper = await run("addDay", { routineId, name: "Upper" });
+  const lower = await run("addDay", { routineId, name: "Lower" });
+  const benchSlot = await run("addSlot", { dayId: upper, exerciseId: bench });
+  await run("addAlternative", { slotId: benchSlot, exerciseId: dbBench });
+  await run("addSlot", { dayId: lower, exerciseId: squat });
+
+  return {
+    store,
+    run,
+    advance,
+    query: <N extends Parameters<typeof runQuery>[1]>(
+      name: N,
+      args: Parameters<typeof runQuery<N>>[2],
+    ) => runQuery(store, name, args),
+    ids: { bench, dbBench, dips, squat, routineId, upper, lower, benchSlot },
+  };
+}
+
+const set = (weight_kg: number, reps: number): SetValues => ({
+  weight_kg,
+  reps,
+  duration_s: null,
+  distance_m: null,
+});
+
+describe("starting sessions", () => {
+  it("preselects the latest routine and highlights the next day", async () => {
+    const { run, query, advance, ids } = await setup();
+    let options = await query("startOptions", undefined);
+    expect(options.preselectedRoutineId).toBe(ids.routineId);
+    expect(options.routines[0]).toMatchObject({
+      days: [{ name: "Upper" }, { name: "Lower" }],
+      lastDayId: null,
+      nextDayId: ids.upper,
+    });
+
+    await run("startSession", { routineId: ids.routineId, dayId: ids.upper });
+    advance(60 * MIN);
+    options = await query("startOptions", undefined);
+    expect(options.routines[0]).toMatchObject({
+      lastDayId: ids.upper,
+      nextDayId: ids.lower,
+    });
+
+    // Ad hoc sessions don't change the preselection.
+    const other = await run("createRoutine", { name: "Full body" });
+    await run("startSession", { routineId: null, dayId: null });
+    options = await query("startOptions", undefined);
+    expect(options.preselectedRoutineId).toBe(ids.routineId);
+    expect(options.routines.map((r) => r.id)).toEqual([ids.routineId, other]);
+  });
+
+  it("fills a day's slots as session exercises", async () => {
+    const { run, query, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const view = await query("sessionView", { sessionId });
+    expect(view?.session).toMatchObject({
+      routineName: "Upper/Lower",
+      dayName: "Upper",
+      startedAt: T0,
+      tz: "Europe/Helsinki",
+      exerciseCount: 1,
+      setCount: 0,
+      lastSetAt: null,
+    });
+    expect(view?.exercises).toMatchObject([
+      { exerciseId: ids.bench, slotId: ids.benchSlot, sets: [] },
+    ]);
+  });
+});
+
+describe("logging", () => {
+  async function logged() {
+    const ctx = await setup();
+    const { run, advance, ids } = ctx;
+    const first = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const firstView = await ctx.query("sessionView", { sessionId: first });
+    const se1 = firstView?.exercises[0]?.id ?? "";
+    for (const values of [set(100, 8), set(100, 7), set(100, 6)]) {
+      advance(3 * MIN);
+      await run("logSet", { sessionExerciseId: se1, values });
+    }
+    advance(3 * 24 * 60 * MIN);
+    const second = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const secondView = await ctx.query("sessionView", { sessionId: second });
+    const se2 = secondView?.exercises[0]?.id ?? "";
+    return { ...ctx, first, second, se1, se2 };
+  }
+
+  it("shows the previous performance and prefills from it", async () => {
+    const { query, run, advance, se2 } = await logged();
+    let log = await query("exerciseLog", { sessionExerciseId: se2 });
+    expect(log?.previous).toHaveLength(1);
+    expect(log?.previous[0]?.sets.map((s) => [s.weight_kg, s.reps])).toEqual([
+      [100, 8],
+      [100, 7],
+      [100, 6],
+    ]);
+    expect(log?.prefill).toEqual(set(100, 8));
+    expect(log?.restSeconds).toBe(120);
+
+    advance(MIN);
+    await run("logSet", { sessionExerciseId: se2, values: set(102.5, 8) });
+    log = await query("exerciseLog", { sessionExerciseId: se2 });
+    // Weight of this session's set 1, reps of the previous set 2.
+    expect(log?.prefill).toEqual(set(102.5, 7));
+    expect(log?.sets).toMatchObject([
+      { weight_kg: 102.5, reps: 8, marker: "pr" },
+    ]);
+  });
+
+  it("marks set records and weight increases against the reference set", async () => {
+    const { query, run, se2 } = await logged();
+    await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
+    await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
+    await run("logSet", { sessionExerciseId: se2, values: set(105, 4) });
+    const log = await query("exerciseLog", { sessionExerciseId: se2 });
+    expect(log?.sets.map((s) => s.marker)).toEqual([
+      null,
+      "set_record",
+      "weight_increase",
+    ]);
+  });
+
+  it("edits and deletes sets", async () => {
+    const { query, run, se2 } = await logged();
+    const a = await run("logSet", {
+      sessionExerciseId: se2,
+      values: set(100, 8),
+    });
+    const b = await run("logSet", {
+      sessionExerciseId: se2,
+      values: set(100, 7),
+    });
+    await run("updateSet", { setId: a, values: set(97.5, 8) });
+    await run("deleteSet", { setId: b });
+    const log = await query("exerciseLog", { sessionExerciseId: se2 });
+    expect(log?.sets.map((s) => [s.weight_kg, s.reps])).toEqual([[97.5, 8]]);
+  });
+
+  it("hides sets of deleted sessions from previous performances", async () => {
+    const { query, run, first, se2 } = await logged();
+    await run("deleteSession", { sessionId: first });
+    const log = await query("exerciseLog", { sessionExerciseId: se2 });
+    expect(log?.previous).toEqual([]);
+    expect(log?.prefill).toEqual({
+      weight_kg: null,
+      reps: null,
+      duration_s: null,
+      distance_m: null,
+    });
+  });
+
+  it("lists recent sessions with counts", async () => {
+    const { query, first, second } = await logged();
+    const recent = await query("recentSessions", { limit: 10 });
+    expect(recent.map((s) => [s.id, s.exerciseCount, s.setCount])).toEqual([
+      [second, 1, 0],
+      [first, 1, 3],
+    ]);
+  });
+});
+
+describe("session exercises", () => {
+  it("substitutes in place before any set, and alongside after", async () => {
+    const { query, run, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const se =
+      (await query("sessionView", { sessionId }))?.exercises[0]?.id ?? "";
+    const options = await query("substitutionOptions", {
+      exerciseId: ids.bench,
+      slotId: ids.benchSlot,
+    });
+    expect(options.alternativeIds).toEqual([ids.dbBench]);
+    expect(options.similarIds).toEqual([ids.dips]);
+
+    expect(
+      await run("substituteExercise", {
+        sessionExerciseId: se,
+        exerciseId: ids.dbBench,
+      }),
+    ).toBe(se);
+    await run("logSet", { sessionExerciseId: se, values: set(40, 10) });
+    const added = await run("substituteExercise", {
+      sessionExerciseId: se,
+      exerciseId: ids.dips,
+    });
+    await run("addSessionExercise", { sessionId, exerciseId: ids.squat });
+    const view = await query("sessionView", { sessionId });
+    expect(
+      view?.exercises.map((e) => [e.id === added, e.name, e.substitutesName]),
+    ).toEqual([
+      [false, "Bench Press (Dumbbell)", "Bench Press (Barbell)"],
+      [true, "Dip", "Bench Press (Barbell)"],
+      [false, "Squat (Barbell)", null],
+    ]);
+  });
+
+  it("reorders and removes", async () => {
+    const { query, run, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: null,
+      dayId: null,
+    });
+    for (const exerciseId of [ids.bench, ids.dips, ids.squat]) {
+      await run("addSessionExercise", { sessionId, exerciseId });
+    }
+    const names = async () =>
+      (await query("sessionView", { sessionId }))?.exercises.map((e) => e.name);
+    const view = await query("sessionView", { sessionId });
+    const [, dip, squat] = view?.exercises ?? [];
+    await run("moveSessionExercise", {
+      sessionExerciseId: squat?.id ?? "",
+      direction: -1,
+    });
+    await run("moveSessionExercise", {
+      sessionExerciseId: squat?.id ?? "",
+      direction: -1,
+    });
+    await run("moveSessionExercise", {
+      sessionExerciseId: squat?.id ?? "",
+      direction: -1,
+    });
+    expect(await names()).toEqual([
+      "Squat (Barbell)",
+      "Bench Press (Barbell)",
+      "Dip",
+    ]);
+    await run("removeSessionExercise", { sessionExerciseId: dip?.id ?? "" });
+    expect(await names()).toEqual(["Squat (Barbell)", "Bench Press (Barbell)"]);
+  });
+
+  it("ends an idle session at its last set", async () => {
+    const { query, run, advance, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: null,
+      dayId: null,
+    });
+    const se = await run("addSessionExercise", {
+      sessionId,
+      exerciseId: ids.squat,
+    });
+    advance(10 * MIN);
+    await run("logSet", { sessionExerciseId: se, values: set(140, 5) });
+    advance(60 * MIN);
+    await run("endSession", { sessionId });
+    const view = await query("sessionView", { sessionId });
+    expect(view?.session).toMatchObject({
+      endedAt: T0 + 10 * MIN,
+      endReason: "manual",
+    });
+    await run("resumeSession", { sessionId });
+    expect(
+      (await query("sessionView", { sessionId }))?.session.endedAt,
+    ).toBeNull();
+  });
+});
+
+describe("routines and exercises", () => {
+  it("reads a routine with days, slots, and alternatives", async () => {
+    const { query, run, ids } = await setup();
+    await run("moveDay", { dayId: ids.lower, direction: -1 });
+    const detail = await query("routineDetail", { routineId: ids.routineId });
+    expect(detail?.days.map((d) => d.name)).toEqual(["Lower", "Upper"]);
+    expect(detail?.days[1]?.slots).toMatchObject([
+      {
+        exerciseName: "Bench Press (Barbell)",
+        alternatives: [{ exerciseName: "Bench Press (Dumbbell)" }],
+      },
+    ]);
+  });
+
+  it("requires a primary muscle and rewrites targets", async () => {
+    const { query, run, ids } = await setup();
+    await expect(
+      run("updateExercise", {
+        exerciseId: ids.bench,
+        muscles: { triceps: 0.5 },
+      }),
+    ).rejects.toThrow("primary muscle");
+    await run("updateExercise", {
+      exerciseId: ids.bench,
+      name: "Bench",
+      muscles: { chest: 1, quads: 0.5 },
+    });
+    expect(
+      await query("exerciseDetail", { exerciseId: ids.bench }),
+    ).toMatchObject({
+      name: "Bench",
+      muscles: { chest: 1, quads: 0.5 },
+    });
+  });
+});
+
+describe("settings", () => {
+  it("reads defaults, written values, and ignores invalid ones", async () => {
+    const { store, query, run } = await setup();
+    expect(await query("settings", undefined)).toMatchObject({
+      weight_unit: "kg",
+      rest_default_s: 120,
+    });
+    await run("setSetting", { key: "weight_unit", value: "lb" });
+    await store.write((w) =>
+      w.put("setting", "rest_default_s", { value_json: '"soon"' }),
+    );
+    expect(await query("settings", undefined)).toMatchObject({
+      weight_unit: "lb",
+      rest_default_s: 120,
+    });
+  });
+});
+
+describe("undo", () => {
+  it("undoes a deleted set by its transaction", async () => {
+    const { store, query, run, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: null,
+      dayId: null,
+    });
+    const se = await run("addSessionExercise", {
+      sessionId,
+      exerciseId: ids.squat,
+    });
+    const setId = await run("logSet", {
+      sessionExerciseId: se,
+      values: set(140, 5),
+    });
+    const { undoTx } = await runCommand(store, "deleteSet", { setId });
+    expect(await store.undo(undoTx ?? undefined)).toBe(true);
+    const log = await query("exerciseLog", { sessionExerciseId: se });
+    expect(log?.sets.map((s) => s.id)).toEqual([setId]);
+  });
+});

@@ -1,0 +1,54 @@
+import type { QueryDef } from "./define.ts";
+import { exerciseLog } from "./exercise-log.ts";
+import {
+  exerciseDetail,
+  exercises,
+  muscles,
+  substitutionOptions,
+} from "./exercises.ts";
+import { routineDetail, routines } from "./routines.ts";
+import { recentSessions, sessionView, startOptions } from "./sessions.ts";
+import { settings } from "./settings.ts";
+
+/** Every query the UI can run, by name. */
+export const QUERIES = {
+  settings,
+  recentSessions,
+  startOptions,
+  sessionView,
+  exerciseLog,
+  muscles,
+  exercises,
+  exerciseDetail,
+  substitutionOptions,
+  routines,
+  routineDetail,
+} satisfies Record<string, QueryDef<never, unknown>>;
+
+export type Queries = typeof QUERIES;
+export type QueryName = keyof Queries;
+export type QueryArgs<N extends QueryName> = Parameters<Queries[N]["run"]>[1];
+export type QueryResult<N extends QueryName> = Awaited<
+  ReturnType<Queries[N]["run"]>
+>;
+
+export type { QueryDef } from "./define.ts";
+export {
+  type ExerciseLog,
+  type LoggedSet,
+  type Performance,
+  PREVIOUS_PERFORMANCES,
+} from "./exercise-log.ts";
+export type {
+  ExerciseDetail,
+  ExerciseItem,
+  MuscleItem,
+  SubstitutionOptions,
+} from "./exercises.ts";
+export type { RoutineDetail, RoutineItem } from "./routines.ts";
+export type {
+  SessionExerciseItem,
+  SessionSummary,
+  SessionView,
+  StartOptions,
+} from "./sessions.ts";

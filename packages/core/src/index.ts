@@ -1,3 +1,5 @@
+export { runCommand, runQuery } from "./api.ts";
+export * from "./commands/index.ts";
 export { createKysely, type Driver, type Statement } from "./db/driver.ts";
 export { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./domain/e1rm.ts";
 export {
@@ -35,7 +37,9 @@ export type {
   UpgradedRow,
 } from "./migrations/types.ts";
 export { upgradeRow } from "./migrations/upgrade.ts";
+export * from "./queries/index.ts";
 export * from "./schema/tables.ts";
+export * from "./settings.ts";
 export * from "./snapshot/snapshot.ts";
 export {
   type DeterministicRow,
