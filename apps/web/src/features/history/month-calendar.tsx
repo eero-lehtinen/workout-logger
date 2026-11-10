@@ -9,7 +9,7 @@ import { clsx } from "clsx";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { dateFromIso } from "../../lib/format.ts";
-import { dayChipClass, dayDotClass } from "./day-colors.ts";
+import { dayChipClass } from "./day-colors.ts";
 
 /** Marks shown in a day cell before "+n". */
 const VISIBLE_MARKS = 2;
@@ -97,7 +97,7 @@ export function MonthCalendar(props: {
               onClick={() => props.onSelect(d)}
               aria-pressed={d === props.selected}
               className={clsx(
-                "flex min-h-16 min-w-0 flex-col gap-0.5 rounded-lg p-1 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50 lg:min-h-22 lg:p-1.5",
+                "flex min-h-16 min-w-0 flex-col gap-0.5 rounded-lg p-0.5 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50 lg:min-h-22 lg:p-1.5",
               )}
             >
               <span className="sr-only">
@@ -114,68 +114,29 @@ export function MonthCalendar(props: {
               >
                 {Number(d.slice(8))}
               </span>
-              {sessions.map((s, i) => (
-                <span key={s.id} className="contents">
-                  {/* Phones: a name fits only a letter or two, so a colored
-                      bar stands in for it, with the legend below. */}
-                  <span
-                    aria-hidden
-                    className={clsx(
-                      "mx-0.5 h-1.5 shrink-0 rounded-full lg:hidden",
-                      dayDotClass(s.dayIndex),
-                    )}
-                  />
-                  <span
-                    className={clsx(
-                      "sr-only",
-                      i < VISIBLE_MARKS &&
-                        "lg:not-sr-only lg:truncate lg:rounded-sm lg:border-l-[3px] lg:px-1 lg:text-xs lg:leading-5",
-                      dayChipClass(s.dayIndex),
-                    )}
-                  >
-                    {s.dayName ?? "Ad hoc"}
-                  </span>
+              {sessions.slice(0, VISIBLE_MARKS).map((s) => (
+                <span
+                  key={s.id}
+                  // Clipped, not ellipsized: on a phone an ellipsis would
+                  // leave a letter or two, while clipping shows what fits.
+                  className={clsx(
+                    "overflow-hidden rounded-sm border-l-2 pl-0.5 text-[0.6875rem] leading-4 whitespace-nowrap lg:border-l-[3px] lg:px-1 lg:text-xs lg:leading-5",
+                    dayChipClass(s.dayIndex),
+                  )}
+                >
+                  {s.dayName ?? "Ad hoc"}
                 </span>
               ))}
               {hidden > 0 && (
-                <span
-                  aria-hidden
-                  className="hidden px-1 text-xs text-ink-muted lg:inline"
-                >
+                <span className="px-0.5 text-[0.6875rem] text-ink-muted lg:px-1 lg:text-xs">
                   +{hidden}
+                  <span className="sr-only"> more</span>
                 </span>
               )}
             </button>
           );
         })}
       </div>
-      <Legend
-        sessions={days.flatMap((d) => props.sessionsByDate.get(d) ?? [])}
-      />
     </section>
-  );
-}
-
-/** Which color is which day, for the bars that stand in for names on phones. */
-function Legend(props: { sessions: CalendarSession[] }) {
-  const entries = new Map<string, number | null>();
-  for (const s of props.sessions) {
-    entries.set(s.dayName ?? "Ad hoc", s.dayName ? s.dayIndex : null);
-  }
-  if (entries.size === 0) return null;
-  return (
-    <ul
-      aria-hidden
-      className="flex flex-wrap gap-x-4 gap-y-1 px-4 pt-3 text-sm text-ink-muted lg:hidden"
-    >
-      {[...entries].map(([name, dayIndex]) => (
-        <li key={name} className="flex items-center gap-1.5">
-          <span
-            className={clsx("h-1.5 w-3.5 rounded-full", dayDotClass(dayIndex))}
-          />
-          {name}
-        </li>
-      ))}
-    </ul>
   );
 }
