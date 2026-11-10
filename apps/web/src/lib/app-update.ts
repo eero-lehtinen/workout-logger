@@ -1,11 +1,6 @@
 import { App } from "@capacitor/app";
 import { compareVersions, validate } from "compare-versions";
-import { isNative } from "./platform.ts";
-
-/** The Android app names the server; the web app is served by it. */
-const SERVER_URL: string = isNative
-  ? (import.meta.env.VITE_SERVER_URL ?? "https://lift.eerolehtinen.fi")
-  : "";
+import { SERVER_URL } from "./server.ts";
 
 /**
  * The latest APK, for a link in a browser. The Android app itself uses

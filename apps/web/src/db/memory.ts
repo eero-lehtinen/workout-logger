@@ -1,13 +1,17 @@
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import {
+  adoptAccount,
   type CommandArgs,
   type CommandName,
   createKysely,
+  matchAccount,
   openStore,
   queriesAffectedBy,
+  repairClock,
   runCommand,
   runQuery,
   type Store,
+  syncOverHttp,
   type UntypedKysely,
   writeSnapshot,
 } from "@workout-logger/core";
@@ -65,6 +69,13 @@ export async function openMemoryDb(): Promise<MemoryDb> {
         if (affected.length > 0) listener(affected);
       });
     },
+    sync: (config) => syncOverHttp(store, config),
+    matchAccount: (userId) => matchAccount(store, userId),
+    async adoptAccount(userId, mode) {
+      await adoptAccount(store, userId, mode);
+      if (mode === "discard") await seedCatalog(store);
+    },
+    repairClock: () => repairClock(store),
   };
 
   return {

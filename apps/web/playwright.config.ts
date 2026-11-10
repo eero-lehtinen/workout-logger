@@ -1,7 +1,17 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // Not the default preview port, so a preview left running is never mistaken for the build under test.
 const PORT = 4317;
+
+// A fresh server database per run. Workers inherit the runner's environment,
+// so the sync test opens the same file to create its session.
+process.env.E2E_DATABASE_PATH ??= join(
+  tmpdir(),
+  "workout-logger-e2e",
+  `${Date.now()}.db`,
+);
 
 /**
  * End-to-end tests of what only the real app shell shows: OPFS persistence,
@@ -23,7 +33,7 @@ export default defineConfig({
   projects: [{ name: "phone", use: { ...devices["Pixel 7"] } }],
   webServer: {
     command: "pnpm build && pnpm --filter @workout-logger/server start",
-    env: { PORT: String(PORT) },
+    env: { PORT: String(PORT), DATABASE_PATH: process.env.E2E_DATABASE_PATH },
     url: `http://localhost:${PORT}/api/status`,
     reuseExistingServer: false,
     timeout: 120_000,

@@ -1,14 +1,17 @@
 import type {
+  AccountMatch,
   CommandArgs,
   CommandName,
   CommandResult,
+  HttpSyncConfig,
   QueryArgs,
   QueryName,
   QueryResult,
+  SyncOutcome,
   WriteResult,
 } from "@workout-logger/core";
 import * as Comlink from "comlink";
-import type { DbApi, ImportMode } from "./db.worker.ts";
+import type { AccountMode, DbApi, ImportMode } from "./db.worker.ts";
 
 /** The database as the UI sees it. Every call runs in the DB worker. */
 export interface DbClient {
@@ -32,6 +35,11 @@ export interface DbClient {
     createdAt: number;
   }>;
   onChange(listener: (queries: QueryName[]) => void): Promise<void>;
+  sync(config: HttpSyncConfig): Promise<SyncOutcome>;
+  matchAccount(userId: string): Promise<AccountMatch>;
+  /** See doptAccount in core; discard also re-seeds the catalog. */
+  adoptAccount(userId: string, mode: AccountMode): Promise<void>;
+  repairClock(): Promise<number>;
 }
 
 export interface DbWorker {
@@ -59,6 +67,10 @@ export async function startDbWorker(): Promise<DbWorker> {
     importSnapshot: (bytes, mode) =>
       remote.importSnapshot(Comlink.transfer(bytes, [bytes.buffer]), mode),
     onChange: (listener) => remote.subscribe(Comlink.proxy(listener)),
+    sync: (config) => remote.sync(config),
+    matchAccount: (userId) => remote.matchAccount(userId),
+    adoptAccount: (userId, mode) => remote.adoptAccount(userId, mode),
+    repairClock: () => remote.repairClock(),
   };
   return { client, terminate: () => worker.terminate() };
 }

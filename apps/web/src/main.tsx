@@ -2,7 +2,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { DbGate } from "./components/db-gate.tsx";
+import { SyncRunner } from "./components/sync-runner.tsx";
 import { DatabaseProvider } from "./db/react.tsx";
+import { initAccount } from "./lib/account.ts";
 import { runningInstalled, watchInstall } from "./lib/install.ts";
 import { isNative } from "./lib/platform.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
@@ -23,9 +25,12 @@ if (!isNative) {
   void requestPersistenceOnce(runningInstalled() ? "installed" : "browser");
 }
 
+initAccount();
+
 createRoot(rootElement).render(
   <StrictMode>
     <DatabaseProvider fallback={DbGate}>
+      <SyncRunner />
       <RouterProvider router={router} />
     </DatabaseProvider>
   </StrictMode>,

@@ -47,6 +47,11 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    // `pnpm start` in apps/server; with PUBLIC_URL=http://localhost:5173 the
+    // GitHub sign-in returns through this proxy too.
+    proxy: { "/api": "http://localhost:3000" },
+  },
   optimizeDeps: {
     // Pre-bundling breaks the library's lookup of sqlite3.wasm.
     exclude: ["@sqlite.org/sqlite-wasm"],

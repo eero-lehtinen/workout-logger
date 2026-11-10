@@ -1,18 +1,23 @@
 import sqlite3InitModule, { type SAHPoolUtil } from "@sqlite.org/sqlite-wasm";
 import {
+  adoptAccount,
   type CommandArgs,
   type CommandName,
   createKysely,
+  type HttpSyncConfig,
+  matchAccount,
   mergeSnapshot,
   openStore,
   type QueryArgs,
   type QueryName,
   queriesAffectedBy,
   readSnapshot,
+  repairClock,
   replaceWithSnapshot,
   runCommand,
   runQuery,
   type Store,
+  syncOverHttp,
   type UntypedKysely,
   writeSnapshot,
 } from "@workout-logger/core";
@@ -97,6 +102,24 @@ const api = {
     }
   },
 
+  /** One sync run. Runs here, next to the database, with the caller's credentials. */
+  sync(config: HttpSyncConfig) {
+    return syncOverHttp(opened(), config);
+  },
+
+  matchAccount(userId: string) {
+    return matchAccount(opened(), userId);
+  },
+
+  async adoptAccount(userId: string, mode: AccountMode) {
+    await adoptAccount(opened(), userId, mode);
+    if (mode === "discard") await seedCatalog(opened());
+  },
+
+  repairClock() {
+    return repairClock(opened());
+  },
+
   async importSnapshot(bytes: Uint8Array, mode: ImportMode) {
     if (!sqlite3 || !pool) throw new Error("database is not open");
     await pool.importDb(IMPORT_FILE, bytes);
@@ -119,5 +142,6 @@ const api = {
 };
 
 export type DbApi = typeof api;
+export type AccountMode = Parameters<typeof adoptAccount>[2];
 
 Comlink.expose(api);

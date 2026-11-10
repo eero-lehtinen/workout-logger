@@ -12,6 +12,7 @@ import { isNative } from "../../lib/platform.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
 import { AboutSection } from "./about-section.tsx";
+import { AccountSection } from "./account-section.tsx";
 import { DataSection } from "./data-section.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
@@ -28,6 +29,7 @@ export function SettingsPage() {
       width="narrow"
     >
       <div className="pb-10">
+        <AccountSection />
         <Section title="Units and steps">
           <Row
             label="Weight unit"

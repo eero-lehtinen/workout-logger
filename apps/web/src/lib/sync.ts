@@ -1,0 +1,215 @@
+import { App } from "@capacitor/app";
+import type {
+  RejectReason,
+  SyncFailure,
+  SyncReport,
+} from "@workout-logger/core";
+import { useSyncExternalStore } from "react";
+import type { DbClient } from "../db/client.ts";
+import type { AccountMode } from "../db/db.worker.ts";
+import {
+  getAccount,
+  refreshAccount,
+  sessionEnded,
+  signOut,
+  subscribeAccount,
+} from "./account.ts";
+import { readToken } from "./auth-token.ts";
+import { isNative } from "./platform.ts";
+import { SERVER_URL } from "./server.ts";
+
+export interface SyncState {
+  running: boolean;
+  /** Why the last run stopped early, if it did. */
+  failure: SyncFailure | null;
+  /** Changes the server refused in the last run, by reason. */
+  rejected: Partial<Record<RejectReason, number>>;
+  /** The server has data from a newer app, or refuses this one. */
+  updateRequired: boolean;
+  /**
+   * The signed-in account isn't the one this device's data belongs to. Sync
+   * waits until the user chooses to merge or discard.
+   */
+  accountChoice: string | null;
+}
+
+// docs/sync.md#when-it-runs
+const AFTER_WRITE_MS = 3000;
+const INTERVAL_MS = 60_000;
+
+const idle: SyncState = {
+  running: false,
+  failure: null,
+  rejected: {},
+  updateRequired: false,
+  accountChoice: null,
+};
+
+let state: SyncState = idle;
+const listeners = new Set<() => void>();
+
+function update(patch: Partial<SyncState>) {
+  state = { ...state, ...patch };
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function useSyncState(): SyncState {
+  return useSyncExternalStore(subscribe, () => state);
+}
+
+/** For stories. */
+export function setSyncStateForStory(next: Partial<SyncState>) {
+  state = { ...idle, ...next };
+  for (const listener of listeners) listener();
+}
+
+let db: DbClient | null = null;
+let soon: ReturnType<typeof setTimeout> | undefined;
+let queued = false;
+// The run in progress. A worker terminated mid-run (another tab took the
+// database, or the page froze) never settles its call, so stopping drops the
+// run instead of waiting for it.
+let currentRun: symbol | null = null;
+
+/**
+ * Starts syncing `client` while the user is signed in: now, on resume, 3 s
+ * after a local write, every minute, and on "sync now". Returns a stop
+ * function, for when the database closes (e.g. another tab takes it).
+ */
+export function startSync(client: DbClient): () => void {
+  db = client;
+  let active = true;
+  void client.onChange((queries) => {
+    // `syncStatus` reads the outbox, so a write queued something.
+    if (active && !state.running && queries.includes("syncStatus")) {
+      syncSoon();
+    }
+  });
+  const interval = setInterval(() => void syncNow(), INTERVAL_MS);
+  const onVisible = () => {
+    if (document.visibilityState === "visible") void syncNow();
+  };
+  const onOnline = () => void syncNow();
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("online", onOnline);
+  const resume = isNative
+    ? App.addListener("resume", () => void syncNow())
+    : null;
+  const unsubscribe = subscribeAccount(() => {
+    if (getAccount().status === "signed-in") void syncNow();
+  });
+  void syncNow();
+  return () => {
+    active = false;
+    if (db === client) {
+      db = null;
+      currentRun = null;
+      queued = false;
+      update({ running: false });
+    }
+    clearInterval(interval);
+    clearTimeout(soon);
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("online", onOnline);
+    void resume?.then((handle) => handle.remove());
+    unsubscribe();
+  };
+}
+
+function syncSoon() {
+  clearTimeout(soon);
+  soon = setTimeout(() => void syncNow(), AFTER_WRITE_MS);
+}
+
+/** Runs a sync unless one is running; then one more follows it. */
+export async function syncNow(): Promise<void> {
+  if (state.running) {
+    queued = true;
+    return;
+  }
+  const client = db;
+  const account = getAccount();
+  if (!client || account.status !== "signed-in") return;
+  clearTimeout(soon);
+  const run = Symbol();
+  currentRun = run;
+  update({ running: true });
+  try {
+    const match = await client.matchAccount(account.user.id);
+    if (match === "other") {
+      update({ accountChoice: account.user.id });
+      return;
+    }
+    if (match === "first") await client.adoptAccount(account.user.id, "keep");
+    const outcome = await client.sync({
+      baseUrl: SERVER_URL,
+      token: await readToken(),
+      clientVersion: isNative ? (await App.getInfo()).version : null,
+      userId: account.user.id,
+    });
+    if (currentRun !== run) return;
+    if (outcome.ok) {
+      finished(outcome.report);
+    } else {
+      update({
+        failure: outcome.failure,
+        updateRequired: outcome.failure === "update_required",
+      });
+      if (outcome.failure === "unauthorized") await sessionEnded();
+      // Signed in as someone else elsewhere: the next run asks what to do.
+      if (outcome.failure === "account_changed") void refreshAccount();
+    }
+  } catch {
+    if (currentRun === run) update({ failure: "server" });
+  } finally {
+    if (currentRun === run) {
+      currentRun = null;
+      update({ running: false });
+      if (queued) {
+        queued = false;
+        syncSoon();
+      }
+    }
+  }
+}
+
+function finished(report: SyncReport) {
+  update({
+    failure: null,
+    rejected: report.rejected,
+    updateRequired: report.status === "update_required",
+    accountChoice: null,
+  });
+}
+
+/**
+ * Settles `accountChoice`: merge this device's data into the signed-in
+ * account, discard it for that account's data, or sign out instead.
+ */
+export async function chooseAccount(
+  choice: Exclude<AccountMode, "keep"> | "sign-out",
+): Promise<void> {
+  const userId = state.accountChoice;
+  if (!userId) return;
+  update({ accountChoice: null });
+  if (choice === "sign-out") {
+    await signOut();
+    return;
+  }
+  if (!db) return;
+  await db.adoptAccount(userId, choice);
+  await syncNow();
+}
+
+/** After "repair clock": re-stamps the refused changes and pushes them. */
+export async function repairClock(): Promise<void> {
+  if (!db) return;
+  await db.repairClock();
+  update({ rejected: {} });
+  await syncNow();
+}

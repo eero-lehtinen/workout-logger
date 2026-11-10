@@ -13,9 +13,11 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
     "@base-ui/react": "^1.9.0",
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "8.0.5",
     "@capacitor/core": "8.6.0",
     "@capacitor/filesystem": "^8.1.5",
     "@dnd-kit/core": "^6.3.1",
@@ -27,6 +29,7 @@
     "@tanstack/react-router": "^1.170.46",
     "@workout-logger/core": "workspace:*",
     "@workout-logger/exercises": "workspace:*",
+    "better-auth": "1.7.18",
     "clsx": "^2.1.1",
     "comlink": "^4.4.2",
     "compare-versions": "^6.1.1",

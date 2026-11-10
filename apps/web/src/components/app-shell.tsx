@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import { KeepScreenAwake } from "../features/session/keep-screen-awake.tsx";
 import { RestBar } from "../features/session/rest-bar.tsx";
 import { useRunningSession } from "../features/session/running.ts";
+import { AccountChoice } from "../features/settings/account-section.tsx";
 import { AutoSnapshot } from "../features/settings/auto-snapshot.tsx";
 import { isNative } from "../lib/platform.ts";
+import { useBackupWarning } from "../lib/server-status.ts";
 import { AppUpdatePrompt } from "./app-update-prompt.tsx";
 import { ToastLayer } from "./toasts.tsx";
 import { UpdatePrompt } from "./update-prompt.tsx";
@@ -48,6 +50,7 @@ export function AppShell() {
       <Suspense fallback={null}>
         <KeepScreenAwake />
         {isNative && <AutoSnapshot />}
+        <AccountChoice />
       </Suspense>
     </div>
   );
@@ -72,6 +75,7 @@ function Sidebar() {
           <item.icon size={19} />
           {item.label}
           {item.to === "/" && <RunningDot />}
+          {item.to === "/settings" && <WarningDot />}
         </Link>
       ))}
     </nav>
@@ -98,6 +102,11 @@ function BottomNav() {
               <RunningDot />
             </span>
           )}
+          {item.to === "/settings" && (
+            <span className="absolute top-2.5 left-[calc(50%+0.6rem)]">
+              <WarningDot />
+            </span>
+          )}
         </Link>
       ))}
     </nav>
@@ -121,6 +130,28 @@ function RunningDotInner() {
       role="img"
       aria-label="Session running"
       className="ml-auto inline-block size-2 rounded-full bg-increase lg:ml-auto"
+    />
+  );
+}
+
+/** Marks that data isn't reaching the server, or a server backup is stale. */
+function WarningDot() {
+  return (
+    <Suspense fallback={null}>
+      <WarningDotInner />
+    </Suspense>
+  );
+}
+
+function WarningDotInner() {
+  const warning = useBackupWarning();
+  if (!warning) return null;
+  return (
+    <span
+      role="img"
+      aria-label={warning}
+      title={warning}
+      className="ml-auto inline-block size-2 rounded-full bg-danger lg:ml-auto"
     />
   );
 }

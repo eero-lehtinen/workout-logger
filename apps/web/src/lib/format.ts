@@ -99,6 +99,18 @@ export function formatDateTime(at: number): string {
   }).format(at);
 }
 
+/** "just now", "5 minutes ago", "3 days ago". */
+export function formatAgo(at: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - at) / 1000));
+  if (seconds < 60) return "just now";
+  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return format.format(-minutes, "minute");
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return format.format(-hours, "hour");
+  return format.format(-Math.floor(hours / 24), "day");
+}
+
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   weight_reps: "Weight and reps",
   bodyweight_reps: "Bodyweight reps, optional added weight",

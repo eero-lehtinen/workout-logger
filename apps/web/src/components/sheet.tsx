@@ -54,6 +54,8 @@ export function Confirm(props: {
   description?: ReactNode;
   actions: ConfirmAction[];
   cancelLabel?: string;
+  /** The cancel button only, not Escape or a press outside. */
+  onCancel?: () => void;
 }) {
   return (
     <AlertDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
@@ -90,7 +92,10 @@ export function Confirm(props: {
                 {action.label}
               </Button>
             ))}
-            <AlertDialog.Close className="h-10 rounded-lg text-[0.9375rem] font-medium text-ink-muted hover:bg-surface">
+            <AlertDialog.Close
+              onClick={props.onCancel}
+              className="h-10 rounded-lg text-[0.9375rem] font-medium text-ink-muted hover:bg-surface"
+            >
               {props.cancelLabel ?? "Cancel"}
             </AlertDialog.Close>
           </div>
