@@ -16,13 +16,12 @@ export interface CatalogRoutine {
 
 export const ROUTINES: readonly CatalogRoutine[] = [
   {
-    key: "upper_upper_legs",
-    name: "Eero's Upper/Upper/Legs",
-    description:
-      "Two upper body days, one starting with chest and back and one with arms, then legs. About five exercises a day.",
+    key: "upper_upper_lower",
+    name: "Eero's Upper/Upper/Lower",
+    description: "Low volume, high intensity: 2 sets per exercise.",
     days: [
       {
-        name: "Upper, chest and back first",
+        name: "Upper A",
         slots: [
           [
             "barbell_bench_press",
@@ -47,7 +46,7 @@ export const ROUTINES: readonly CatalogRoutine[] = [
         ],
       },
       {
-        name: "Upper, arms first",
+        name: "Upper B",
         slots: [
           [
             "preacher_curl",
@@ -77,7 +76,7 @@ export const ROUTINES: readonly CatalogRoutine[] = [
         ],
       },
       {
-        name: "Legs",
+        name: "Lower",
         slots: [
           [
             "leg_press",

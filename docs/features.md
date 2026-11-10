@@ -63,7 +63,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | Per-slot alternatives | P0 | |
 | Per-slot rest override and free-text note | P1 | For example, a note like "heavy, 6-10" as a reminder, shown above the sets while logging. Never validated. |
 | Reorder, duplicate, archive routines, days, slots | P1 | Routines and days can be duplicated; a copy keeps the slots, alternatives, notes, and rest overrides. Only routines can be archived; days and slots are deleted, with undo. |
-| Built-in routines | P2 | Listed on the Routines screen. Adding one creates an ordinary routine from it, with its description, with undo; the user then owns and edits it. Built-in routines use only built-in exercises, and each slot's alternatives use equipment most gyms have. The first is Eero's Upper/Upper/Legs, the owner's routine: an upper day starting with chest and back, an upper day starting with arms, and a legs day. |
+| Built-in routines | P2 | Listed on the Routines screen. Adding one creates an ordinary routine from it, with its description, with undo; the user then owns and edits it. Built-in routines use only built-in exercises, and each slot's alternatives use equipment most gyms have. The first is Eero's Upper/Upper/Lower, the owner's low-volume, high-intensity routine: Upper A starts with chest and back, Upper B with arms, then Lower. |
 
 ## Starting a session
 

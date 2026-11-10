@@ -19,14 +19,14 @@ export const AddBuiltin = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      canvas.getByRole("button", { name: "Add Eero's Upper/Upper/Legs" }),
+      canvas.getByRole("button", { name: "Add Eero's Upper/Upper/Lower" }),
     );
     await waitFor(() =>
       expect(
         canvas
           .getAllByRole<HTMLInputElement>("textbox", { name: "Day name" })
           .map((input) => input.value),
-      ).toEqual(["Upper, chest and back first", "Upper, arms first", "Legs"]),
+      ).toEqual(["Upper A", "Upper B", "Lower"]),
     );
     await expect(
       canvas.getByRole("textbox", { name: "Routine description" }),
