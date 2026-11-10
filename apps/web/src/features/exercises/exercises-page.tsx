@@ -49,25 +49,24 @@ export function ExercisesPage() {
           }
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative lg:w-80 lg:shrink-0">
-              <Search
-                size={18}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search exercises"
-                aria-label="Search exercises"
-                className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
-              />
+            <div className="flex gap-2 lg:w-[28rem] lg:shrink-0">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={18}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search exercises"
+                  aria-label="Search exercises"
+                  className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+                />
+              </div>
+              <ExerciseSortSelect />
             </div>
-            <div className="min-w-0 flex-1">
-              <MuscleGroupFilter value={group} onChange={setGroup}>
-                <ExerciseSortSelect />
-              </MuscleGroupFilter>
-            </div>
+            <MuscleGroupFilter value={group} onChange={setGroup} />
           </div>
         </PageHeader>
       }

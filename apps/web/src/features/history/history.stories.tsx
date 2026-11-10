@@ -5,6 +5,7 @@ import { expect, userEvent, within } from "storybook/test";
 import { deviceTimeZone } from "../../lib/format.ts";
 import { empty, running, withHistory } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
+import { choose } from "../../stories/select.ts";
 
 export default {
   title: "Screens/History",
@@ -48,19 +49,18 @@ export const ExerciseHistoryMetrics = pageStory({
   url: () => bench,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const metric = canvas.getByRole("combobox", { name: "Metric" });
-    await userEvent.selectOptions(metric, "Reps at a weight");
+    await choose(canvasElement, "Metric", "Reps at a weight");
     const weight = canvas.getByRole("combobox", { name: "Weight" });
     await expect(weight).toBeVisible();
     await expect(
       await canvas.findByRole("img", { name: "Reps at a weight" }),
     ).toBeVisible();
-    await userEvent.selectOptions(metric, "Every set's e1RM");
+    await choose(canvasElement, "Metric", "Every set's e1RM");
     await expect(await canvas.findByText("Set 2")).toBeVisible();
     await expect(
       canvas.queryByRole("switch", { name: "Trend line" }),
     ).toBeNull();
-    await userEvent.selectOptions(metric, "Sets per week");
+    await choose(canvasElement, "Metric", "Sets per week");
     await expect(
       await canvas.findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();
@@ -118,10 +118,7 @@ export const ExerciseHistoryRemembers = pageStory({
   url: () => bench,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.selectOptions(
-      canvas.getByRole("combobox", { name: "Metric" }),
-      "Top weight",
-    );
+    await choose(canvasElement, "Metric", "Top weight");
     await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
     await userEvent.click(
       canvas.getByRole("link", { name: "Back to exercises" }),
@@ -130,9 +127,9 @@ export const ExerciseHistoryRemembers = pageStory({
       await canvas.findByRole("link", { name: /^Squat \(Barbell\)/ }),
     );
     await canvas.findByRole("heading", { name: "Squat (Barbell)" });
-    await expect(canvas.getByRole("combobox", { name: "Metric" })).toHaveValue(
-      "top_weight",
-    );
+    await expect(
+      canvas.getByRole("combobox", { name: "Metric" }),
+    ).toHaveTextContent("Top weight");
     await expect(
       canvas.getByRole("switch", { name: "Trend line" }),
     ).not.toBeChecked();

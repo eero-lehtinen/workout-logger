@@ -101,23 +101,24 @@ function PickerBody(props: {
   return (
     <div>
       <div className="sticky top-0 z-10 flex flex-col gap-2 bg-raised px-4 pt-3 pb-2">
-        <div className="relative">
-          <Search
-            size={18}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search exercises"
-            aria-label="Search exercises"
-            className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
-          />
-        </div>
-        <MuscleGroupFilter value={group} onChange={setGroup}>
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={18}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search exercises"
+              aria-label="Search exercises"
+              className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+            />
+          </div>
           <ExerciseSortSelect />
-        </MuscleGroupFilter>
+        </div>
+        <MuscleGroupFilter value={group} onChange={setGroup} />
       </div>
       {sections.length === 0 && (
         <p className="px-4 py-8 text-center text-ink-muted">

@@ -8,6 +8,7 @@ import {
   withHistory,
 } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
+import { choose } from "../../stories/select.ts";
 
 export default {
   title: "Screens/Exercises",
@@ -29,10 +30,7 @@ export const SortRecentlyLogged = pageStory({
   url: () => "/exercises",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.selectOptions(
-      canvas.getByRole("combobox", { name: "Sort exercises" }),
-      "Recent",
-    );
+    await choose(canvasElement, "Sort exercises", "Recent");
     // The last set of the latest session was a leg curl.
     const [first] = canvas.getAllByRole("link", { name: /\(/ });
     await expect(first).toHaveTextContent(/^Lying Leg Curl \(Machine\)/);
