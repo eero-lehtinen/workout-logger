@@ -7,35 +7,27 @@
  * Everything else is chalk and iron.
  */
 :root {
-  --chalk: #eceeed;
-  --raised: #f7f8f8;
-  --surface: #dde2e3;
-  --rule: #c3cacc;
-  --ink: #1b2226;
-  --ink-muted: #59646a;
-  --pr: #d9a400;
-  --record: #2257b8;
-  --increase: #1f8a4c;
-  --danger: #c42b2b;
+  color-scheme: light dark;
+  --chalk: light-dark(#eceeed, #171c1f);
+  --raised: light-dark(#f7f8f8, #20272b);
+  --surface: light-dark(#dde2e3, #283136);
+  --rule: light-dark(#c3cacc, #364349);
+  --ink: light-dark(#1b2226, #e3e8e9);
+  --ink-muted: light-dark(#59646a, #95a2a7);
+  --pr: light-dark(#d9a400, #f0c232);
+  --record: light-dark(#2257b8, #7aa3f2);
+  --increase: light-dark(#1f8a4c, #52bd7e);
+  --danger: light-dark(#c42b2b, #ea6a63);
+}
+
+/* Forces a theme regardless of the system setting, e.g. in Storybook. */
+:root[data-theme="light"] {
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chalk: #171c1f;
-    --raised: #20272b;
-    --surface: #283136;
-    --rule: #364349;
-    --ink: #e3e8e9;
-    --ink-muted: #95a2a7;
-    --pr: #f0c232;
-    --record: #7aa3f2;
-    --increase: #52bd7e;
-    --danger: #ea6a63;
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
-
 @theme inline {
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --color-chalk: var(--chalk);

@@ -27,7 +27,7 @@ const DbContext = createContext<DbClient | null>(null);
 
 export function useDb(): DbClient {
   const db = useContext(DbContext);
-  if (!db) throw new Error("useDb outside DatabaseProvider");
+  if (!db) throw new Error("useDb outside DbClientProvider");
   return db;
 }
 
@@ -46,6 +46,49 @@ function createQueryClient() {
   });
 }
 
+/**
+ * Serves `client` to the hooks below, with a query cache that refetches a
+ * query whenever a commit touches the tables it reads. A new cache per
+ * client, so a reopened database never serves results from before.
+ */
+export function DbClientProvider(props: {
+  client: DbClient;
+  children: ReactNode;
+}) {
+  const { client } = props;
+  const [cache, setCache] = useState<{
+    client: DbClient;
+    queryClient: QueryClient;
+  } | null>(null);
+
+  useEffect(() => {
+    const queryClient = createQueryClient();
+    let active = true;
+    void client.onChange((names) => {
+      if (!active) return;
+      const changed = new Set<string>(names);
+      void queryClient.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === "db" && changed.has(q.queryKey[1] as string),
+      });
+    });
+    setCache({ client, queryClient });
+    return () => {
+      active = false;
+      queryClient.clear();
+    };
+  }, [client]);
+
+  if (cache?.client !== client) return null;
+  return (
+    <DbContext.Provider value={client}>
+      <QueryClientProvider client={cache.queryClient}>
+        {props.children}
+      </QueryClientProvider>
+    </DbContext.Provider>
+  );
+}
+
 export type GateView = (props: {
   state: "starting" | "elsewhere" | "error";
   error?: unknown;
@@ -55,8 +98,7 @@ export type GateView = (props: {
 
 /**
  * Takes the database lock, opens the database in a worker, and renders the
- * app once it's ready. A new client per open, so a stolen-and-reclaimed
- * database never serves cached results from before.
+ * app once it's ready.
  */
 export function DatabaseProvider(props: {
   children: ReactNode;
@@ -65,33 +107,12 @@ export function DatabaseProvider(props: {
   const [owner] = useState(() => new DbOwner());
   useEffect(() => owner.start(), [owner]);
   const state = useSyncExternalStore(owner.subscribe, owner.getState);
-  const client = state.status === "ready" ? state.client : null;
-  const [queryClient, setQueryClient] = useState<QueryClient | null>(null);
 
-  useEffect(() => {
-    if (!client) return;
-    const qc = createQueryClient();
-    let active = true;
-    void client.onChange((names) => {
-      if (!active) return;
-      const changed = new Set<string>(names);
-      void qc.invalidateQueries({
-        predicate: (q) =>
-          q.queryKey[0] === "db" && changed.has(q.queryKey[1] as string),
-      });
-    });
-    setQueryClient(qc);
-    return () => {
-      active = false;
-      qc.clear();
-    };
-  }, [client]);
-
-  if (state.status !== "ready" || !queryClient) {
+  if (state.status !== "ready") {
     const Fallback = props.fallback;
     return (
       <Fallback
-        state={state.status === "ready" ? "starting" : state.status}
+        state={state.status}
         error={state.status === "error" ? state.error : undefined}
         takeOver={() => owner.takeOver()}
         retry={() => owner.retry()}
@@ -99,14 +120,9 @@ export function DatabaseProvider(props: {
     );
   }
   return (
-    <DbContext.Provider value={state.client}>
-      <QueryClientProvider client={queryClient}>
-        {props.children}
-      </QueryClientProvider>
-    </DbContext.Provider>
+    <DbClientProvider client={state.client}>{props.children}</DbClientProvider>
   );
 }
-
 type ArgsParam<N extends QueryName> =
   unknown extends QueryArgs<N>
     ? []

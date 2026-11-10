@@ -5,9 +5,9 @@ import {
   createKysely,
   mergeSnapshot,
   openStore,
-  QUERIES,
   type QueryArgs,
   type QueryName,
+  queriesAffectedBy,
   readSnapshot,
   replaceWithSnapshot,
   runCommand,
@@ -65,9 +65,7 @@ const api = {
   /** Calls `listener` with the queries to refetch after each commit. */
   subscribe(listener: (queries: QueryName[]) => void) {
     opened().subscribe((tables) => {
-      const affected = (Object.keys(QUERIES) as QueryName[]).filter((name) =>
-        QUERIES[name].tables.some((t) => tables.has(t)),
-      );
+      const affected = queriesAffectedBy(tables);
       if (affected.length > 0) listener(affected);
     });
   },

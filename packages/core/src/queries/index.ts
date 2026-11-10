@@ -25,6 +25,15 @@ export const QUERIES = {
   routineDetail,
 } satisfies Record<string, QueryDef<never, unknown>>;
 
+/** The queries to refetch after a commit that changed `tables`. */
+export function queriesAffectedBy(
+  tables: ReadonlySet<string>,
+): (keyof typeof QUERIES)[] {
+  return (Object.keys(QUERIES) as (keyof typeof QUERIES)[]).filter((name) =>
+    QUERIES[name].tables.some((t) => tables.has(t)),
+  );
+}
+
 export type Queries = typeof QUERIES;
 export type QueryName = keyof Queries;
 export type QueryArgs<N extends QueryName> = Parameters<Queries[N]["run"]>[1];
