@@ -121,7 +121,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The `android-release` job in `ci.yml` runs after `check`. It builds the web app, syncs it into `apps/android`, builds the release APK with the tag as its version, signs it, verifies the signature, and attaches `workout-logger-<version>.apk` to a GitHub release for the tag (creating the release with generated notes if it doesn't exist). On other pushes the `android` job builds a debug APK, so the Android build doesn't rot between releases.
+The `android-release` job in `ci.yml` runs after `check`. It builds the web app, syncs it into `apps/android`, builds the release APK with the tag as its version, signs it, verifies the signature, and attaches `workout-logger-<version>.apk` to a GitHub release for the tag (creating the release if it doesn't exist, with the `feat` and `fix` commit subjects since the previous tag as its notes). On other pushes the `android` job builds a debug APK, so the Android build doesn't rot between releases.
 
 A new version must be higher than the installed one: Android refuses to install a lower `versionCode` over a higher one.
 

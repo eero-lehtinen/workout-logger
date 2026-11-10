@@ -64,6 +64,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The release notes are the commits since the previous tag.
+          fetch-depth: 0
       - uses: ./.github/actions/android-setup
 
       - name: Build the signed APK
@@ -91,9 +94,17 @@ jobs:
           apk="$RUNNER_TEMP/workout-logger-${GITHUB_REF_NAME#v}.apk"
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "$apk" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" "$apk" --verify-tag --generate-notes
+            exit 0
           fi
+          # GitHub's generated notes list merged pull requests, and work
+          # here lands on main without them. List what changed for users
+          # instead: the feat and fix commits since the previous release.
+          previous=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2> /dev/null || true)
+          notes="$RUNNER_TEMP/notes.md"
+          git log --no-merges --format='- %s' --extended-regexp --grep='^(feat|fix)(\(.+\))?!?:' \
+            ${previous:+"$previous.."}"$GITHUB_REF_NAME" > "$notes"
+          if [ ! -s "$notes" ]; then echo "No user-facing changes." > "$notes"; fi
+          gh release create "$GITHUB_REF_NAME" "$apk" --verify-tag --notes-file "$notes"
   image:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
