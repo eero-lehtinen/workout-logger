@@ -93,7 +93,10 @@ export function PageHeader(props: {
         )}
       </div>
       {props.children && (
-        <div className="px-4 pb-3 lg:px-0 lg:pt-2">{props.children}</div>
+        // As much space above as below, measured from the subtitle's text.
+        <div className="px-4 pt-1.5 pb-3 lg:px-0 lg:pt-2.25">
+          {props.children}
+        </div>
       )}
     </header>
   );
