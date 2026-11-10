@@ -197,9 +197,44 @@ class World {
     return d;
   }
 
+  /**
+   * The newest version of each row that ever existed on any device. LWW
+   * means the newest version must win everywhere, so after quiescing the
+   * server's head must equal this: a lost write fails here even when every
+   * device agrees on the loss.
+   */
+  newest = new Map<string, DumpRow & { table: string }>();
+
   async run(op: Op) {
     await this.apply(op);
-    if ("d" in op) await this.checkClock(this.device(op.d));
+    if ("d" in op) {
+      const d = this.device(op.d);
+      await this.checkClock(d);
+      await this.record(d);
+    }
+  }
+
+  async record(d: Device) {
+    for (const [table, rows] of Object.entries(await dumpDevice(d.store))) {
+      for (const row of rows) {
+        const key = `${table}/${row.id}`;
+        const known = this.newest.get(key);
+        if (!known || row.hlc > known.hlc)
+          this.newest.set(key, { table, ...row });
+      }
+    }
+  }
+
+  newestDump(): Dump {
+    const dump: Dump = {};
+    const rows = [...this.newest.values()].sort((a, b) =>
+      a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+    );
+    for (const { table, ...row } of rows) {
+      dump[table] ??= [];
+      dump[table].push(row);
+    }
+    return dump;
   }
 
   /**
@@ -243,7 +278,7 @@ class World {
       case "push": {
         const d = this.device(op.d);
         if (d.inflight) return;
-        const batch = await collectPush(d.store, op.limit);
+        const batch = (await collectPush(d.store, op.limit)).changes;
         d.inflight = batch.length > 0 ? batch : null;
         return;
       }
@@ -339,9 +374,9 @@ class World {
       const before = await this.fingerprint();
       for (const d of this.devices) {
         for (
-          let batch = await collectPush(d.store, 50);
+          let batch = (await collectPush(d.store, 50)).changes;
           batch.length > 0;
-          batch = await collectPush(d.store, 50)
+          batch = (await collectPush(d.store, 50)).changes
         ) {
           d.inflight = batch;
           await this.deliver(d, "ok");
@@ -380,10 +415,8 @@ class World {
   }
 }
 
-type Dump = Record<
-  string,
-  { id: string; hlc: string; deleted: number; data: string }[]
->;
+type DumpRow = { id: string; hlc: string; deleted: number; data: string };
+type Dump = Record<string, DumpRow[]>;
 
 async function dumpDevice(store: Store): Promise<Dump> {
   const dump: Dump = {};
@@ -436,6 +469,7 @@ describe("sync", () => {
               await world.quiesce();
 
               const head = await dumpServerHead(world);
+              expect(head).toEqual(world.newestDump());
               for (const d of world.devices) {
                 expect(await dumpDevice(d.store)).toEqual(head);
                 expect(

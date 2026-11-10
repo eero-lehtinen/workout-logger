@@ -70,7 +70,7 @@ Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
 - **Counter overflow** (> 99999): advance `wall` by 1 ms and reset the counter to 0.
 - **Persistence.** The clock state (`last_hlc`) is read and updated inside each write transaction, so it survives restarts and can never go backwards.
 - **Write guard.** A local write stamps `max(clock.now(), row.hlc⁺)`, where `x⁺` is `x` with the counter incremented. A local edit therefore always beats the version it edits, even if that version came from a node whose clock was ahead. It is computed as `clock.receive(row.hlc)`, which yields the same order. Pulls already move the clock past every received HLC; the guard matters for rows the clock never observed: deterministic writes, whose HLCs come from their source, and rows written before a clock repair.
-- **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. Settings shows a clock warning and offers "repair clock" (`repairClock` in `core`). Once the device's clock is right, it pulls `last_hlc` back to `now + 1 h - 5 min`, just under the server's limit, re-stamps each queued row above that from there, and syncs. Not back to `now`: the re-stamped edit must still beat the version it replaced, which the device no longer has, and every version the server accepted had a wall at most 1 h ahead of it.
+- **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. Settings shows a clock warning and offers "repair clock" (`repairClock` in `core`). Once the device's clock is right, it pulls `last_hlc` back to `now + 1 h - 5 min`, just under the server's limit, or to `accepted_hlc` if that is higher, re-stamps each queued row above that from there, and syncs. Not back to `now`: the re-stamped edit must still beat the version it replaced, which the device no longer has. Every version the server accepted had a wall at most 1 h ahead of it, and `accepted_hlc`, the newest HLC this device pushed successfully or pulled, covers the versions it knows of within the 5 min margin, including its own.
 
 ## Client side
 
@@ -115,7 +115,7 @@ This means:
 
 ### Push
 
-1. In one read transaction, take up to N outbox entries joined with their current rows. `hlc` comes from the row.
+1. In one read transaction, take up to 500 outbox entries joined with their current rows, and at most 1 MB of JSON less 4 KB for the envelope: the server answers 413 to a larger body. `hlc` comes from the row. A single row over that size stays queued and is reported as `too_large`; the rest of the outbox still goes.
 2. Send `POST /api/sync/v1/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`. `data` is a flat JSON object of the row's domain columns.
 3. The response is `{ epoch, results }`, with a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`invalid`, `future_clock`, `conflict`, `quota`, `schema_outdated`).
 4. If no epoch is stored yet, store the response's `epoch`. A known epoch is never replaced here; the next pull compares it.
@@ -166,15 +166,23 @@ the session cookie goes along, and the bearer token on Android. HTTP 401 means
 the session ended: the app asks to sign in again and keeps the outbox. HTTP 426
 means the Android app is below the server's minimum version. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
 
+Each write of a run checks that the device is still bound to the run's
+account, and each pull or snapshot page that the cursor is still the one it
+was requested from. Otherwise it writes nothing and the run stops as
+`interrupted`, and the app runs again. This keeps a run that waited on the
+network from applying the previous account's pages after a merge or discard,
+or moving the cursor of an overlapping run past changes it never applied.
+
 ### Accounts on a device
 
 `_sync_state.user_id` records which account the device's data belongs to. It
 stays after logout. Before a run, the app compares it with the signed-in user
 (`matchAccount`):
 
-- no account yet: bind the device (`adoptAccount(..., "keep")`); its outbox already holds every row, so all of it uploads;
+- no account yet: bind the device (`adoptAccount(..., "keep")`) once the server has confirmed the account, not to a cached one; its outbox already holds every row, so all of it uploads;
 - the same account: sync;
-- another account: wait for the user's choice, asked on whatever screen is open ([accounts.md](accounts.md#without-an-account)). `merge` queues every row and clears the epoch and cursor, so the device uploads everything and bootstraps from the new account. `discard` deletes the synced rows, the outbox, and the undo history, and clears the epoch and cursor; the app re-seeds the catalog. This is the only place synced rows are removed on a device, and no tombstones are written: the rows belong to the other account, which keeps them.
+- another account: wait for the user's choice, asked on whatever screen is open ([accounts.md](accounts.md#without-an-account)). `merge` queues every row and clears the epoch and cursor, so the device uploads everything and bootstraps from the new account. `discard` first saves a snapshot file of the device (and doesn't discard if that fails), then deletes the synced rows, the outbox, and the undo history, and clears the epoch and cursor; the app re-seeds the catalog. This is the only place synced rows are removed on a device, and no tombstones are written: the rows belong to the other account, which keeps them.
+
 ### Referential integrity
 
 Synced tables don't enforce foreign keys. Changes can arrive child-before-parent
@@ -351,12 +359,14 @@ It asserts:
 
 - after every operation, the device clock is at least every non-deterministic HLC stored on the device;
 - a local edit always beats the version it was made on;
-- after syncing until nothing changes, every device's synced tables equal the server's head rows, and all outboxes are empty.
+- after syncing until nothing changes, the server's head rows are the newest version of each row that ever existed on any device, so a write lost everywhere fails even though the devices agree;
+- every device's synced tables equal the server's head rows, and all outboxes are empty.
 
 CI runs 300 sequences of up to 150 operations. `SYNC_FUZZ_RUNS=5000 pnpm test
 fuzz` runs a longer check. Each assertion was checked to catch a deliberately
 broken merge, write guard, acknowledgement, epoch reset, head upsert, and
-`receive` rule.
+`receive` rule; the newest-version check also catches a merge that keeps the
+older version on the server and every device alike.
 
 ## Alternatives considered
 

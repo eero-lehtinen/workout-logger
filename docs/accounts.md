@@ -58,7 +58,7 @@ Signing in as a *different* account than the device last synced with asks
 first, and sync waits for the answer:
 
 - **Merge:** every local row is queued for upload into the new account, and the device bootstraps from that account's snapshot. LWW merges the two.
-- **Discard:** the dialog first says how many local changes never reached the server, because discarding deletes them. Then the device's synced tables, outbox, and undo history are emptied, the catalog is re-seeded, and the new account's data is pulled. Nothing is pushed for the discarded rows; the other account keeps its copy on the server.
+- **Discard:** the dialog first says how many local changes never reached the server. The app then saves a snapshot file of the device (a download in a browser, `Documents/WorkoutLogger/` on Android), which Import snapshot can bring back; if that fails, nothing is discarded. Then the device's synced tables, outbox, and undo history are emptied, the catalog is re-seeded, and the new account's data is pulled. Nothing is pushed for the discarded rows; the other account keeps its copy on the server.
 - **Sign out** instead.
 
 The Settings screen shows the account, the last sync time, the number of

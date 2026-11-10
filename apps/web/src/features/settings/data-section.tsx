@@ -5,8 +5,8 @@ import { toasts } from "../../components/toasts.tsx";
 import { useDb } from "../../db/react.tsx";
 import {
   SNAPSHOT_FOLDER,
+  saveSnapshot,
   useLastSnapshotAt,
-  writeDeviceSnapshot,
 } from "../../lib/device-snapshots.ts";
 import { formatDateTime } from "../../lib/format.ts";
 import { useInstall } from "../../lib/install.ts";
@@ -24,22 +24,8 @@ export function DataSection() {
   async function exportSnapshot() {
     setBusy(true);
     try {
-      const bytes = await db.exportSnapshot();
-      if (isNative) {
-        // A WebView can't download; the file goes next to the automatic ones.
-        const path = await writeDeviceSnapshot(bytes);
-        toasts.add({ title: "Snapshot saved", description: path });
-        return;
-      }
-      const date = new Date().toISOString().slice(0, 10);
-      const url = URL.createObjectURL(
-        new Blob([bytes as BlobPart], { type: "application/vnd.sqlite3" }),
-      );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `workout-logger-${date}.sqlite3`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      const where = await saveSnapshot(await db.exportSnapshot());
+      if (isNative) toasts.add({ title: "Snapshot saved", description: where });
     } catch (error) {
       toasts.add({
         title: "Export failed",

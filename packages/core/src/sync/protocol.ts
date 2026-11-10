@@ -12,6 +12,9 @@ export interface Change {
   data: Record<string, unknown>;
 }
 
+/** The server refuses a larger push body (413). */
+export const MAX_PUSH_BYTES = 1024 * 1024;
+
 export interface PushRequest {
   device_id: string;
   client_version: string;

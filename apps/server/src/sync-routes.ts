@@ -1,4 +1,4 @@
-import { EXPECTED_USER_HEADER } from "@workout-logger/core";
+import { EXPECTED_USER_HEADER, MAX_PUSH_BYTES } from "@workout-logger/core";
 import {
   MAX_PULL_LIMIT,
   type PushRequest,
@@ -11,7 +11,6 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { AuthEnv } from "./auth/middleware.ts";
 
-const MAX_PUSH_BYTES = 1024 * 1024;
 const MAX_PUSH_CHANGES = 1000;
 const DEVICE_ID_PATTERN = /^[0-9a-z]{1,16}$/;
 

@@ -64,7 +64,7 @@ describe("push", () => {
     await device.write((w) =>
       w.insert("setting", { id: "unit", value_json: '"kg"' }),
     );
-    const sent = await collectPush(device);
+    const sent = (await collectPush(device)).changes;
     expect(sent).toEqual([
       {
         table: "setting",
@@ -94,7 +94,7 @@ describe("push", () => {
     await device.write((w) =>
       w.insert("setting", { id: "unit", value_json: '"kg"' }),
     );
-    const sent = await collectPush(device);
+    const sent = (await collectPush(device)).changes;
     await device.write((w) =>
       w.update("setting", "unit", { value_json: '"lb"' }),
     );
@@ -102,7 +102,7 @@ describe("push", () => {
       epoch: "e1",
       results: [{ status: "ok" }],
     });
-    expect(await collectPush(device)).toMatchObject([
+    expect((await collectPush(device)).changes).toMatchObject([
       { data: { value_json: '"lb"' } },
     ]);
   });
@@ -112,7 +112,7 @@ describe("push", () => {
     await device.write((w) =>
       w.insert("setting", { id: "unit", value_json: '"kg"' }),
     );
-    const sent = await collectPush(device);
+    const sent = (await collectPush(device)).changes;
     const result = await acknowledgePush(device, sent, {
       epoch: "e1",
       results: [{ status: "rejected", reason: "quota" }],
@@ -127,7 +127,7 @@ describe("push", () => {
   it("remembers the epoch from a push made before the first pull, to detect a later restore", async () => {
     const { server, device } = await setup();
     const pushAll = async () => {
-      const sent = await collectPush(device);
+      const sent = (await collectPush(device)).changes;
       const response = await push(
         server,
         "u1",
@@ -162,7 +162,10 @@ describe("push", () => {
     for (const id of ["c", "a", "b"]) {
       await device.write((w) => w.insert("setting", { id, value_json: "1" }));
     }
-    expect((await collectPush(device, 2)).map((c) => c.id)).toEqual(["c", "a"]);
+    expect((await collectPush(device, 2)).changes.map((c) => c.id)).toEqual([
+      "c",
+      "a",
+    ]);
   });
 });
 
@@ -308,7 +311,7 @@ describe("applySnapshot", () => {
       {
         device_id: other.deviceId,
         client_version: "1",
-        changes: await collectPush(other),
+        changes: (await collectPush(other)).changes,
       },
       { now: T0 },
     );
@@ -348,7 +351,7 @@ describe("applySnapshot", () => {
     await device.write((w) =>
       w.insert("setting", { id: "a", value_json: "1" }),
     );
-    const sent = await collectPush(device);
+    const sent = (await collectPush(device)).changes;
     await acknowledgePush(
       device,
       sent,

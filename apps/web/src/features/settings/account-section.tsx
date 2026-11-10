@@ -141,7 +141,11 @@ function problem(sync: SyncState): string | null {
   if (sync.failure === "server")
     return "The last sync failed; it is retried every minute.";
   if (sync.rejected.quota) return "Sync paused: the daily limit is reached.";
-  if (sync.rejected.conflict || sync.rejected.invalid) {
+  if (
+    sync.rejected.conflict ||
+    sync.rejected.invalid ||
+    sync.rejected.too_large
+  ) {
     return "The server refused some changes. They stay on this device.";
   }
   return null;
@@ -179,7 +183,7 @@ export function AccountChoice() {
   const { unsynced } = useDbQuery("syncStatus");
   const lost =
     unsynced > 0
-      ? ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} made here never reached the server; discarding deletes them for good.`
+      ? ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} made here never reached the server; after a discard they are only in that file.`
       : "";
   return (
     <Confirm
@@ -188,7 +192,7 @@ export function AccountChoice() {
       onOpenChange={() => {}}
       onCancel={() => void chooseAccount("sign-out")}
       title="This device has another account's data"
-      description={`Merge adds it to the account you signed in with. Discard removes it from this device and loads this account's data instead; the other account keeps what it synced.${lost}`}
+      description={`Merge adds it to the account you signed in with. Discard saves it to a snapshot file, removes it from this device, and loads this account's data instead; the other account keeps what it synced.${lost}`}
       actions={[
         { label: "Merge", onClick: () => void chooseAccount("merge") },
         {

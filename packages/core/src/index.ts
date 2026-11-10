@@ -73,7 +73,10 @@ export {
   applySnapshot,
   collectPush,
   type PushAcknowledgement,
+  type PushBatch,
+  type RunExpectation,
   readSyncState,
+  SyncInterrupted,
   type SyncState,
 } from "./sync/client.ts";
 export * from "./sync/hlc.ts";
@@ -86,8 +89,9 @@ export {
   syncOverHttp,
 } from "./sync/http.ts";
 export * from "./sync/ids.ts";
-export type * from "./sync/protocol.ts";
+export * from "./sync/protocol.ts";
 export {
+  type HeldReason,
   type SyncOptions,
   type SyncReport,
   type SyncTransport,

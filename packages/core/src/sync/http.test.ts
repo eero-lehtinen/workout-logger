@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { openTestServer, openTestStore } from "../testing.ts";
+import { adoptAccount } from "./account.ts";
 import { syncOverHttp } from "./http.ts";
 import { pull, push, snapshot } from "./server/sync.ts";
 
@@ -38,6 +39,7 @@ describe("syncOverHttp", () => {
   it("sends the Android app's token and version", async () => {
     const { db: server } = await openTestServer();
     const store = await openTestStore({ now: () => T0 });
+    await adoptAccount(store, "u1", "keep");
     const seen: Headers[] = [];
     const fetch = vi.fn(
       async (url: string | URL | Request, init?: RequestInit) => {

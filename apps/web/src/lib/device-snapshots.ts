@@ -1,6 +1,7 @@
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { effectiveSessionEnd, type SessionSummary } from "@workout-logger/core";
 import { useSyncExternalStore } from "react";
+import { isNative } from "./platform.ts";
 
 /**
  * On-device snapshot files (docs/backups.md#layers), Android only: the
@@ -87,6 +88,25 @@ function toBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
   return btoa(binary);
+}
+
+/**
+ * Saves a snapshot where the user can find it and import it back: next to the
+ * automatic ones on Android, where a WebView can't download, and as a
+ * download in a browser. Resolves to the file's path or name.
+ */
+export async function saveSnapshot(bytes: Uint8Array): Promise<string> {
+  if (isNative) return writeDeviceSnapshot(bytes);
+  const name = snapshotFileName(new Date());
+  const url = URL.createObjectURL(
+    new Blob([bytes as BlobPart], { type: "application/vnd.sqlite3" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return name;
 }
 
 /**

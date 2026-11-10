@@ -24,9 +24,18 @@ export interface SyncTransport {
 
 export interface SyncOptions {
   clientVersion: string;
+  /**
+   * The account the run syncs. If the device's account changes mid-run, the
+   * run throws `SyncInterrupted` instead of writing.
+   */
+  userId?: string;
   pushBatch?: number;
   pullLimit?: number;
+  pushBytes?: number;
 }
+
+/** Why a change stays in the outbox: the server's reason, or too large to send. */
+export type HeldReason = RejectReason | "too_large";
 
 export interface SyncReport {
   /**
@@ -37,7 +46,7 @@ export interface SyncReport {
   pushed: number;
   pulled: number;
   /** Changes left in the outbox, by reason. */
-  rejected: Partial<Record<RejectReason, number>>;
+  rejected: Partial<Record<HeldReason, number>>;
 }
 
 // An epoch reset queues everything and pulls from 0, which is one more round.
@@ -84,11 +93,23 @@ async function pushAll(
   report: SyncReport,
 ) {
   const batchSize = options.pushBatch ?? 500;
-  // Rejected entries stay queued at the front; skip past them.
+  // Rejected and oversized entries stay queued at the front; skip past them.
   let offset = 0;
   for (;;) {
-    const changes = await collectPush(store, batchSize, offset);
-    if (changes.length === 0) return;
+    const { changes, tooLarge } = await collectPush(
+      store,
+      batchSize,
+      offset,
+      options.pushBytes,
+    );
+    if (tooLarge > 0) {
+      report.rejected.too_large = (report.rejected.too_large ?? 0) + tooLarge;
+      offset += tooLarge;
+    }
+    if (changes.length === 0) {
+      if (tooLarge > 0) continue;
+      return;
+    }
     const response = await transport.push({
       device_id: store.deviceId,
       client_version: options.clientVersion,
@@ -98,6 +119,7 @@ async function pushAll(
       store,
       changes,
       response,
+      { userId: options.userId },
     );
     report.pushed += acknowledged;
     offset += changes.length - acknowledged;
@@ -115,17 +137,21 @@ async function pullAll(
   report: SyncReport,
 ): Promise<"done" | "update_required" | "epoch_changed"> {
   const limit = options.pullLimit ?? 1000;
+  const { userId } = options;
   let { cursor } = await readSyncState(store);
   if (cursor === null) {
     const snapshot = await transport.snapshot();
-    const outcome = await applySnapshot(store, snapshot);
+    const outcome = await applySnapshot(store, snapshot, {
+      userId,
+      cursor: null,
+    });
     if (outcome.status !== "applied") return outcome.status;
     report.pulled += outcome.applied;
     cursor = snapshot.cursor;
   }
   for (;;) {
     const page = await transport.pull(cursor, limit);
-    const outcome = await applyPull(store, page);
+    const outcome = await applyPull(store, page, { userId, cursor });
     if (outcome.status === "epoch_changed") return outcome.status;
     report.pulled += outcome.applied;
     if (outcome.status === "update_required") return outcome.status;

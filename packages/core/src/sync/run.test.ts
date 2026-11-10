@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Store } from "../store/store.ts";
 import { openTestServer, openTestStore } from "../testing.ts";
 import { adoptAccount, matchAccount, repairClock } from "./account.ts";
-import { readSyncState } from "./client.ts";
+import { readSyncState, SyncInterrupted } from "./client.ts";
 import { parseHlc } from "./hlc.ts";
 import { type SyncTransport, syncOnce } from "./run.ts";
 import {
@@ -116,6 +116,78 @@ describe("syncOnce", () => {
     expect(await unit(other)).toBe("lb");
   });
 
+  it("holds back a change too large to push and pushes the rest", async () => {
+    const { db: server } = await openTestServer();
+    const device = await openTestStore({ now: () => T0 });
+    await device.write((w) =>
+      w.put("setting", "big", { value_json: JSON.stringify("x".repeat(400)) }),
+    );
+    await addSettings(device, 3);
+
+    const report = await syncOnce(device, transport(server, "u1"), {
+      ...options,
+      pushBytes: 300,
+    });
+    expect(report).toMatchObject({ pushed: 3, rejected: { too_large: 1 } });
+    expect(await outboxSize(device)).toBe(1);
+  });
+
+  it("stops without writing when the device's account changes mid-run", async () => {
+    const { db: server } = await openTestServer();
+    const writer = await openTestStore({ now: () => T0 });
+    await setUnit(writer, "lb");
+    await syncOnce(writer, transport(server, "u1"), options);
+
+    const device = await openTestStore({ now: () => T0 });
+    await adoptAccount(device, "u1", "keep");
+    const base = transport(server, "u1");
+    const switching: SyncTransport = {
+      ...base,
+      async snapshot() {
+        const response = await base.snapshot();
+        await adoptAccount(device, "u2", "discard");
+        return response;
+      },
+    };
+    await expect(
+      syncOnce(device, switching, { ...options, userId: "u1" }),
+    ).rejects.toThrow(SyncInterrupted);
+    expect(await unit(device)).toBeUndefined();
+    expect(await readSyncState(device)).toEqual({ epoch: null, cursor: null });
+  });
+
+  it("stops a run that another run overtook", async () => {
+    const { db: server } = await openTestServer();
+    const device = await openTestStore({ now: () => T0 });
+    await syncOnce(device, transport(server, "u1"), options);
+    const writer = await openTestStore({ now: () => T0 });
+    await addSettings(writer, 3);
+    await syncOnce(writer, transport(server, "u1"), options);
+
+    const base = transport(server, "u1");
+    let overtaken = false;
+    const racing: SyncTransport = {
+      ...base,
+      async pull(after, limit) {
+        const page = await base.pull(after, limit);
+        if (!overtaken) {
+          overtaken = true;
+          await syncOnce(device, base, options);
+        }
+        return page;
+      },
+    };
+    await expect(syncOnce(device, racing, options)).rejects.toThrow(
+      SyncInterrupted,
+    );
+    expect(
+      await device.db.selectFrom("setting").select("id").execute(),
+    ).toHaveLength(3);
+    expect((await readSyncState(device)).cursor).toBe(
+      (await snapshot(server, "u1")).cursor,
+    );
+  });
+
   it("skips past rejected changes and reports them", async () => {
     const { db: server } = await openTestServer();
     const ahead = T0 + 2 * HOUR;
@@ -164,6 +236,28 @@ describe("repairClock", () => {
 
     await repairClock(device);
     await syncOnce(device, transport(server, "u1"), options);
+    await syncOnce(other, transport(server, "u1"), options);
+    expect(await unit(other)).toBe("lb");
+  });
+
+  it("keeps a repaired edit ahead of this device's own accepted version", async () => {
+    const { db: server } = await openTestServer();
+    let now = T0 + 59 * 60_000;
+    const device = await openTestStore({ now: () => now });
+    await setUnit(device, "kg");
+    await syncOnce(device, transport(server, "u1"), options);
+    now = T0 + 61 * 60_000;
+    await setUnit(device, "lb");
+    expect(
+      (await syncOnce(device, transport(server, "u1"), options)).rejected,
+    ).toEqual({ future_clock: 1 });
+
+    now = T0;
+    await repairClock(device);
+    expect(
+      (await syncOnce(device, transport(server, "u1"), options)).rejected,
+    ).toEqual({});
+    const other = await openTestStore({ now: () => T0 });
     await syncOnce(other, transport(server, "u1"), options);
     expect(await unit(other)).toBe("lb");
   });

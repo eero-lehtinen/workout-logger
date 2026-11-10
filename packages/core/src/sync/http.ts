@@ -1,4 +1,5 @@
 import type { Store } from "../store/store.ts";
+import { SyncInterrupted } from "./client.ts";
 import type {
   PullResponse,
   PushResponse,
@@ -30,6 +31,11 @@ export type SyncFailure =
   | "update_required"
   /** The session belongs to another account than expected: check it again. */
   | "account_changed"
+  /**
+   * Another run, or an account choice, changed the sync state first. Nothing
+   * was written; run again.
+   */
+  | "interrupted"
   /** The server couldn't be reached. */
   | "offline"
   | "server";
@@ -90,10 +96,14 @@ export async function syncOverHttp(
   try {
     const report = await syncOnce(store, httpTransport(config, fetchFn), {
       clientVersion: config.clientVersion ?? "web",
+      userId: config.userId,
     });
     return { ok: true, report };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof SyncInterrupted) {
+      return { ok: false, failure: "interrupted", message };
+    }
     if (error instanceof HttpError) {
       if (error.status === 401) {
         return { ok: false, failure: "unauthorized", message };

@@ -1,10 +1,7 @@
 import { App } from "@capacitor/app";
-import type {
-  RejectReason,
-  SyncFailure,
-  SyncReport,
-} from "@workout-logger/core";
+import type { HeldReason, SyncFailure, SyncReport } from "@workout-logger/core";
 import { useSyncExternalStore } from "react";
+import { toasts } from "../components/toasts.tsx";
 import type { DbClient } from "../db/client.ts";
 import type { AccountMode } from "../db/db.worker.ts";
 import {
@@ -15,6 +12,7 @@ import {
   subscribeAccount,
 } from "./account.ts";
 import { readToken } from "./auth-token.ts";
+import { saveSnapshot } from "./device-snapshots.ts";
 import { isNative } from "./platform.ts";
 import { SERVER_URL } from "./server.ts";
 
@@ -23,7 +21,7 @@ export interface SyncState {
   /** Why the last run stopped early, if it did. */
   failure: SyncFailure | null;
   /** Changes the server refused in the last run, by reason. */
-  rejected: Partial<Record<RejectReason, number>>;
+  rejected: Partial<Record<HeldReason, number>>;
   /** The server has data from a newer app, or refuses this one. */
   updateRequired: boolean;
   /**
@@ -145,22 +143,34 @@ export async function syncNow(): Promise<void> {
       update({ accountChoice: account.user.id });
       return;
     }
-    if (match === "first") await client.adoptAccount(account.user.id, "keep");
+    if (match === "first") {
+      // A cached account may be stale; binding the data to it would later
+      // ask the user to merge or discard their own data. Confirming it
+      // notifies the account listener, which runs sync again.
+      if (account.offline) return;
+      await client.adoptAccount(account.user.id, "keep");
+    }
+    const token = await readToken();
     const outcome = await client.sync({
       baseUrl: SERVER_URL,
-      token: await readToken(),
+      token,
       clientVersion: isNative ? (await App.getInfo()).version : null,
       userId: account.user.id,
     });
     if (currentRun !== run) return;
     if (outcome.ok) {
       finished(outcome.report);
+    } else if (outcome.failure === "interrupted") {
+      queued = true;
     } else {
       update({
         failure: outcome.failure,
         updateRequired: outcome.failure === "update_required",
       });
-      if (outcome.failure === "unauthorized") await sessionEnded();
+      // Unless a new sign-in stored another token during the run.
+      if (outcome.failure === "unauthorized" && (await readToken()) === token) {
+        await sessionEnded();
+      }
       // Signed in as someone else elsewhere: the next run asks what to do.
       if (outcome.failure === "account_changed") void refreshAccount();
     }
@@ -201,9 +211,37 @@ export async function chooseAccount(
     await signOut();
     return;
   }
-  if (!db) return;
+  const account = getAccount();
+  // The account changed again while the question was open: ask afresh.
+  if (account.status !== "signed-in" || account.user.id !== userId || !db) {
+    void syncNow();
+    return;
+  }
+  if (choice === "discard" && !(await saveBeforeDiscard(db))) {
+    update({ accountChoice: userId });
+    return;
+  }
   await db.adoptAccount(userId, choice);
   await syncNow();
+}
+
+/**
+ * Discard is the one hard delete of synced rows on a device, so it first
+ * saves a snapshot the user can import back. No snapshot, no discard.
+ */
+async function saveBeforeDiscard(client: DbClient): Promise<boolean> {
+  try {
+    const where = await saveSnapshot(await client.exportSnapshot());
+    toasts.add({ title: "Saved this device's data first", description: where });
+    return true;
+  } catch (error) {
+    toasts.add({
+      title: "Nothing was discarded",
+      description: `Saving a snapshot first failed: ${error instanceof Error ? error.message : String(error)}`,
+      type: "error",
+    });
+    return false;
+  }
 }
 
 /** After "repair clock": re-stamps the refused changes and pushes them. */

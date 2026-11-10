@@ -3,6 +3,7 @@ import { isSyncedTable, SYNCED_TABLES } from "../schema/tables.ts";
 import { TxClock } from "../store/clock.ts";
 import { readHlc, untyped } from "../store/rows.ts";
 import type { Store } from "../store/store.ts";
+import { queueEveryRow } from "./client.ts";
 import { FUTURE_CLOCK_LIMIT_MS, formatHlc } from "./hlc.ts";
 import {
   deleteSyncState,
@@ -43,18 +44,7 @@ export async function adoptAccount(
 ): Promise<void> {
   await store.transaction(async (trx, touched) => {
     if (mode === "merge") {
-      for (const table of SYNCED_TABLES) {
-        await trx
-          .insertInto("_outbox")
-          .orIgnore()
-          .columns(["table_name", "id"])
-          .expression((eb) =>
-            eb
-              .selectFrom(table)
-              .select([sql.lit(table).as("table_name"), "id"]),
-          )
-          .execute();
-      }
+      await queueEveryRow(trx);
       touched.add("_outbox");
     }
     if (mode === "discard") {
@@ -84,12 +74,14 @@ const REPAIR_MARGIN_MS = 5 * 60 * 1000;
  * "Repair clock" after the server rejected changes as `future_clock`
  * (docs/sync.md#hlc), once the device's clock is right again. Pulls the clock
  * back to just under the server's limit, `now + FUTURE_CLOCK_LIMIT_MS -
- * REPAIR_MARGIN_MS`, and re-stamps the queued rows above it from there.
+ * REPAIR_MARGIN_MS`, or to the newest HLC the server is known to have
+ * accepted if that is higher, and re-stamps the queued rows above it.
  *
  * Not back to `now`: a re-stamped edit must still beat the version it
  * replaced, which the device no longer has. Every version the server accepted
- * had a wall at most `FUTURE_CLOCK_LIMIT_MS` ahead of the server, so this
- * beats all of them except ones written within the margin of that limit.
+ * had a wall at most `FUTURE_CLOCK_LIMIT_MS` ahead of the server, so the
+ * ceiling beats all of them except ones written within the margin of that
+ * limit; `accepted_hlc` covers those this device pushed or pulled.
  * Returns the number of rows re-stamped.
  */
 export async function repairClock(store: Store): Promise<number> {
@@ -99,9 +91,11 @@ export async function repairClock(store: Store): Promise<number> {
       counter: 0,
       node: store.deviceId,
     });
+    const accepted = await readSyncValue(trx, "accepted_hlc");
+    const floor = accepted !== null && accepted > ceiling ? accepted : ceiling;
     const last = await readSyncValue(trx, "last_hlc");
-    if (last === null || last <= ceiling) return 0;
-    await writeSyncState(trx, "last_hlc", ceiling);
+    if (last === null || last <= floor) return 0;
+    await writeSyncState(trx, "last_hlc", floor);
     touched.add("_sync_state");
     const clock = await TxClock.load(trx, store.deviceId, store.now);
     const queued = await trx
@@ -113,7 +107,7 @@ export async function repairClock(store: Store): Promise<number> {
     for (const { table_name: table, id } of queued) {
       if (!isSyncedTable(table)) continue;
       const hlc = await readHlc(trx, table, id);
-      if (hlc === undefined || hlc <= ceiling) continue;
+      if (hlc === undefined || hlc <= floor) continue;
       await untyped(trx)
         .updateTable(table)
         .set({ hlc: clock.stamp() })
