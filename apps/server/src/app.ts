@@ -35,6 +35,13 @@ export function createApp({ webRoot, commit }: AppOptions): Hono {
 
   app.use(secureHeaders());
 
+  // The Cloudflare cache rule makes every response cacheable at the edge,
+  // and a response without Cache-Control is then kept for hours.
+  app.use("/api/*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
+
   app.get("/api/status", (c) =>
     c.json<Status>({ version: pkg.version, commit: commit ?? null }),
   );

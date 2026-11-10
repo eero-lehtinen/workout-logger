@@ -99,4 +99,9 @@ describe("/api", () => {
     expect(res.status).toBe(404);
     expect(res.headers.get("content-type")).toContain("application/json");
   });
+
+  it.each(["/api/status", "/api/nope"])("is never cached: %s", async (path) => {
+    const res = await app.request(path);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
 });

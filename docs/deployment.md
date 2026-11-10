@@ -67,6 +67,7 @@ Settings to pin and verify against the Litestream 0.5 docs at implementation tim
 - Everything under `/assets` has a content hash in its name and is sent with `Cache-Control: public, max-age=31536000, immutable`. A missing `/assets` file is a 404.
 - Everything else (`index.html`, `sw.js`, the workbox runtime, the manifest, icons) keeps its name across releases and is sent with `no-cache`, so the browser revalidates it and the service worker sees each new version.
 - Cloudflare passes these headers through only because of a Cache Rule for `lift.eerolehtinen.fi` (Caching → Cache Rules: hostname equals `lift.eerolehtinen.fi`; Eligible for cache; Edge TTL "use cache-control header if present"; Browser TTL "respect origin"). Without it, the zone's 4-hour Browser Cache TTL rewrites `no-cache` on file types Cloudflare caches (`.js`, images) to `max-age=14400`. Cloudflare's edge still stores `no-cache` files, but revalidates them with the origin on every request.
+- The rule makes every response cacheable at the edge, and one without `Cache-Control` is kept for Cloudflare's default TTL (2 h for a 200). So every `/api/*` response is sent with `no-store`. A 404 for a missing asset is kept for 3 minutes, which is harmless.
 - Other paths get `index.html`: they are client-side routes. Unknown `/api/*` paths are a JSON 404.
 
 The Playwright tests run against this server, so the headers are tested with
