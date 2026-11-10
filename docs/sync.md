@@ -196,20 +196,20 @@ HLC are derived from the source:
 
 | Source | id | HLC wall | Node |
 | --- | --- | --- | --- |
-| Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(`muscle:<key>`, `exercise:<key>`, `exercise_muscle:<exercise key>:<muscle key>`, `metric:<key>`) | Catalog version timestamp | `seed` |
+| Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(`muscle:<key>`, `exercise:<key>`, `exercise_muscle:<exercise key>:<muscle key>`, `metric:<key>`) | `CATALOG_WALL`, fixed at 2026-11-10; the counter is `CATALOG_REVISION` | `seed` |
 | Health Connect record | UUIDv5(HC record id) | Record's last-modified time | `hc` |
 | FitNotes import | UUIDv5(FitNotes natural key; see [fitnotes-import.md](fitnotes-import.md#ids)) | Import time; see [fitnotes-import.md](fitnotes-import.md#re-import) | `fitnotes` |
 
 Each source has its own fixed UUIDv5 namespace (`ID_NAMESPACES` in `core`), so
 keys from different sources can't collide. The namespaces never change.
-Deterministic rows are written with counter 0 and their source's HLC. They are
-not undoable.
+Deterministic rows are written with their source's HLC, with counter 0 except
+for the catalog. They are not undoable.
 
 The rules:
 
-- The writer skips rows whose local HLC is greater than or equal to the HLC it would write. A user edit or delete is always newer, so it survives re-seeding and re-reading Health Connect.
+- The writer skips rows whose local HLC is greater than or equal to the HLC it would write, and rows last written by any other node than its own pseudo-node. A user edit or delete survives re-seeding and re-reading Health Connect even if the source's HLC is newer.
+- The catalog's wall never moves, so a user's edit of a built-in, stamped later, beats every catalog revision under LWW too: a device that seeds a new revision before pulling the edit loses to the edit when it syncs.
 - Two devices importing the same Health Connect record produce byte-identical changes. The server stores one and ignores the other.
-- A known edge case: a device that seeds a *newer* catalog version before it has pulled an older user edit to that builtin row overwrites the edit. This is rare and accepted.
 
 ## Server side
 

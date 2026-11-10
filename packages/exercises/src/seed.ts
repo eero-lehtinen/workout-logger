@@ -6,7 +6,12 @@ import {
   type Store,
   writeDeterministic,
 } from "@workout-logger/core";
-import { CATALOG_VERSION, EXERCISES, METRICS } from "./catalog.ts";
+import {
+  CATALOG_REVISION,
+  CATALOG_WALL,
+  EXERCISES,
+  METRICS,
+} from "./catalog.ts";
 import { MUSCLES, type MuscleKey } from "./muscles.ts";
 
 export const muscleId = (key: MuscleKey) =>
@@ -26,7 +31,7 @@ const exerciseMuscleId = (exercise: string, muscle: MuscleKey) =>
  * here; dropping the entry alone leaves the old target in place.
  */
 export function catalogRows(): DeterministicRow[] {
-  const hlc = deterministicHlc(CATALOG_VERSION, "seed");
+  const hlc = deterministicHlc(CATALOG_WALL, "seed", CATALOG_REVISION);
   const rows: DeterministicRow[] = [];
   for (const [key, muscle] of Object.entries(MUSCLES)) {
     rows.push({

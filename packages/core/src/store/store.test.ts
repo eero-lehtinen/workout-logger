@@ -332,6 +332,24 @@ describe("writeDeterministic", () => {
     ).toBe("My lats");
   });
 
+  it("never overwrites a user edit, even with a newer source HLC", async () => {
+    const { store } = await setup();
+    await writeDeterministic(store, [
+      { table: "muscle", id: "m", hlc: seedHlc(1), data: muscle("Lats") },
+    ]);
+    await store.write((w) => w.update("muscle", "m", { name: "My lats" }));
+    const later = deterministicHlc(T0 + 86_400_000, "seed");
+    expect(
+      await writeDeterministic(store, [
+        { table: "muscle", id: "m", hlc: later, data: muscle("Lats v2") },
+      ]),
+    ).toEqual({ written: 0, skipped: 1 });
+    expect(
+      (await store.db.selectFrom("muscle").select("name").executeTakeFirst())
+        ?.name,
+    ).toBe("My lats");
+  });
+
   it("rejects malformed HLCs", async () => {
     const { store } = await setup();
     await expect(

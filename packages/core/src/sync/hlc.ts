@@ -80,6 +80,10 @@ function normalize(wall: number, counter: number, node: string): Hlc {
 }
 
 /** A deterministic HLC: the same source always yields the same value. */
-export function deterministicHlc(wall: number, node: PseudoNode): string {
-  return formatHlc({ wall, counter: 0, node });
+export function deterministicHlc(
+  wall: number,
+  node: PseudoNode,
+  counter = 0,
+): string {
+  return formatHlc({ wall, counter, node });
 }

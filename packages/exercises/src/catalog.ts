@@ -2,11 +2,18 @@ import type { ExerciseType } from "@workout-logger/core";
 import type { MuscleKey } from "./muscles.ts";
 
 /**
- * Catalog version, as the HLC wall of every seeded row. Raise it to the
- * current time whenever the catalog changes; devices then write the new
- * version, except over rows the user has edited since.
+ * The HLC wall of every seeded row. Never changes: it is older than any edit
+ * a user can make, so an edit to a built-in beats every catalog revision on
+ * every device, whichever syncs first.
  */
-export const CATALOG_VERSION = Date.UTC(2026, 10, 10);
+export const CATALOG_WALL = Date.UTC(2026, 10, 10);
+
+/**
+ * The HLC counter of every seeded row. Raise it by one whenever the catalog
+ * changes; devices then write the new revision over the old one, but never
+ * over a user's edit.
+ */
+export const CATALOG_REVISION = 0;
 
 /** 1 = primary muscle, 0.5 = secondary. */
 export type Factor = 1 | 0.5;

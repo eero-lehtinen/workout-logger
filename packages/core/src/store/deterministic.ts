@@ -1,5 +1,5 @@
 import type { DomainRow, SyncedTableName } from "../schema/tables.ts";
-import { isValidHlc } from "../sync/hlc.ts";
+import { isValidHlc, parseHlc } from "../sync/hlc.ts";
 import { enqueue, readHlc, upsertRow } from "./rows.ts";
 import type { Store } from "./store.ts";
 
@@ -20,9 +20,10 @@ export type DeterministicRow = {
 }[SyncedTableName];
 
 /**
- * Writes rows with their given HLCs, skipping each row whose local HLC is
- * greater or equal. A user's edit or delete is always newer, so it survives
- * re-seeding and re-imports. Not undoable.
+ * Writes rows with their given HLCs. Skips each row whose local version is
+ * greater or equal, or was written by anyone but the row's pseudo-node: a
+ * user's edit or delete survives re-seeding and re-imports even when the
+ * source's HLC is newer. Not undoable.
  */
 export async function writeDeterministic(
   store: Store,
@@ -33,7 +34,12 @@ export async function writeDeterministic(
     for (const row of rows) {
       if (!isValidHlc(row.hlc)) throw new Error(`invalid HLC: ${row.hlc}`);
       const local = await readHlc(trx, row.table, row.id);
-      if (local !== undefined && local >= row.hlc) continue;
+      if (
+        local !== undefined &&
+        (local >= row.hlc || parseHlc(local).node !== parseHlc(row.hlc).node)
+      ) {
+        continue;
+      }
       await upsertRow(
         trx,
         row.table,

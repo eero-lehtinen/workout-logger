@@ -110,10 +110,11 @@ Every fix is idempotent: running it on already-fixed data writes nothing.
 ## Seed catalog updates
 
 Built-in exercises and muscles change through the seed catalog
-(`packages/exercises`), not through migrations. A new catalog version raises
-`CATALOG_VERSION` and is written with deterministic ids and HLCs, and user
-edits to built-ins win ([sync.md](sync.md#deterministic-writes)). Seeding runs
-on every start; rows already at the current version are skipped.
+(`packages/exercises`), not through migrations. A catalog change raises
+`CATALOG_REVISION` by one and is written with deterministic ids and HLCs, and
+user edits to built-ins win ([sync.md](sync.md#deterministic-writes)).
+`CATALOG_WALL` never changes. Seeding runs on every start; rows already at the
+current revision are skipped.
 
 - Removing a built-in exercise archives it; it is never deleted, because history refers to it.
 - Removing a muscle target from a built-in needs an explicit tombstone row in the seed. Dropping the entry alone leaves the old target in place on devices that already seeded it.
