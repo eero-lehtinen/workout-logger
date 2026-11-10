@@ -17,6 +17,12 @@ with their content centered, so on a wide window the scrollbar stays at the
 edge. The router restores each screen body's scroll position when returning
 to the screen, keyed by path.
 
+On phones, the on-screen keyboard resizes the layout instead of panning the
+page (`interactive-widget=resizes-content` in the viewport meta, honored by
+Chrome and Firefox on Android). The shell's height (`h-dvh`) shrinks to the
+space above the keyboard, so the header stays and only the footer moves up
+with the keyboard. Safari ignores the setting and pans the page.
+
 ## Overview
 
 ```
