@@ -4,9 +4,24 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./wasm": "./src/db/wasm-driver.ts",
+    "./sync-server": "./src/sync/server/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "better-sqlite3": "^13.0.3",
+    "fractional-indexing": "^4.0.0",
+    "kysely": "^0.29.8",
+    "uuid": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "fast-check": "^4.10.2"
   }
 }
