@@ -43,13 +43,13 @@ export interface ServerDatabase {
 export function openDatabase(path: string): ServerDatabase {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const sqlite = new Database(path);
-  // WAL and the busy timeout are Litestream's recommendations
-  // (docs/deployment.md#litestream). FULL rather than its suggested NORMAL:
-  // with NORMAL a power loss can roll back a push the server acknowledged,
-  // and the device has already dropped it from its outbox.
+  // Litestream's recommendations (docs/deployment.md#litestream). Known risk
+  // of NORMAL: an OS crash or power loss, not a process or container
+  // restart, can roll back the last seconds of commits, including pushes the
+  // devices have already dropped from their outboxes.
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("busy_timeout = 5000");
-  sqlite.pragma("synchronous = FULL");
+  sqlite.pragma("synchronous = NORMAL");
   const db = createKysely<ServerTables>(nodeDriver(sqlite));
   return { db, sqlite, close: () => db.destroy() };
 }
