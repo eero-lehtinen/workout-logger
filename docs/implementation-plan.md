@@ -215,7 +215,7 @@ deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 - Health Connect import (plugin choice, permissions, history access, deterministic writes).
 - Combined chart: stacked panels and normalized overlay, smoothing.
 
-## Phase 9: FitNotes import (S–M)
+## Phase 9: FitNotes import (S–M) [done]
 
 - A private conversion script, outside this repo, that turns the owner's backup into a snapshot ([fitnotes-import.md](fitnotes-import.md)). No import in the app or the CLI: only the owner has FitNotes history.
 - Curate the mapping by hand: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping)).
