@@ -59,7 +59,7 @@ function AppVersionRow() {
       } else if (waiting) {
         toasts.add({
           title: "An update is downloaded",
-          description: "It is in use the next time the app starts.",
+          description: "It takes over once the app is in the background.",
         });
       } else {
         toasts.add({ title: "The app is up to date" });

@@ -170,7 +170,7 @@ The debug build has its own application id and database, so it never touches the
 
 ## Live updates
 
-The Android app replaces its web build without an APK. It downloads the server's web build as a zip and runs it from the next start on, from the same origin ([architecture.md](architecture.md#live-updates)). A push to `main` reaches a phone after two starts of the app: one with a connection, which downloads, and the next, which switches. A start is a cold start; Android can keep the app's process for days.
+The Android app replaces its web build without an APK. It downloads the server's web build as a zip and switches to it from the same origin ([architecture.md](architecture.md#live-updates)). A push to `main` reaches a phone in two steps: the app downloads the build when it starts or returns to the front (at most hourly), and switches the next time it goes to the background with no session running, or at its next cold start.
 
 **Bundle.** `pnpm build` runs `apps/web/scripts/build-bundle.ts` after Vite. It writes `apps/web/live-bundle/`, which the image holds as `web/live-bundle`:
 
@@ -288,7 +288,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 
 | Situation | Procedure |
 | --- | --- |
-| Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. Android apps follow the server back to that build within two starts. |
+| Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. Android apps follow the server back to that build as they do forward. |
 | Bad web build with a domain schema migration | Fix forward. Browsers and phones that ran the bad build have migrated their database, and an older build refuses a newer database ("Update the app") until a build with that schema version is deployed. |
 | Live-update bundle doesn't start on phones | Nothing to do on the phone: it rolls back and never downloads that commit again. Push a fix. |
 | Bad deploy with a migration | Stop `app`. Restore the deploy's `pre-migration/` copy (gunzip it to `/data/app.db`) into the volume, or restore Litestream to before the deploy. Run `new-epoch` with the previous SHA's image ([the server command](#the-server-command)). Redeploy the previous SHA. |

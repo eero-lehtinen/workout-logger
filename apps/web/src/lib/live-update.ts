@@ -1,3 +1,4 @@
+import { App } from "@capacitor/app";
 import { LiveUpdate } from "@capawesome/capacitor-live-update";
 import * as v from "valibot";
 import { appVersion } from "./app-update.ts";
@@ -31,7 +32,30 @@ async function removeBundles(ids: readonly string[]): Promise<void> {
   }
 }
 
+let waiting = false;
+const waitingListeners = new Set<() => void>();
+
+function setWaiting(value: boolean) {
+  if (waiting === value) return;
+  waiting = value;
+  for (const listener of waitingListeners) listener();
+}
+
+/** Whether a downloaded build waits to take over; for useSyncExternalStore. */
+export const isUpdateWaiting = (): boolean => waiting;
+
+export function subscribeUpdateWaiting(listener: () => void): () => void {
+  waitingListeners.add(listener);
+  return () => waitingListeners.delete(listener);
+}
+
 async function check(): Promise<boolean> {
+  const staged = await stageLatest();
+  setWaiting(staged);
+  return staged;
+}
+
+async function stageLatest(): Promise<boolean> {
   const latest = await latestBundle();
   if (!latest) return false;
   const [current, next, bundles, blocked, native] = await Promise.all([
@@ -68,10 +92,10 @@ let checking: Promise<boolean> | undefined;
 
 /**
  * Asks the server for its web build and, if this shell can run it and
- * doesn't already, downloads it for the next start
- * (docs/architecture.md#live-updates). Never switches
- * the running app. Resolves to whether a newer build waits for the next
- * start; rejects when the server can't be reached or the download fails.
+ * doesn't already, downloads it (docs/architecture.md#live-updates). Never
+ * switches the running app itself: LiveUpdateSwitch does that out of sight,
+ * or the next start. Resolves to whether a newer build waits to take over;
+ * rejects when the server can't be reached or the download fails.
  */
 export function checkForLiveUpdate(): Promise<boolean> {
   if (!isNative) return Promise.resolve(false);
@@ -93,7 +117,10 @@ async function confirmBundle(): Promise<void> {
     downloaded: bundles.bundleIds,
     blocked: blocked.bundleIds,
   });
-  if (plan.stage) await LiveUpdate.setNextBundle({ bundleId: plan.stage });
+  if (plan.stage) {
+    await LiveUpdate.setNextBundle({ bundleId: plan.stage });
+    setWaiting(true);
+  }
   await removeBundles(plan.remove);
 }
 
@@ -104,26 +131,42 @@ async function confirmBundle(): Promise<void> {
 // server's build early.
 const UNCONFIRMED_CHECK_MS = 30_000;
 
+// Android can keep the app's process for days, so a start is too rare a
+// moment to be the only check.
+const RESUME_CHECK_MS = 60 * 60 * 1000;
+
 let started = false;
 let confirmed = false;
 let checkedOnStart = false;
+let lastCheckAt = 0;
+
+function checkQuietly() {
+  lastCheckAt = Date.now();
+  // Offline, most likely. The next start or resume checks again.
+  checkForLiveUpdate().catch(() => {});
+}
 
 function checkOnStart() {
   if (checkedOnStart) return;
   checkedOnStart = true;
-  // Offline, most likely. The next start checks again.
-  checkForLiveUpdate().catch(() => {});
+  checkQuietly();
 }
 
 /**
  * Call once when the app starts. The update check normally follows
  * `markAppReady`. If the app never gets that far, it still checks, so that
- * a fixed build can replace one that can't open the database.
+ * a fixed build can replace one that can't open the database. Later checks
+ * follow the app's return to the front, at most hourly.
  */
 export function startLiveUpdates(): void {
   if (!isNative || started) return;
   started = true;
   setTimeout(checkOnStart, UNCONFIRMED_CHECK_MS);
+  void App.addListener("resume", () => {
+    if (checkedOnStart && Date.now() - lastCheckAt > RESUME_CHECK_MS) {
+      checkQuietly();
+    }
+  });
 }
 
 /**
@@ -140,10 +183,15 @@ export function markAppReady(): void {
 }
 
 /**
- * Switches to a downloaded build right away by reloading the WebView. Only
- * for screens where nothing is in progress.
+ * Switches to the waiting build by reloading the WebView, which loses what
+ * is on screen. Only for moments when nothing is in progress.
  */
+export async function switchToWaitingBuild(): Promise<void> {
+  await LiveUpdate.reload();
+}
+
+/** Checks for a build and switches to it right away. */
 export async function applyLiveUpdate(): Promise<void> {
   await checkForLiveUpdate().catch(() => {});
-  await LiveUpdate.reload();
+  await switchToWaitingBuild();
 }

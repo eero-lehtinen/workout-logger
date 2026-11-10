@@ -16,6 +16,7 @@ import { markAppReady } from "../lib/live-update.ts";
 import { isNative } from "../lib/platform.ts";
 import { useBackupWarning } from "../lib/server-status.ts";
 import { AppUpdatePrompt } from "./app-update-prompt.tsx";
+import { LiveUpdateSwitch } from "./live-update-switch.tsx";
 import { ToastLayer } from "./toasts.tsx";
 import { WebUpdate } from "./web-update.tsx";
 
@@ -60,6 +61,7 @@ export function AppShell() {
       <Suspense fallback={null}>
         <KeepScreenAwake />
         {isNative && <AutoSnapshot />}
+        {isNative && <LiveUpdateSwitch />}
         <AccountChoice />
       </Suspense>
     </div>

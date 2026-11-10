@@ -73,9 +73,9 @@ So unsynced edits made on the old version survive the upgrade without special ha
 
 ## Mixed versions across devices
 
-The web app updates as soon as the user reloads. The Android app downloads
-the new web build on its next start with a connection and runs it from the
-start after that ([architecture.md](architecture.md#live-updates)). Until all
+The web app and the Android app both switch to a new web build by
+themselves, out of sight, once no session is running
+([architecture.md](architecture.md#updates-and-version-compatibility)). Until all
 of a user's devices run the same schema:
 
 | Device | Push | Pull |
@@ -83,15 +83,15 @@ of a user's devices run the same schema:
 | Newer app | Normal | Older rows are upgraded on apply |
 | Older app | Rejected as `schema_outdated` once the server has seen a newer `v` from this user. Otherwise an older app would reset columns it doesn't know. | Pauses at the first row with a newer `v` |
 
-The older app keeps working locally, and its outbox is kept. A browser prompts
-to reload; the Android app updates itself. After updating, the migration
-upgrades its pending rows and sync resumes.
+The older app keeps working locally, and its outbox is kept. After it has
+switched to the new build, the migration upgrades its pending rows and sync
+resumes.
 
 The cost: every domain schema change stops each user's other devices from
-syncing until they have updated. On Android that is two starts of the app,
-with no install. An APK is needed only when the same change also needs a
-newer shell ([deployment.md](deployment.md#live-updates)); then the app
-prompts for it, and sync waits for the install.
+syncing until they have updated. On Android that needs the app opened once
+and put away once, with no install. An APK is needed only when the same
+change also needs a newer shell ([deployment.md](deployment.md#live-updates));
+then the app prompts for it, and sync waits for the install.
 
 A device never goes back across a schema change: a build older than the
 database refuses to open it and asks for an update, without touching the
