@@ -3,6 +3,7 @@ import {
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
+  type Modifier,
   PointerSensor,
   useSensor,
   useSensors,
@@ -19,6 +20,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "clsx";
 import { GripVertical } from "lucide-react";
 import { type ReactNode, useState } from "react";
+
+/** Rows of a list only move up and down. */
+const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
+
+/**
+ * Auto-scroll near the edges only vertically: horizontal auto-scroll chased
+ * the dragged item and kept widening the screen.
+ */
+const AUTO_SCROLL = { threshold: { x: 0, y: 0.2 } };
 
 /** Props for the element that starts a drag. */
 export interface DragHandle {
@@ -69,6 +79,8 @@ export function SortableList<T extends { id: string }>(props: {
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
+      autoScroll={AUTO_SCROLL}
+      {...(props.layout !== "grid" && { modifiers: [verticalOnly] })}
     >
       <SortableContext
         items={items.map((i) => i.id)}

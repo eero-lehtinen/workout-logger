@@ -37,7 +37,7 @@ export function Screen(props: {
       </div>
       <div
         data-scroll-restoration-id={props.scrollId}
-        className="min-h-0 flex-1 overflow-y-auto [scroll-timeline:--screen_y]"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scroll-timeline:--screen_y]"
       >
         <div className={clsx(width, "pb-8 lg:pb-10")}>{props.children}</div>
       </div>
