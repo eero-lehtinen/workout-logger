@@ -88,7 +88,8 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Commands
 
-Requires Node >= 24 and pnpm (version pinned in `packageManager`). Run from
+Requires Node >= 24 (26 for `pnpm test`: core's date code uses `Temporal`;
+the server image on 24 doesn't load it) and pnpm (version pinned in `packageManager`). Run from
 the repo root.
 
 | Command | What it does |

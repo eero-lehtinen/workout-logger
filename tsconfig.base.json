@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2024",
-    "lib": ["es2024"],
+    "lib": ["es2024", "esnext.temporal"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",

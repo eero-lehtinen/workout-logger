@@ -1,7 +1,10 @@
 export { runCommand, runQuery } from "./api.ts";
 export * from "./commands/index.ts";
 export { createKysely, type Driver, type Statement } from "./db/driver.ts";
+export * from "./domain/calendar.ts";
 export { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./domain/e1rm.ts";
+export * from "./domain/frequency.ts";
+export * from "./domain/history.ts";
 export {
   explainPerformances,
   type MarkerBasis,

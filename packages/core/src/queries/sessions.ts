@@ -35,7 +35,7 @@ function liveSessionExercises(db: Kysely<Database>) {
     .where("e.deleted", "=", 0);
 }
 
-function sessionSummaries(db: Kysely<Database>) {
+export function sessionSummaries(db: Kysely<Database>) {
   return db
     .selectFrom("session as s")
     .leftJoin("routine as r", "r.id", "s.routine_id")
@@ -76,7 +76,7 @@ function sessionSummaries(db: Kysely<Database>) {
       ];
     });
 }
-function toSummary(row: {
+export function toSummary(row: {
   exerciseCount: number | null;
   setCount: number | null;
   [key: string]: unknown;

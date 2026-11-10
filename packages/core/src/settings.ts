@@ -42,6 +42,11 @@ export const SETTINGS = {
     default: DEFAULT_IDLE_THRESHOLD_MS / 1000,
   },
   e1rm_rep_cap: { schema: integer(1, 30), default: DEFAULT_E1RM_REP_CAP },
+  /** The calendar's first column and where weekly stats split. */
+  week_start: {
+    schema: v.picklist(["monday", "sunday"]),
+    default: "monday",
+  },
 } as const satisfies Record<
   string,
   { schema: v.GenericSchema; default: unknown }

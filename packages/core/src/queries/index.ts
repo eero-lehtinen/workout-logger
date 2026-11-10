@@ -6,6 +6,7 @@ import {
   muscles,
   substitutionOptions,
 } from "./exercises.ts";
+import { exerciseHistory, sessionsInRange, trainingStats } from "./history.ts";
 import { routineDetail, routines } from "./routines.ts";
 import { recentSessions, sessionView, startOptions } from "./sessions.ts";
 import { settings } from "./settings.ts";
@@ -18,6 +19,9 @@ export const QUERIES = {
   startOptions,
   sessionView,
   exerciseLog,
+  exerciseHistory,
+  sessionsInRange,
+  trainingStats,
   muscles,
   exercises,
   exerciseDetail,
@@ -44,19 +48,23 @@ export type QueryResult<N extends QueryName> = Awaited<
 >;
 
 export type { QueryDef } from "./define.ts";
-export {
-  type ExerciseLog,
-  type LoggedSet,
-  type MarkerExplanation,
-  type Performance,
-  PREVIOUS_PERFORMANCES,
-} from "./exercise-log.ts";
+export { type ExerciseLog, PREVIOUS_PERFORMANCES } from "./exercise-log.ts";
 export type {
   ExerciseDetail,
   ExerciseItem,
   MuscleItem,
   SubstitutionOptions,
 } from "./exercises.ts";
+export type {
+  CalendarSession,
+  ExerciseHistory,
+  TrainingStats,
+} from "./history.ts";
+export type {
+  LoggedSet,
+  MarkerExplanation,
+  Performance,
+} from "./performances.ts";
 export type { RoutineDetail, RoutineItem } from "./routines.ts";
 export type {
   SessionExerciseItem,
