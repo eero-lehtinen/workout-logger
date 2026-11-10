@@ -3,6 +3,12 @@
 Status: draft. Library choices marked *candidate* still need checking against
 current docs before we commit to them.
 
+The UI targets two screens: logging is phone-first, while history, routine
+editing, settings, and the planned charts must be comfortable on a PC screen.
+Narrow screens get one pane with bottom navigation; wide screens (Tailwind
+`lg`) get a sidebar and side-by-side panes, e.g. the session's exercise list
+next to the logging pane.
+
 ## Overview
 
 ```
@@ -45,7 +51,11 @@ Principles:
 | UI | React + Vite | Largest ecosystem for components and charts. |
 | Styling | Tailwind CSS | Utility classes, no separate stylesheet architecture to maintain. |
 | Routing | TanStack Router, file-based routes | Type-safe routes and search params. |
-| Components | Radix-based headless components (*candidate*), decided when the phase 3 screens need them | Accessible primitives; styling is our own. |
+| Components | Base UI (`@base-ui/react`) | Headless, accessible primitives from the Radix authors, actively released since v1; Radix Primitives releases have slowed. Styling is our own. Its bundled docs (`node_modules/@base-ui/react/docs`) match the installed version. |
+| React compilation | React Compiler (`babel-plugin-react-compiler` through `@rolldown/plugin-babel`) | Automatic memoization; no hand-written `useMemo`/`useCallback`. The native Rust port in `@vitejs/plugin-react` is still experimental. |
+| Icons | `lucide-react` | Tree-shaken SVG icons. |
+| Validation | Valibot | Small and fast at runtime and in type-checking. Used where stored or imported data may come from another app version, e.g. settings. |
+| Worker RPC | Comlink | Calls into the DB worker and proxies change events back. |
 | Lint/format | Biome | One fast tool for both. |
 | Tests | Vitest | Shares Vite's config and transforms. |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
@@ -54,7 +64,7 @@ Principles:
 | Ids | `uuid` (v7 for new rows, v5 for deterministic ids) | Maintained, implements both versions. |
 | Ordering | `fractional-indexing` | Position keys that sort as plain strings. |
 | Property tests | fast-check | Shrinking finds minimal failing sequences; used by the sync fuzz test. |
-| Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#client-runtime). |
+| Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#reactive-queries). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Server | Hono on Node (*candidate*) | Small, typed, and portable across runtimes. |
 | Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
@@ -89,7 +99,22 @@ store/       Store: write API, undo, change events, deterministic writes
 sync/        HLC, ids, protocol types, client push/pull/apply
 sync/server/ server push/pull/snapshot, shared with apps/server
 domain/      pure functions: e1RM, markers, prefill, next day, session end, units
+queries/     read queries for the UI, each tagged with the tables it reads
+commands/    domain writes for the UI, each one write transaction
+settings.ts  setting keys, defaults, and validation
+snapshot/    snapshot file export and import (merge or replace)
+api.ts       runQuery / runCommand: the dispatch the DB worker exposes
 testing.ts   in-memory store and server, migration fixture helpers
+```
+
+`apps/web/src`:
+
+```
+db/          DB worker, Comlink client, tab ownership, query and command hooks
+components/  Base UI wrappers and shared UI, styled with Tailwind
+features/    screens by area: session, exercises, routines, settings
+lib/         formatting, the web rest timer, storage persistence
+routes/      TanStack Router file routes; thin, they render feature components
 ```
 
 Entry points: `@workout-logger/core` (browser-safe), `/node` (better-sqlite3
@@ -162,6 +187,10 @@ The weight unit is a per-user display setting. Storage is always kg.
 ### Database worker and tabs
 
 - SQLite runs in a dedicated module worker. All queries go through it. Writes are short transactions. Heavy analytics queries are indexed, and split if they would delay set logging noticeably (target: logging a set under 100 ms).
+- The `Driver` is synchronous, so Kysely and the `Store` live in the worker too. The main thread can't pass callbacks or transactions across, so it calls named queries and commands from `core` (`QUERIES`, `COMMANDS`) through Comlink. Each command runs as one undoable write transaction and returns its undo transaction id; the undo snackbar undoes exactly that transaction, and only while it is still the latest.
+- The main-thread bundle must not pull in Kysely: the workspace packages are marked `"sideEffects": false` so the query registry is tree-shaken out of it.
+- The database file is `/workout-logger.sqlite3` in the pool. Like the pool directory, the name never changes. The pre-migration copy is `/pre-migration.sqlite3`; snapshot imports go through a temporary `/import.sqlite3`. The pool reserves capacity for all three and their journals.
+- On open, the worker migrates, then seeds the built-in catalog (`seedCatalog`).
 - Vite setup: exclude `@sqlite.org/sqlite-wasm` from `optimizeDeps`, and create the worker with `new Worker(new URL("./db.worker.ts", import.meta.url), { type: "module" })`. This works in dev and in the production build. The build also emits the library's unused `sqlite3-worker1` and `sqlite3-opfs-async-proxy` scripts (about 250 KB). Keep them out of the PWA precache.
 - VFS init takes about 50-70 ms on desktop and on the phone, and up to 200 ms on the first run on the phone.
 
@@ -200,11 +229,12 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 - The `core` write API knows which tables each transaction touched, for local writes and for sync applies alike.
 - After commit, it emits the table names.
-- UI queries are TanStack Query queries tagged with the tables they read. Matching queries are invalidated and refetch. This is simple, and coarse enough to be correct.
+- Each query in `QUERIES` lists the tables it reads. The worker maps changed tables to affected query names and posts those; the main thread invalidates TanStack Query queries keyed `["db", name, args]` by name. This is simple, and coarse enough to be correct.
+- Queries use `networkMode: "always"` and never go stale on their own: the data is local, and only commits change it.
 
 ### Updates and version compatibility
 
-- **PWA:** precache the app shell and the SQLite WASM file (`vite-plugin-pwa`, *candidate*). A new version shows "reload to update". It is never activated automatically during a running session.
+- **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
 - **APK:** checks GitHub releases on start and shows an update prompt.
 - **Server:** every request sends the app version. Below `MIN_CLIENT_VERSION` the server returns 426, and the app shows "update the app". Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
 
@@ -258,7 +288,7 @@ A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` b
   Audio focus works because the service is in the foreground. On Android 15+, apps targeting API 35+ get focus only as the top app or with a foreground service; without focus, music isn't ducked.
 - **Notifications permission:** without `POST_NOTIFICATIONS` the countdown and the alert still run, but no notification is shown. Request it on first use.
 - **Known gap:** if the process dies during a rest (force stop, crash, an OEM killer), that alert is lost. This is accepted: missing an alert in rare cases isn't harmful, and a foreground service with a wake lock survived swipe-away and deep Doze in testing. On the next app start, the UI shows a rest whose `endsAt` has passed as finished.
-- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible.
+- **Web:** the rest timer is in-page only: `setTimeout`, then Web Audio, plus `navigator.vibrate`. It works while the page is visible. The audio context is unlocked by the tap that logs the set. The end time is kept in `localStorage`, so a reload still shows the countdown, or a finished rest.
 
 #### Alternatives tested and rejected
 

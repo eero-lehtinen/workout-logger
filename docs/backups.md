@@ -59,8 +59,16 @@ Future work (P2). These are for users who want backups outside the server, or no
 ## Snapshot format
 
 A **user snapshot** is a SQLite file holding one user's synced tables (head
-state, including tombstones). It uses the same schema as the app, plus a `meta`
-table: schema version, created at, source, server epoch.
+state, including tombstones). It uses the same schema as the app, with the
+local tables (`_outbox`, `_sync_state`, `_undo`) present but empty, plus a
+`meta (key, value)` table: `schema_version`, `created_at`, `source` (`device`
+or `server`), and `server_epoch` when known.
+
+Import reads the rows of whatever version the file has and passes them through
+the row upgrade chain. A snapshot from a newer app is refused. Merge applies
+the rows with the LWW rule and queues the winners for push, since the server
+may not have them. Replace runs as one undoable write, so the snackbar can
+revert it.
 
 It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 

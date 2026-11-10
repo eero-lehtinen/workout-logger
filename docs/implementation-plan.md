@@ -94,7 +94,7 @@ responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
 ## Phase 3: Logging slice, web (M–L)
 
 - DB worker in the web app with the VFS options and Web Lock tab ownership from [architecture.md](architecture.md#client-runtime), and the TanStack Query table-tag invalidation.
-- Component library choice (Radix-based).
+- Component library choice: Base UI ([architecture.md](architecture.md#tech-stack)).
 - Screens:
   - start session: routine preselect, day highlight, ad hoc;
   - session view: exercise list, done state, add/remove/reorder, session timer;
@@ -108,6 +108,8 @@ responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
 - PWA: installable, offline, "reload to update" prompt.
 
 **Exit:** a full real workout logged in the phone's browser; the data survives reload and offline use.
+
+Status: built; waiting on the real-workout check. Progress and open items are in [plans/phase-3.md](plans/phase-3.md).
 
 ## Phase 4: FitNotes import (S–M)
 

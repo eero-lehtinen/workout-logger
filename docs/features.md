@@ -22,6 +22,7 @@ FitNotes gaps that this app addresses:
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Web app, installable as a PWA | P0 | Works offline. |
+| Usable on a PC screen | P0 | Logging is phone-first; history, routine editing, settings, and charts must also be comfortable on a desktop browser. See [architecture.md](architecture.md). |
 | Android app from the same UI codebase | P0 | Needed for a reliable rest timer alert and health data access. See [architecture.md](architecture.md#android). |
 | Sync between devices | P0 | Phone and web are both used from the start. See [sync.md](sync.md). |
 | iOS | - | Out of scope. |
@@ -77,8 +78,8 @@ The app is shared with a few invited users, each with their own private data. Se
 | --- | --- | --- |
 | List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
-| Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. |
-| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. Logging into an idle-ended session asks whether to continue it or start a new one. |
+| Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
+| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
 | Session notes | P1 | |
 

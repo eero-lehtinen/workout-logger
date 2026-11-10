@@ -4,8 +4,9 @@ Local-first strength training logger. A web app plus an Android build from the
 same codebase, sync between devices, invite-only accounts for a few users, and
 a CLI for exporting data to scripts and AI tools.
 
-Status: core library (storage, migrations, sync, domain logic) is built; the
-apps are not. See [docs/implementation-plan.md](docs/implementation-plan.md).
+Status: the web app logs workouts locally and works offline; Android, the
+server, and sync are not built yet. See
+[docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## Documentation
 
