@@ -21,6 +21,15 @@
   --increase: light-dark(#2a8048, #5fbb80);
   --danger: light-dark(#b8352c, #e8736a);
 
+  /* Workout days in the calendar and chart series, by index in the cycle.
+     Distinct hues at similar weight; none is a marker color. */
+  --day-1: light-dark(#3a6ea8, #86ade0);
+  --day-2: light-dark(#b0582e, #e3986f);
+  --day-3: light-dark(#2d8070, #6cbfae);
+  --day-4: light-dark(#80529e, #bf9ade);
+  --day-5: light-dark(#8f7419, #d6b75a);
+  --day-6: light-dark(#a8456e, #e08cb0);
+
   /* The chosen option in a segmented control: lighter than its track in
      both themes, so it reads as raised, never as a hole. */
   --selected: light-dark(#f8f7f4, #4b453f);
@@ -48,6 +57,12 @@
   --color-record: var(--record);
   --color-increase: var(--increase);
   --color-danger: var(--danger);
+  --color-day-1: var(--day-1);
+  --color-day-2: var(--day-2);
+  --color-day-3: var(--day-3);
+  --color-day-4: var(--day-4);
+  --color-day-5: var(--day-5);
+  --color-day-6: var(--day-6);
 
   --color-selected: var(--selected);
   --color-scrim: var(--scrim);

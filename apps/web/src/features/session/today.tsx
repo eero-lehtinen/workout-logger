@@ -1,18 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { effectiveSessionEnd, type SessionSummary } from "@workout-logger/core";
-import { ChevronRight, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { buttonClass } from "../../components/button.tsx";
-import { listClass, rowClass } from "../../components/list.ts";
+import { listClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
-import {
-  formatDuration,
-  formatSessionDate,
-  formatSessionLength,
-  formatTime,
-} from "../../lib/format.ts";
+import { formatDuration, formatTime } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { RECENT_LIMIT } from "./running.ts";
+import { SessionRow } from "./session-row.tsx";
 
 export function TodayPage() {
   const sessions = useDbQuery("recentSessions", { limit: RECENT_LIMIT });
@@ -60,40 +56,16 @@ export function TodayPage() {
             <Empty>Sessions you log show up here.</Empty>
           ) : (
             <ul className={listClass}>
-              {past.map((s) => {
-                const end = endOf(s);
-                return (
-                  <li key={s.id}>
-                    <Link
-                      to="/sessions/$sessionId"
-                      params={{ sessionId: s.id }}
-                      className={`${rowClass} flex items-center gap-3 py-3`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">
-                          {s.dayName ?? "Ad hoc"}
-                          {s.routineName && (
-                            <span className="font-normal text-ink-muted">
-                              {" "}
-                              in {s.routineName}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-sm text-ink-muted">
-                          {formatSessionDate(s.startedAt, s.tz)}, {s.setCount}{" "}
-                          {s.setCount === 1 ? "set" : "sets"}
-                        </p>
-                      </div>
-                      {!end.running && end.reason !== "unknown" && (
-                        <span className="tabular text-sm text-ink-muted">
-                          {formatSessionLength(end.endedAt - s.startedAt)}
-                        </span>
-                      )}
-                      <ChevronRight size={18} className="text-ink-muted" />
-                    </Link>
-                  </li>
-                );
-              })}
+              {past.map((s) => (
+                <li key={s.id}>
+                  <SessionRow
+                    session={s}
+                    now={now}
+                    idleThresholdS={settings.idle_threshold_s}
+                    when="date"
+                  />
+                </li>
+              ))}
             </ul>
           )}
         </section>

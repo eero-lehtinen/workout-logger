@@ -1,5 +1,11 @@
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { Dumbbell, House, ListOrdered, Settings } from "lucide-react";
+import {
+  CalendarDays,
+  Dumbbell,
+  House,
+  ListOrdered,
+  Settings,
+} from "lucide-react";
 import { Suspense } from "react";
 import { KeepScreenAwake } from "../features/session/keep-screen-awake.tsx";
 import { RestBar } from "../features/session/rest-bar.tsx";
@@ -14,6 +20,7 @@ import { UpdatePrompt } from "./update-prompt.tsx";
 
 const NAV = [
   { to: "/", label: "Today", icon: House, exact: true },
+  { to: "/history", label: "History", icon: CalendarDays, exact: false },
   { to: "/routines", label: "Routines", icon: ListOrdered, exact: false },
   { to: "/exercises", label: "Exercises", icon: Dumbbell, exact: false },
   { to: "/settings", label: "Settings", icon: Settings, exact: false },
@@ -86,7 +93,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="grid shrink-0 grid-cols-4 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="grid shrink-0 grid-cols-5 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {NAV.map((item) => (
         <Link

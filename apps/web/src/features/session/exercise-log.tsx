@@ -8,7 +8,12 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowLeftRight, ChevronDown, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ChartLine,
+  ChevronDown,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, buttonClass, IconButton } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -207,6 +212,10 @@ function Logger({ log }: { log: ExerciseLog }) {
       sessionExerciseId: log.sessionExerciseId,
     },
   } as const;
+  const historyLink = {
+    ...settingsLink,
+    to: "/exercises/$exerciseId/history",
+  } as const;
 
   const header = (
     <>
@@ -220,6 +229,14 @@ function Logger({ log }: { log: ExerciseLog }) {
         className="lg:hidden"
         actions={
           <>
+            <Link
+              {...historyLink}
+              aria-label="Exercise history"
+              title="Exercise history"
+              className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+            >
+              <ChartLine size={20} />
+            </Link>
             <Link
               {...settingsLink}
               aria-label="Exercise settings"
@@ -241,6 +258,10 @@ function Logger({ log }: { log: ExerciseLog }) {
         <h1 className="flex-1 truncate text-2xl font-semibold">
           {exercise.name}
         </h1>
+        <Link {...historyLink} className={buttonClass("ghost", "sm")}>
+          <ChartLine size={17} />
+          History
+        </Link>
         <Link {...settingsLink} className={buttonClass("ghost", "sm")}>
           <SlidersHorizontal size={17} />
           Settings

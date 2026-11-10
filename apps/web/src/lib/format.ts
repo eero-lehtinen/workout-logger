@@ -59,6 +59,11 @@ export function formatSet(
   }
 }
 
+/** `102.5 kg` */
+export function formatWeightWithUnit(kg: number, unit: WeightUnit): string {
+  return `${formatWeight(kg, unit)} ${unit}`;
+}
+
 /** The unit shown after a set, if one applies. */
 export function setUnit(type: ExerciseType, unit: WeightUnit): string | null {
   return type === "weight_reps"
@@ -118,6 +123,19 @@ export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   time: "Time",
   distance_time: "Distance and time",
 };
+
+/**
+ * UTC midnight of an ISO date, as epoch ms. Format it with
+ * `timeZone: "UTC"` to show the date itself.
+ */
+export function dateFromIso(date: string): number {
+  return Temporal.PlainDate.from(date).toZonedDateTime("UTC").epochMilliseconds;
+}
+
+/** Today's date in the device's zone. */
+export function todayIso(): string {
+  return Temporal.Now.plainDateISO().toString();
+}
 
 export function deviceTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;

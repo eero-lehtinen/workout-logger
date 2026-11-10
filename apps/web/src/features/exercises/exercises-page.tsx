@@ -108,7 +108,7 @@ function ExerciseList(props: {
       {props.exercises.map((e) => (
         <li key={e.id}>
           <Link
-            to="/exercises/$exerciseId"
+            to="/exercises/$exerciseId/history"
             params={{ exerciseId: e.id }}
             className={`${rowClass} flex items-center gap-3 py-2.5`}
           >

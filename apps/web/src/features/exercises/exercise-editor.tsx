@@ -19,9 +19,17 @@ import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
 
 const route = getRouteApi("/exercises/$exerciseId");
 
-/** Where the editor returns to: the exercise list, or the logging screen it was opened from. */
+/**
+ * Where the editor returns to: the exercise list, the exercise's history, or
+ * the logging screen it was opened from.
+ */
 type Back =
   | { to: "/exercises"; label: string }
+  | {
+      to: "/exercises/$exerciseId/history";
+      params: { exerciseId: string };
+      label: string;
+    }
   | {
       to: "/sessions/$sessionId/$sessionExerciseId";
       params: { sessionId: string; sessionExerciseId: string };
@@ -40,7 +48,11 @@ export function EditExercisePage() {
           params: search,
           label: "Back to logging",
         }
-      : TO_EXERCISES;
+      : {
+          to: "/exercises/$exerciseId/history",
+          params: { exerciseId },
+          label: "Back to history",
+        };
   const exercise = useDbQuery("exerciseDetail", { exerciseId });
   if (!exercise) {
     return (
@@ -104,10 +116,7 @@ function ExerciseForm({
   const unit = settings.weight_unit;
   const command = useCommand();
   const navigate = useNavigate();
-  const goBack = () =>
-    back.to === "/exercises"
-      ? navigate({ to: back.to })
-      : navigate({ to: back.to, params: back.params });
+  const goBack = () => navigate(back);
 
   const [name, setName] = useState(start?.name ?? "");
   const [type, setType] = useState<ExerciseType>(start?.type ?? "weight_reps");

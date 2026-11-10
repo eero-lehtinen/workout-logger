@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as ExercisesIndexRouteImport } from './routes/exercises/index'
@@ -18,12 +19,18 @@ import { Route as ExercisesNewRouteImport } from './routes/exercises/new'
 import { Route as RoutinesIndexRouteImport } from './routes/routines/index'
 import { Route as RoutinesRoutineIdRouteImport } from './routes/routines/$routineId'
 import { Route as SessionsSessionIdRouteRouteImport } from './routes/sessions/$sessionId/route'
+import { Route as ExercisesExerciseIdHistoryRouteImport } from './routes/exercises/$exerciseId_.history'
 import { Route as SessionsSessionIdIndexRouteImport } from './routes/sessions/$sessionId/index'
 import { Route as SessionsSessionIdSessionExerciseIdRouteImport } from './routes/sessions/$sessionId/$sessionExerciseId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -66,6 +73,12 @@ const SessionsSessionIdRouteRoute = SessionsSessionIdRouteRouteImport.update({
   path: '/sessions/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExercisesExerciseIdHistoryRoute =
+  ExercisesExerciseIdHistoryRouteImport.update({
+    id: '/exercises/$exerciseId_/history',
+    path: '/exercises/$exerciseId/history',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SessionsSessionIdIndexRoute = SessionsSessionIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -80,6 +93,7 @@ const SessionsSessionIdSessionExerciseIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRouteRouteWithChildren
@@ -88,11 +102,13 @@ export interface FileRoutesByFullPath {
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/exercises/': typeof ExercisesIndexRoute
   '/routines/': typeof RoutinesIndexRoute
+  '/exercises/$exerciseId/history': typeof ExercisesExerciseIdHistoryRoute
   '/sessions/$sessionId/$sessionExerciseId': typeof SessionsSessionIdSessionExerciseIdRoute
   '/sessions/$sessionId/': typeof SessionsSessionIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
@@ -100,12 +116,14 @@ export interface FileRoutesByTo {
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/exercises': typeof ExercisesIndexRoute
   '/routines': typeof RoutinesIndexRoute
+  '/exercises/$exerciseId/history': typeof ExercisesExerciseIdHistoryRoute
   '/sessions/$sessionId/$sessionExerciseId': typeof SessionsSessionIdSessionExerciseIdRoute
   '/sessions/$sessionId': typeof SessionsSessionIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRouteRouteWithChildren
@@ -114,6 +132,7 @@ export interface FileRoutesById {
   '/routines/$routineId': typeof RoutinesRoutineIdRoute
   '/exercises/': typeof ExercisesIndexRoute
   '/routines/': typeof RoutinesIndexRoute
+  '/exercises/$exerciseId_/history': typeof ExercisesExerciseIdHistoryRoute
   '/sessions/$sessionId/$sessionExerciseId': typeof SessionsSessionIdSessionExerciseIdRoute
   '/sessions/$sessionId/': typeof SessionsSessionIdIndexRoute
 }
@@ -121,6 +140,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/history'
     | '/settings'
     | '/start'
     | '/sessions/$sessionId'
@@ -129,11 +149,13 @@ export interface FileRouteTypes {
     | '/routines/$routineId'
     | '/exercises/'
     | '/routines/'
+    | '/exercises/$exerciseId/history'
     | '/sessions/$sessionId/$sessionExerciseId'
     | '/sessions/$sessionId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/history'
     | '/settings'
     | '/start'
     | '/exercises/$exerciseId'
@@ -141,11 +163,13 @@ export interface FileRouteTypes {
     | '/routines/$routineId'
     | '/exercises'
     | '/routines'
+    | '/exercises/$exerciseId/history'
     | '/sessions/$sessionId/$sessionExerciseId'
     | '/sessions/$sessionId'
   id:
     | '__root__'
     | '/'
+    | '/history'
     | '/settings'
     | '/start'
     | '/sessions/$sessionId'
@@ -154,12 +178,14 @@ export interface FileRouteTypes {
     | '/routines/$routineId'
     | '/exercises/'
     | '/routines/'
+    | '/exercises/$exerciseId_/history'
     | '/sessions/$sessionId/$sessionExerciseId'
     | '/sessions/$sessionId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HistoryRoute: typeof HistoryRoute
   SettingsRoute: typeof SettingsRoute
   StartRoute: typeof StartRoute
   SessionsSessionIdRouteRoute: typeof SessionsSessionIdRouteRouteWithChildren
@@ -168,6 +194,7 @@ export interface RootRouteChildren {
   RoutinesRoutineIdRoute: typeof RoutinesRoutineIdRoute
   ExercisesIndexRoute: typeof ExercisesIndexRoute
   RoutinesIndexRoute: typeof RoutinesIndexRoute
+  ExercisesExerciseIdHistoryRoute: typeof ExercisesExerciseIdHistoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,6 +204,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -235,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionsSessionIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exercises/$exerciseId_/history': {
+      id: '/exercises/$exerciseId_/history'
+      path: '/exercises/$exerciseId/history'
+      fullPath: '/exercises/$exerciseId/history'
+      preLoaderRoute: typeof ExercisesExerciseIdHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions/$sessionId/': {
       id: '/sessions/$sessionId/'
       path: '/'
@@ -271,6 +312,7 @@ const SessionsSessionIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HistoryRoute: HistoryRoute,
   SettingsRoute: SettingsRoute,
   StartRoute: StartRoute,
   SessionsSessionIdRouteRoute: SessionsSessionIdRouteRouteWithChildren,
@@ -279,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   RoutinesRoutineIdRoute: RoutinesRoutineIdRoute,
   ExercisesIndexRoute: ExercisesIndexRoute,
   RoutinesIndexRoute: RoutinesIndexRoute,
+  ExercisesExerciseIdHistoryRoute: ExercisesExerciseIdHistoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

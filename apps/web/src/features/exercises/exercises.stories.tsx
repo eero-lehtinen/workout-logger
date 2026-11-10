@@ -39,11 +39,11 @@ export const ScrollKeptOnReturn = pageStory({
     const scrolled = main.scrollTop;
     await expect(scrolled).toBeGreaterThan(0);
     await userEvent.click(squat);
-    await canvas.findByRole("heading", { name: "Edit exercise" });
-    const editor = canvasElement.ownerDocument.querySelector(
-      '[data-scroll-restoration-id="exercise"]',
+    await canvas.findByRole("heading", { name: "Squat (Barbell)" });
+    const history = canvasElement.ownerDocument.querySelector(
+      '[data-scroll-restoration-id="exercise-history"]',
     );
-    await expect(editor?.scrollTop).toBe(0);
+    await expect(history?.scrollTop).toBe(0);
     await userEvent.click(
       canvas.getByRole("link", { name: "Back to exercises" }),
     );
