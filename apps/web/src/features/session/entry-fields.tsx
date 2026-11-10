@@ -1,29 +1,18 @@
 import {
   type ExerciseType,
-  type LoggedSet,
   roundTo,
   type Settings,
   stepWeight,
   type WeightUnit,
   weightIncrement,
 } from "@workout-logger/core";
-import { useState } from "react";
-import { Button } from "../../components/button.tsx";
-import { Sheet } from "../../components/sheet.tsx";
 import {
   parseDuration,
   Stepper,
   type StepperProps,
 } from "../../components/stepper.tsx";
-import { useCommand } from "../../db/react.tsx";
 import { formatDuration } from "../../lib/format.ts";
-import {
-  type Entry,
-  type EntryField,
-  entryFromSet,
-  FIELDS,
-  setFromEntry,
-} from "./entry.ts";
+import { type Entry, type EntryField, FIELDS } from "./entry.ts";
 
 const formatWeightInput = (value: number) => String(roundTo(value, 2));
 
@@ -87,84 +76,6 @@ export function EntryFields(props: {
       {FIELDS[props.type].map((field) => (
         <Stepper key={field} size={props.size} {...steppers[field]} />
       ))}
-    </div>
-  );
-}
-/** Edits or deletes a logged set. */
-export function EditSetSheet(props: {
-  set: LoggedSet | null;
-  onClose: () => void;
-  type: ExerciseType;
-  unit: WeightUnit;
-  incrementKg: number | null;
-  settings: Settings;
-}) {
-  return (
-    <Sheet
-      open={props.set !== null}
-      onOpenChange={(open) => !open && props.onClose()}
-      title="Edit set"
-    >
-      {props.set && (
-        <EditSetForm key={props.set.id} {...props} set={props.set} />
-      )}
-    </Sheet>
-  );
-}
-
-function EditSetForm(props: {
-  set: LoggedSet;
-  onClose: () => void;
-  type: ExerciseType;
-  unit: WeightUnit;
-  incrementKg: number | null;
-  settings: Settings;
-}) {
-  const command = useCommand();
-  const [entry, setEntry] = useState(() => entryFromSet(props.set, props.unit));
-  const values = setFromEntry(entry, props.type, props.unit);
-  return (
-    <div className="flex flex-col gap-4 p-4">
-      <EntryFields
-        type={props.type}
-        entry={entry}
-        onChange={setEntry}
-        unit={props.unit}
-        incrementKg={props.incrementKg}
-        settings={props.settings}
-        size="md"
-      />
-      <div className="flex gap-2">
-        <Button
-          variant="danger"
-          onClick={async () => {
-            props.onClose();
-            await command(
-              "deleteSet",
-              { setId: props.set.id },
-              { undoLabel: "Set deleted" },
-            );
-          }}
-        >
-          Delete set
-        </Button>
-        <Button
-          variant="primary"
-          className="flex-1"
-          disabled={!values}
-          onClick={async () => {
-            if (!values) return;
-            props.onClose();
-            await command(
-              "updateSet",
-              { setId: props.set.id, values },
-              { undoLabel: "Set changed" },
-            );
-          }}
-        >
-          Save
-        </Button>
-      </div>
     </div>
   );
 }

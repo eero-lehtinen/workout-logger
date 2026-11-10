@@ -9,7 +9,7 @@ import {
 } from "@workout-logger/core";
 import { clsx } from "clsx";
 import { ArrowLeftRight, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
@@ -23,7 +23,7 @@ import {
 import { restTimer } from "../../lib/rest-timer.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { type Entry, entryFromSet, setFromEntry } from "./entry.ts";
-import { EditSetSheet, EntryFields } from "./entry-fields.tsx";
+import { EntryFields } from "./entry-fields.tsx";
 import { Marker } from "./marker.tsx";
 import { RestControls } from "./rest-bar.tsx";
 
@@ -73,7 +73,58 @@ function Logger({ log }: { log: ExerciseLog }) {
     setEntry(entryFromSet(log.prefill, unit));
   }
 
-  const [editing, setEditing] = useState<LoggedSet | null>(null);
+  // Editing a logged set reuses the entry footer. The next set's draft stays
+  // in `entry` meanwhile.
+  const [editing, setEditing] = useState<{
+    setId: string;
+    entry: Entry;
+  } | null>(null);
+  const editIndex = editing
+    ? log.sets.findIndex((s) => s.id === editing.setId)
+    : -1;
+  if (editing && editIndex === -1) setEditing(null);
+  const editValues = editing
+    ? setFromEntry(editing.entry, exercise.type, unit)
+    : null;
+
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setEditing(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing]);
+
+  function toggleEdit(set: LoggedSet) {
+    setEditing(
+      editing?.setId === set.id
+        ? null
+        : { setId: set.id, entry: entryFromSet(set, unit) },
+    );
+  }
+
+  function fillFrom(set: SetValues) {
+    const filled = entryFromSet(set, unit);
+    if (editing) setEditing({ ...editing, entry: filled });
+    else setEntry(filled);
+  }
+
+  async function saveEdit() {
+    if (!editing || !editValues) return;
+    const { setId } = editing;
+    setEditing(null);
+    await command(
+      "updateSet",
+      { setId, values: editValues },
+      { undoLabel: "Set changed" },
+    );
+  }
+
+  async function deleteEdited() {
+    if (!editing) return;
+    const { setId } = editing;
+    setEditing(null);
+    await command("deleteSet", { setId }, { undoLabel: "Set deleted" });
+  }
   const [substituting, setSubstituting] = useState(false);
   const [ended, setEnded] = useState<Extract<
     EffectiveEnd,
@@ -179,23 +230,57 @@ function Logger({ log }: { log: ExerciseLog }) {
       width="narrow"
       footer={
         <div className="flex flex-col gap-3 px-4 py-3 lg:px-0">
-          <RestControls />
+          {editing ? (
+            <div className="flex h-12 items-center gap-2">
+              <p className="flex-1 font-semibold">
+                Editing set {editIndex + 1}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <RestControls />
+          )}
           <EntryFields
             type={exercise.type}
-            entry={entry}
-            onChange={setEntry}
+            entry={editing ? editing.entry : entry}
+            onChange={(next) =>
+              editing ? setEditing({ ...editing, entry: next }) : setEntry(next)
+            }
             unit={unit}
             incrementKg={exercise.weightIncrementKg}
             settings={settings}
           />
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={!values}
-            onClick={onLog}
-          >
-            Log set {log.sets.length + 1}
-          </Button>
+          {editing ? (
+            <div className="flex gap-2">
+              <Button variant="danger" size="lg" onClick={deleteEdited}>
+                Delete set
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                disabled={!editValues}
+                onClick={saveEdit}
+              >
+                Save set {editIndex + 1}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={!values}
+              onClick={onLog}
+            >
+              Log set {log.sets.length + 1}
+            </Button>
+          )}
         </div>
       }
     >
@@ -203,8 +288,9 @@ function Logger({ log }: { log: ExerciseLog }) {
         <Ledger
           log={log}
           unit={unit}
-          onEdit={setEditing}
-          onCopy={(set) => setEntry(entryFromSet(set, unit))}
+          editingId={editing?.setId ?? null}
+          onEdit={toggleEdit}
+          onCopy={fillFrom}
         />
         {earlier.length > 0 && (
           <div className="mt-4">
@@ -231,7 +317,7 @@ function Logger({ log }: { log: ExerciseLog }) {
                     performance={p}
                     log={log}
                     unit={unit}
-                    onCopy={(set) => setEntry(entryFromSet(set, unit))}
+                    onCopy={fillFrom}
                   />
                 ))}
               </ul>
@@ -245,14 +331,6 @@ function Logger({ log }: { log: ExerciseLog }) {
         )}
       </div>
 
-      <EditSetSheet
-        set={editing}
-        onClose={() => setEditing(null)}
-        type={exercise.type}
-        unit={unit}
-        incrementKg={exercise.weightIncrementKg}
-        settings={settings}
-      />
       <ExercisePicker
         open={substituting}
         onOpenChange={setSubstituting}
@@ -299,6 +377,8 @@ function Logger({ log }: { log: ExerciseLog }) {
 function Ledger(props: {
   log: ExerciseLog;
   unit: "kg" | "lb";
+  /** The set being edited in the footer, highlighted here. */
+  editingId: string | null;
   onEdit: (set: LoggedSet) => void;
   onCopy: (set: LoggedSet) => void;
 }) {
@@ -338,7 +418,8 @@ function Ledger(props: {
                   <button
                     type="button"
                     onClick={() => props.onEdit(today)}
-                    className="-ml-2 flex h-12 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left hover:bg-surface"
+                    aria-pressed={props.editingId === today.id}
+                    className="-ml-2 flex h-12 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
                   >
                     <span className="sr-only">Edit set {i + 1}: </span>
                     <span className="numerals truncate text-2xl">

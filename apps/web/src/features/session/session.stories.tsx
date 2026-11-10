@@ -107,6 +107,35 @@ export const LoggingDark = pageStory({
   theme: "dark",
 });
 
+export const EditSetInFooter = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const reps = () => canvas.getByLabelText("Reps");
+    await canvas.findByRole("button", { name: "Log set 3" });
+    const draft = (reps() as HTMLInputElement).value;
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
+    await expect(canvas.getByText("Editing set 1")).toBeVisible();
+    await expect(reps()).toHaveValue("8");
+    await userEvent.click(canvas.getByRole("button", { name: "More reps" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Save set 1" }));
+
+    await expect(
+      await canvas.findByRole("button", { name: /^Edit set 1: 102.5 × 9/ }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Log set 3" }),
+    ).toBeVisible();
+    await expect(reps()).toHaveValue(draft);
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 2/ }));
+    await userEvent.keyboard("{Escape}");
+    await expect(canvas.queryByText("Editing set 2")).toBeNull();
+  },
+});
+
 export const UndoToastDark = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
