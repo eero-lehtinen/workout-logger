@@ -208,7 +208,7 @@ function Editor({
                       onClick={() =>
                         setPick({ kind: "slotExercise", slotId: slot.id })
                       }
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left font-medium hover:bg-surface"
+                      className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-1 py-1 text-left font-medium hover:bg-surface"
                       title="Change exercise"
                     >
                       <span className="truncate">
