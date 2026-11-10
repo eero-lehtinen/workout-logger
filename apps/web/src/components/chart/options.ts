@@ -10,7 +10,11 @@ import type { ChartTheme } from "./theme.ts";
 
 /* Shared look of every chart: the theme's tokens on ECharts' options. */
 
-const SLIDER_HEIGHT = 22;
+/** A mouse can aim; a finger needs room. */
+const finePointer = () => matchMedia("(pointer: fine)").matches;
+
+/** Fingers get a taller slider, and its round handles grow with it. */
+const sliderHeight = () => (finePointer() ? 22 : 32);
 
 export const MIN_ZOOM_SPAN = 30 * 24 * 3600_000;
 
@@ -38,7 +42,7 @@ export function grid(zoomable: boolean): GridComponentOption {
     left: 0,
     right: 4,
     top: 10,
-    bottom: zoomable ? SLIDER_HEIGHT + 14 : 0,
+    bottom: zoomable ? sliderHeight() + 14 : 0,
     outerBoundsMode: "same",
     outerBoundsContain: "axisLabel",
   };
@@ -120,7 +124,7 @@ export function zoomOptions(
   theme: ChartTheme,
   xAxisIndex: number | number[] = 0,
 ): DataZoomComponentOption[] {
-  const finePointer = matchMedia("(pointer: fine)").matches;
+  const fine = finePointer();
   const ink = theme.colors.ink;
   const muted = theme.colors["ink-muted"];
   return [
@@ -130,7 +134,7 @@ export function zoomOptions(
       filterMode: "filter",
       zoomOnMouseWheel: "ctrl",
       moveOnMouseWheel: false,
-      moveOnMouseMove: finePointer,
+      moveOnMouseMove: fine,
       preventDefaultMouseMove: false,
       minValueSpan: MIN_ZOOM_SPAN,
     },
@@ -138,13 +142,14 @@ export function zoomOptions(
       type: "slider",
       xAxisIndex,
       filterMode: "filter",
-      height: SLIDER_HEIGHT,
+      height: sliderHeight(),
       bottom: 2,
-      left: 2,
-      right: 6,
+      // Room for half of each round handle at the ends.
+      left: fine ? 2 : 18,
+      right: fine ? 6 : 18,
       // On touch, a page scroll that starts on the slider would brush a
       // tiny range instead.
-      brushSelect: finePointer,
+      brushSelect: fine,
       showDetail: false,
       borderColor: theme.rule,
       borderRadius: 6,
@@ -158,7 +163,11 @@ export function zoomOptions(
         lineStyle: { color: ink, width: 1, opacity: 0.7 },
         areaStyle: { opacity: 0 },
       },
-      handleSize: "70%",
+      // The default handle is a few pixels wide: fine for a mouse, but a
+      // finger needs a target as tall as the slider in both directions.
+      ...(fine
+        ? { handleSize: "70%" }
+        : { handleIcon: "circle", handleSize: "100%" }),
       handleStyle: { color: theme.raised, borderColor: muted, borderWidth: 1 },
       moveHandleSize: 0,
       brushStyle: { color: alpha(ink, 0.12) },
