@@ -46,8 +46,8 @@ previous performance, not by prescribing.
 | **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. Defined only up to the **e1RM cap** (default 12 reps); above it the estimate is too unreliable. |
 | **Reference set** | The set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
 | **Progress marker** | At most one per set: PR, set record, or weight increase. Full rules in [features.md](features.md#progress-markers). |
-| **PR** (personal record, bright star) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
-| **Set record** (dim star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM cap, at least as much weight and reps with one of them strictly more. |
+| **PR** (personal record, trophy) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
+| **Set record** (star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM cap, at least as much weight and reps with one of them strictly more. |
 | **Weight increase** (up arrow) | A set with more weight than its reference set that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
 | **Volume** | `weight * reps` summed over sets. |
 | **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |

@@ -188,7 +188,7 @@ The weight unit is a per-user display setting. Storage is always kg.
   - Defaults: 2.5 kg, or 5 lb when the unit is lb. The value is overridable per exercise (`weight_increment_kg`), e.g. 1 kg for dumbbells.
   - The +/- buttons snap to the nearest multiple of the increment first, then step. A converted 220.46 lb becomes 225 after +, not 225.46.
 - **Prefill.** The prefilled weight is shown unrounded, in display units. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
-- **Comparisons** for stars and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
+- **Comparisons** for set records and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
 
 ## Client runtime
 

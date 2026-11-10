@@ -99,8 +99,8 @@ The app is shared with a few invited users, each with their own private data. Se
 
 Each set gets at most one marker, checked in this order:
 
-1. **PR** (bright star)
-2. **Set record** (dim star)
+1. **PR** (trophy)
+2. **Set record** (star)
 3. **Weight increase** (up arrow)
 
 The last two compare against the **reference set**: the set with the same index

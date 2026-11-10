@@ -1,5 +1,5 @@
 import type { ProgressMarker } from "@workout-logger/core";
-import { ArrowUp, Star } from "lucide-react";
+import { ArrowUp, Star, Trophy } from "lucide-react";
 
 const LABELS: Record<ProgressMarker, string> = {
   pr: "Personal record",
@@ -7,13 +7,15 @@ const LABELS: Record<ProgressMarker, string> = {
   weight_increase: "Weight increase",
 };
 
-/** PR: bright star. Set record: dim star. Weight increase: up arrow. */
+/** PR: trophy. Set record: outline star. Weight increase: up arrow. */
 export function Marker({ marker }: { marker: ProgressMarker | null }) {
   if (!marker) return null;
   const label = LABELS[marker];
   return (
     <span role="img" aria-label={label} title={label} className="inline-flex">
-      {marker === "pr" && <Star size={18} className="fill-pr text-pr" />}
+      {marker === "pr" && (
+        <Trophy size={18} strokeWidth={2.25} className="text-pr" />
+      )}
       {marker === "set_record" && (
         <Star size={18} strokeWidth={2.25} className="text-record" />
       )}
