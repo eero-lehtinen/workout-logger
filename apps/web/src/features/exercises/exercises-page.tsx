@@ -1,14 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import type { ExerciseItem, MuscleItem } from "@workout-logger/core";
-import { MUSCLE_GROUPS } from "@workout-logger/exercises";
-import { clsx } from "clsx";
 import { ChevronRight, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Button, buttonClass } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
-import { matchesSearch, primaryMuscles, useMuscleMap } from "./muscles.ts";
+import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
+import {
+  inMuscleGroup,
+  matchesSearch,
+  primaryMuscles,
+  useMuscleMap,
+} from "./muscles.ts";
 
 export function ExercisesPage() {
   const exercises = useDbQuery("exercises");
@@ -20,10 +24,7 @@ export function ExercisesPage() {
   const matching = exercises.filter(
     (e) =>
       matchesSearch(e.name, query) &&
-      (!group ||
-        Object.entries(e.muscles).some(
-          ([id, factor]) => factor === 1 && muscles.get(id)?.group === group,
-        )),
+      (!group || inMuscleGroup(e, group, muscles)),
   );
   const active = matching.filter((e) => !e.archived);
   const archived = matching.filter((e) => e.archived);
@@ -56,24 +57,7 @@ export function ExercisesPage() {
                 className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
               />
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {[null, ...MUSCLE_GROUPS].map((g) => (
-                <button
-                  key={g ?? "all"}
-                  type="button"
-                  aria-pressed={group === g}
-                  onClick={() => setGroup(g)}
-                  className={clsx(
-                    "h-9 shrink-0 rounded-full px-3.5 text-sm font-medium",
-                    group === g
-                      ? "bg-selected text-ink ring-2 ring-ink/50"
-                      : "bg-surface text-ink-muted hover:text-ink",
-                  )}
-                >
-                  {g ?? "All"}
-                </button>
-              ))}
-            </div>
+            <MuscleGroupFilter value={group} onChange={setGroup} />
           </div>
         </PageHeader>
       }

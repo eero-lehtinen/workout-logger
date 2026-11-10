@@ -205,6 +205,39 @@ export const ReorderByKeyboard = pageStory({
   },
 });
 
+export const AddExerciseByMuscleGroup = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Add exercise" }),
+    );
+    const picker = within(
+      await body.findByRole("dialog", { name: "Add exercise" }),
+    );
+    await userEvent.click(await picker.findByRole("button", { name: "Legs" }));
+    await expect(
+      await picker.findByRole("button", { name: /^Squat \(Barbell\)/ }),
+    ).toBeVisible();
+    await expect(
+      picker.queryByRole("button", { name: /^Bench Press \(Barbell\)/ }),
+    ).toBeNull();
+
+    await userEvent.type(
+      picker.getByRole("searchbox", { name: "Search exercises" }),
+      "press",
+    );
+    await expect(
+      await picker.findByRole("button", { name: /^Leg Press/ }),
+    ).toBeVisible();
+    await expect(
+      picker.queryByRole("button", { name: /^Overhead Press/ }),
+    ).toBeNull();
+  },
+});
+
 export const RemoveFromSession = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

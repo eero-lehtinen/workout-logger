@@ -3,12 +3,19 @@ import { Search } from "lucide-react";
 import { Suspense, useState } from "react";
 import { Sheet } from "../../components/sheet.tsx";
 import { useDbQuery } from "../../db/react.tsx";
-import { matchesSearch, primaryMuscles, useMuscleMap } from "./muscles.ts";
+import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
+import {
+  inMuscleGroup,
+  matchesSearch,
+  primaryMuscles,
+  useMuscleMap,
+} from "./muscles.ts";
 
 /**
  * Picks an exercise. For a substitution, the slot's alternatives come first,
  * then exercises sharing a primary muscle (most recently used first), then
- * everything else. Typing searches all exercises.
+ * everything else. Typing searches all exercises. A muscle group narrows
+ * every list.
  */
 export function ExercisePicker(props: {
   open: boolean;
@@ -49,15 +56,21 @@ function PickerBody(props: {
   });
   const muscles = useMuscleMap();
   const [query, setQuery] = useState("");
+  const [group, setGroup] = useState<string | null>(null);
 
-  const groups = (() => {
+  const sections = (() => {
+    const inGroup = (e: ExerciseItem) =>
+      !group || inMuscleGroup(e, group, muscles);
     const byId = new Map(exercises.map((e) => [e.id, e]));
     const pick = (ids: string[]) =>
-      ids
-        .map((id) => byId.get(id))
-        .filter((e): e is ExerciseItem => Boolean(e));
+      ids.flatMap((id) => {
+        const e = byId.get(id);
+        return e && inGroup(e) ? [e] : [];
+      });
     const current = props.substituteFor?.exerciseId;
-    const live = exercises.filter((e) => !e.archived && e.id !== current);
+    const live = exercises.filter(
+      (e) => !e.archived && e.id !== current && inGroup(e),
+    );
     if (query.trim()) {
       return [
         {
@@ -76,12 +89,12 @@ function PickerBody(props: {
         title: shown.size > 0 ? "All exercises" : null,
         items: live.filter((e) => !shown.has(e.id)),
       },
-    ].filter((g) => g.items.length > 0);
+    ].filter((s) => s.items.length > 0);
   })();
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-raised px-4 pt-3 pb-2">
+      <div className="sticky top-0 z-10 flex flex-col gap-2 bg-raised px-4 pt-3 pb-2">
         <div className="relative">
           <Search
             size={18}
@@ -96,21 +109,22 @@ function PickerBody(props: {
             className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
         </div>
+        <MuscleGroupFilter value={group} onChange={setGroup} />
       </div>
-      {groups.length === 0 && (
+      {sections.length === 0 && (
         <p className="px-4 py-8 text-center text-ink-muted">
-          No exercise matches “{query}”. Create it under Exercises.
+          No exercise matches. Create it under Exercises.
         </p>
       )}
-      {groups.map((group) => (
-        <section key={group.title ?? "results"} className="pb-2">
-          {group.title && (
+      {sections.map((section) => (
+        <section key={section.title ?? "results"} className="pb-2">
+          {section.title && (
             <h3 className="px-4 pt-3 pb-1 text-sm font-semibold text-ink-muted">
-              {group.title}
+              {section.title}
             </h3>
           )}
           <ul>
-            {group.items.map((exercise) => (
+            {section.items.map((exercise) => (
               <li key={exercise.id}>
                 <button
                   type="button"

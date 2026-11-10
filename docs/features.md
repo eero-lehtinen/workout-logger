@@ -49,7 +49,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | --- | --- | --- |
 | Built-in exercise list with exercise types and muscle targets | P0 | Seeded from an open dataset and curated. |
 | Custom exercises: create, edit, archive, copy | P0 | Copying prefills a new exercise from any exercise, built-in ones included. |
-| Browse and search by name and muscle group | P0 | |
+| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. |
 | Edit an exercise's muscle targets | P1 | |
 | Per-exercise default rest time and notes | P1 | |
 

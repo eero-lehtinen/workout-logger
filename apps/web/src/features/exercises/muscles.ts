@@ -27,3 +27,14 @@ export function matchesSearch(name: string, query: string): boolean {
     .filter(Boolean)
     .every((word) => haystack.includes(word));
 }
+
+/** Whether a primary muscle of the exercise is in the group. */
+export function inMuscleGroup(
+  exercise: Pick<ExerciseItem, "muscles">,
+  group: string,
+  muscles: Map<string, MuscleItem>,
+): boolean {
+  return Object.entries(exercise.muscles).some(
+    ([id, factor]) => factor === 1 && muscles.get(id)?.group === group,
+  );
+}
