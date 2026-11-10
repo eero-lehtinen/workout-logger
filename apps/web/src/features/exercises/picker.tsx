@@ -1,6 +1,7 @@
 import type { ExerciseItem } from "@workout-logger/core";
 import { Search } from "lucide-react";
 import { Suspense, useState } from "react";
+import { Select } from "../../components/select.tsx";
 import { Sheet } from "../../components/sheet.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
@@ -8,14 +9,16 @@ import {
   inMuscleGroup,
   matchesSearch,
   primaryMuscles,
+  sharesPrimaryMuscle,
   useMuscleMap,
 } from "./muscles.ts";
+import { EXERCISE_SORTS, sortExercises, useExerciseSort } from "./sort.ts";
 
 /**
  * Picks an exercise. For a substitution, the slot's alternatives come first,
- * then exercises sharing a primary muscle (most recently used first), then
- * everything else. Typing searches all exercises. A muscle group narrows
- * every list.
+ * then exercises sharing a primary muscle, then everything else, each in the
+ * chosen order. Typing searches all exercises. A muscle group narrows every
+ * list.
  */
 export function ExercisePicker(props: {
   open: boolean;
@@ -57,19 +60,17 @@ function PickerBody(props: {
   const muscles = useMuscleMap();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<string | null>(null);
+  const [sort, setSort] = useExerciseSort();
 
   const sections = (() => {
     const inGroup = (e: ExerciseItem) =>
       !group || inMuscleGroup(e, group, muscles);
-    const byId = new Map(exercises.map((e) => [e.id, e]));
-    const pick = (ids: string[]) =>
-      ids.flatMap((id) => {
-        const e = byId.get(id);
-        return e && inGroup(e) ? [e] : [];
-      });
-    const current = props.substituteFor?.exerciseId;
-    const live = exercises.filter(
-      (e) => !e.archived && e.id !== current && inGroup(e),
+    const current = exercises.find(
+      (e) => e.id === props.substituteFor?.exerciseId,
+    );
+    const live = sortExercises(
+      exercises.filter((e) => !e.archived && e !== current && inGroup(e)),
+      sort,
     );
     if (query.trim()) {
       return [
@@ -79,15 +80,20 @@ function PickerBody(props: {
         },
       ];
     }
-    const alternatives = pick(options.alternativeIds);
-    const similar = pick(options.similarIds);
-    const shown = new Set([...alternatives, ...similar].map((e) => e.id));
+    const alternativeIds = new Set(options.alternativeIds);
+    const alternatives = live.filter((e) => alternativeIds.has(e.id));
+    const similar = current
+      ? live.filter(
+          (e) => !alternativeIds.has(e.id) && sharesPrimaryMuscle(e, current),
+        )
+      : [];
+    const shown = new Set([...alternatives, ...similar]);
     return [
       { title: "Alternatives", items: alternatives },
       { title: "Same muscles", items: similar },
       {
         title: shown.size > 0 ? "All exercises" : null,
-        items: live.filter((e) => !shown.has(e.id)),
+        items: live.filter((e) => !shown.has(e)),
       },
     ].filter((s) => s.items.length > 0);
   })();
@@ -109,7 +115,15 @@ function PickerBody(props: {
             className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
         </div>
-        <MuscleGroupFilter value={group} onChange={setGroup} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            label="Sort exercises"
+            value={sort}
+            onChange={setSort}
+            options={EXERCISE_SORTS}
+          />
+          <MuscleGroupFilter value={group} onChange={setGroup} />
+        </div>
       </div>
       {sections.length === 0 && (
         <p className="px-4 py-8 text-center text-ink-muted">

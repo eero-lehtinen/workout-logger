@@ -28,6 +28,16 @@ export function matchesSearch(name: string, query: string): boolean {
     .every((word) => haystack.includes(word));
 }
 
+/** Whether the two exercises have a primary muscle in common. */
+export function sharesPrimaryMuscle(
+  a: Pick<ExerciseItem, "muscles">,
+  b: Pick<ExerciseItem, "muscles">,
+): boolean {
+  return Object.entries(a.muscles).some(
+    ([id, factor]) => factor === 1 && b.muscles[id] === 1,
+  );
+}
+
 /** Whether a primary muscle of the exercise is in the group. */
 export function inMuscleGroup(
   exercise: Pick<ExerciseItem, "muscles">,

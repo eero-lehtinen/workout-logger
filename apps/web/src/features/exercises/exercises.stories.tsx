@@ -1,7 +1,12 @@
 import type { Meta } from "@storybook/react-vite";
 import { exerciseId } from "@workout-logger/exercises";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { empty, withArchived } from "../../stories/fixtures.ts";
+import {
+  empty,
+  running,
+  withArchived,
+  withHistory,
+} from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
 export default {
@@ -16,6 +21,55 @@ export const Browser = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: "Legs" }));
     await expect(await canvas.findByText("Squat (Barbell)")).toBeVisible();
     await expect(canvas.queryByText("Bench Press (Barbell)")).toBeNull();
+  },
+});
+
+export const SortRecentlyLogged = pageStory({
+  fixture: withHistory,
+  url: () => "/exercises",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(
+      canvas.getByRole("combobox", { name: "Sort exercises" }),
+      "Recently logged",
+    );
+    // The last set of the latest session was a leg curl.
+    const [first] = canvas.getAllByRole("link", { name: /\(/ });
+    await expect(first).toHaveTextContent(/^Lying Leg Curl \(Machine\)/);
+  },
+});
+
+/**
+ * A substitution lists the slot's alternatives, then exercises sharing a
+ * primary muscle, then the rest, each in the chosen order.
+ */
+export const SubstitutionSections = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Substitute exercise" }),
+    );
+    const sheet = await body.findByRole("dialog");
+    const section = (title: string) =>
+      within(
+        within(sheet).getByRole("heading", { name: title })
+          .parentElement as HTMLElement,
+      )
+        .getAllByRole("button")
+        .map((b) => b.textContent ?? "");
+    await within(sheet).findByRole("heading", { name: "Alternatives" });
+    await expect(section("Alternatives")[0]).toMatch(
+      /^Bench Press \(Dumbbell\)/,
+    );
+    const names = section("Same muscles");
+    await expect(names.length).toBeGreaterThan(1);
+    await expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    await expect(
+      within(sheet).getByRole("heading", { name: "All exercises" }),
+    ).toBeVisible();
   },
 });
 

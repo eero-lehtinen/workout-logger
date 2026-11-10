@@ -27,13 +27,22 @@ export interface ExerciseItem {
   builtin: boolean;
   /** Muscle id → factor. */
   muscles: Record<string, number>;
-  /** Start of the latest live session that included it. */
-  lastUsedAt: number | null;
+  /** Its latest logged set; null if it was never logged. */
+  lastLoggedAt: number | null;
+  /** Sessions with at least one logged set of it. */
+  loggedSessions: number;
 }
 
 /** Every live exercise, archived ones included, sorted by name. */
 export const exercises = defineQuery(
-  ["exercise", "exercise_muscle", "muscle", "session", "session_exercise"],
+  [
+    "exercise",
+    "exercise_muscle",
+    "muscle",
+    "session",
+    "session_exercise",
+    "set_log",
+  ],
   async (db): Promise<ExerciseItem[]> => {
     const rows = await db
       .selectFrom("exercise")
@@ -47,15 +56,21 @@ export const exercises = defineQuery(
       .where("em.deleted", "=", 0)
       .where("m.deleted", "=", 0)
       .execute();
-    const used = await db
-      .selectFrom("session_exercise as se")
+    const logged = await db
+      .selectFrom("set_log as sl")
+      .innerJoin("session_exercise as se", "se.id", "sl.session_exercise_id")
       .innerJoin("session as s", "s.id", "se.session_id")
-      .select((eb) => ["se.exercise_id", eb.fn.max("s.started_at").as("t")])
+      .select((eb) => [
+        "se.exercise_id",
+        eb.fn.max("sl.logged_at").as("last"),
+        eb.fn.count<number>("s.id").distinct().as("sessions"),
+      ])
+      .where("sl.deleted", "=", 0)
       .where("se.deleted", "=", 0)
       .where("s.deleted", "=", 0)
       .groupBy("se.exercise_id")
       .execute();
-    const lastUsed = new Map(used.map((u) => [u.exercise_id, u.t]));
+    const usage = new Map(logged.map((u) => [u.exercise_id, u]));
     const muscleMap = new Map<string, Record<string, number>>();
     for (const t of targets) {
       const map = muscleMap.get(t.exercise_id) ?? {};
@@ -70,7 +85,8 @@ export const exercises = defineQuery(
         archived: r.archived === 1,
         builtin: r.builtin_key !== null,
         muscles: muscleMap.get(r.id) ?? {},
-        lastUsedAt: lastUsed.get(r.id) ?? null,
+        lastLoggedAt: usage.get(r.id)?.last ?? null,
+        loggedSessions: usage.get(r.id)?.sessions ?? 0,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   },
@@ -119,25 +135,19 @@ export const exerciseDetail = defineQuery(
 );
 
 export interface SubstitutionOptions {
-  /** The slot's default exercise and its alternatives, in slot order. */
+  /**
+   * The slot's default exercise and its alternatives, in slot order, without
+   * the exercise being replaced.
+   */
   alternativeIds: string[];
-  /** Exercises sharing a primary muscle, most recently used first. */
-  similarIds: string[];
 }
 
 /**
- * The first two groups of the substitution picker. The third, search across
- * all exercises, uses the `exercises` query.
+ * The substitution picker's first group. The rest of the picker is the
+ * `exercises` query, filtered to the replaced exercise's muscle group.
  */
 export const substitutionOptions = defineQuery(
-  [
-    "slot",
-    "slot_alternative",
-    "exercise",
-    "exercise_muscle",
-    "session",
-    "session_exercise",
-  ],
+  ["slot", "slot_alternative"],
   async (
     db,
     args: { exerciseId: string | null; slotId: string | null },
@@ -163,46 +173,8 @@ export const substitutionOptions = defineQuery(
         }
       }
     }
-
-    let similarIds: string[] = [];
-    if (args.exerciseId) {
-      const rows = await db
-        .selectFrom("exercise_muscle as mine")
-        .innerJoin(
-          "exercise_muscle as other",
-          "other.muscle_id",
-          "mine.muscle_id",
-        )
-        .innerJoin("exercise as e", "e.id", "other.exercise_id")
-        .leftJoin("session_exercise as se", (join) =>
-          join.onRef("se.exercise_id", "=", "e.id").on("se.deleted", "=", 0),
-        )
-        .leftJoin("session as s", (join) =>
-          join.onRef("s.id", "=", "se.session_id").on("s.deleted", "=", 0),
-        )
-        .select((eb) => ["e.id", "e.name", eb.fn.max("s.started_at").as("t")])
-        .where("mine.exercise_id", "=", args.exerciseId)
-        .where("mine.factor", "=", 1)
-        .where("mine.deleted", "=", 0)
-        .where("other.factor", "=", 1)
-        .where("other.deleted", "=", 0)
-        .where("e.deleted", "=", 0)
-        .where("e.archived", "=", 0)
-        .where("e.id", "!=", args.exerciseId)
-        .groupBy(["e.id", "e.name"])
-        .execute();
-      similarIds = rows
-        .sort(
-          (a, b) =>
-            (b.t ?? -Infinity) - (a.t ?? -Infinity) ||
-            a.name.localeCompare(b.name),
-        )
-        .map((r) => r.id)
-        .filter((id) => !alternativeIds.includes(id));
-    }
     return {
       alternativeIds: alternativeIds.filter((id) => id !== args.exerciseId),
-      similarIds,
     };
   },
 );

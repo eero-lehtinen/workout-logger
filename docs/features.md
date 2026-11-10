@@ -49,7 +49,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | --- | --- | --- |
 | Built-in exercise list with exercise types and muscle targets | P0 | Seeded from an open dataset and curated. |
 | Custom exercises: create, edit, archive, copy | P0 | Copying prefills a new exercise from any exercise, built-in ones included. |
-| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. |
+| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. Both sort by name, most recently logged, or most logged (sessions with a logged set); the order is shared and remembered on the device. |
 | Edit an exercise's muscle targets | P1 | |
 | Per-exercise default rest time and notes | P1 | |
 
@@ -78,7 +78,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | --- | --- | --- |
 | List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
-| Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
+| Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle, then all other exercises, each in the picker's chosen order; typing searches all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
 | Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. |
 | Hide the session timer in settings | P1 | Hides only the running elapsed time; the session keeps its start and end, and ended sessions still show their duration. |
 | Keep the screen on while a session runs | P1 | A setting, off by default. Android, and browsers with the Screen Wake Lock API. |

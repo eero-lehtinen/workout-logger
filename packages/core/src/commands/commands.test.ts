@@ -249,7 +249,6 @@ describe("session exercises", () => {
       slotId: ids.benchSlot,
     });
     expect(options.alternativeIds).toEqual([ids.dbBench]);
-    expect(options.similarIds).toEqual([ids.dips]);
 
     expect(
       await run("substituteExercise", {
@@ -371,6 +370,39 @@ describe("session exercises", () => {
     expect(
       (await query("sessionView", { sessionId }))?.session.endedAt,
     ).toBeNull();
+  });
+});
+
+describe("exercise list", () => {
+  it("counts sessions with logged sets and the latest set", async () => {
+    const { query, run, advance, ids } = await setup();
+    for (let i = 0; i < 2; i++) {
+      advance(24 * 60 * MIN);
+      const sessionId = await run("startSession", {
+        routineId: null,
+        dayId: null,
+      });
+      const bench = await run("addSessionExercise", {
+        sessionId,
+        exerciseId: ids.bench,
+      });
+      advance(MIN);
+      await run("logSet", { sessionExerciseId: bench, values: set(100, 5) });
+      advance(MIN);
+      await run("logSet", { sessionExerciseId: bench, values: set(100, 5) });
+      // Added but never logged: doesn't count.
+      await run("addSessionExercise", { sessionId, exerciseId: ids.squat });
+    }
+    const list = await query("exercises", undefined);
+    const item = (id: string) => list.find((e) => e.id === id);
+    expect(item(ids.bench)).toMatchObject({
+      loggedSessions: 2,
+      lastLoggedAt: T0 + 2 * 24 * 60 * MIN + 4 * MIN,
+    });
+    expect(item(ids.squat)).toMatchObject({
+      loggedSessions: 0,
+      lastLoggedAt: null,
+    });
   });
 });
 
