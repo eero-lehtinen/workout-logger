@@ -315,7 +315,8 @@ changes:
 - Each change carries `v`, the app schema version that wrote it. The server stores `v` and `data` verbatim and never migrates them.
 - A client upgrades incoming rows with an older `v` on apply, using the same upgrade functions as its local migrations.
 - A client receiving a `v` newer than it understands pauses sync and shows "update the app".
-- The server rejects pushes with a `v` older than the newest `v` it has seen from that user. An outdated APK therefore can't wipe columns written by a newer web app.
+- The server rejects pushes with a `v` older than the newest `v` it has seen from that user. A device still on an older build therefore can't wipe columns written by a newer one.
+- Both cases end by themselves: the web app and the Android app switch to the server's build without an install ([migrations.md](migrations.md#mixed-versions-across-devices)).
 
 Full rules, including data fixes and server migrations: [migrations.md](migrations.md).
 
@@ -342,7 +343,7 @@ Full rules, including data fixes and server migrations: [migrations.md](migratio
 | Server data lost entirely | Restore from backups (see [deployment.md](deployment.md)); this is also an epoch change. |
 | Quota exceeded | Rejected changes stay in the outbox, local use continues, and the UI shows the reason. |
 | Token revoked or expired | The app asks to log in again. The outbox is kept. |
-| Outdated app | Push gets `schema_outdated`, or the server's minimum client version returns 426. The app shows "update". The outbox is kept. |
+| Outdated app | Push gets `schema_outdated`, or the server's minimum client version returns 426. The app shows "update". The outbox is kept, and sync resumes once the app has switched to the new build; only a 426 on Android needs an APK. |
 
 ## Testing
 

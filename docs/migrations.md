@@ -4,7 +4,7 @@ Data exists in several places, at different schema versions, at the same time:
 
 | Where | Schema | Upgraded by |
 | --- | --- | --- |
-| Local DB on each device | `SCHEMA_VERSION` of the installed app | Client migrations, on app start |
+| Local DB on each device | `SCHEMA_VERSION` of the web build the device runs | Client migrations, on app start |
 | Rows arriving via sync | `v` of the app that wrote them | Row upgrade on apply |
 | Server change log and head table | Each row's original `v`, kept forever | Never upgraded on the server. Readers upgrade. |
 | Snapshots and backups | `v` stored in their `meta` table | Row upgrade on import |
@@ -93,9 +93,11 @@ and put away once, with no install. An APK is needed only when the same
 change also needs a newer shell ([deployment.md](deployment.md#live-updates));
 then the app prompts for it, and sync waits for the install.
 
-A device never goes back across a schema change: a build older than the
-database refuses to open it and asks for an update, without touching the
-data.
+Going back is not possible. A device follows the server to whatever build
+it serves, also to an older one after a rolled-back deploy, but a build
+older than the database refuses to open it and asks for an update, without
+touching the data. A bad build that carried a migration is therefore fixed
+forward ([deployment.md](deployment.md#recovery-procedures)).
 
 ## Data fixes
 
