@@ -101,7 +101,7 @@ function RunningCard(props: { session: SessionSummary; now: number }) {
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: session.id }}
-      className="block rounded-2xl bg-ink p-5 text-chalk hover:bg-ink/92"
+      className="block rounded-2xl bg-float p-5 text-on-float hover:bg-float/92"
     >
       <p className="text-sm opacity-70">
         Running since {formatTime(session.startedAt, session.tz)}

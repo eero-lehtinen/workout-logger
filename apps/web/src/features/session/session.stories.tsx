@@ -107,6 +107,25 @@ export const LoggingDark = pageStory({
   theme: "dark",
 });
 
+export const UndoToastDark = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  theme: "dark",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /^Edit set 2/ }),
+    );
+    await userEvent.click(
+      await body.findByRole("button", { name: "Delete set" }),
+    );
+    await expect(
+      await body.findByRole("button", { name: "Undo" }),
+    ).toBeEnabled();
+  },
+});
+
 export const LoggingInPounds = pageStory({
   fixture: inPounds,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

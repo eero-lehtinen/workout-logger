@@ -18,6 +18,12 @@
   --record: light-dark(#2257b8, #7aa3f2);
   --increase: light-dark(#1f8a4c, #52bd7e);
   --danger: light-dark(#c42b2b, #ea6a63);
+  /* Floating surfaces (toasts, the rest pill, the running session): iron in
+     light mode, a raised grey in dark mode rather than an inverted white. */
+  --float: light-dark(#1b2226, #333e44);
+  --on-float: light-dark(#eceeed, #e3e8e9);
+  /* Behind dialogs: dims in both themes. */
+  --scrim: light-dark(#1b2226, #000000);
 }
 
 /* Forces a theme regardless of the system setting, e.g. in Storybook. */
@@ -40,6 +46,9 @@
   --color-record: var(--record);
   --color-increase: var(--increase);
   --color-danger: var(--danger);
+  --color-float: var(--float);
+  --color-on-float: var(--on-float);
+  --color-scrim: var(--scrim);
 }
 
 /* Weights and reps: condensed, heavy, tabular, like stamped plate figures. */

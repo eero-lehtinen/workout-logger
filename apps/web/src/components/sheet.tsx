@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Button } from "./button.tsx";
 
 const backdropClass =
-  "fixed inset-0 min-h-dvh bg-ink/35 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute";
+  "fixed inset-0 min-h-dvh bg-scrim/45 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute";
 
 /** A bottom sheet on phones, a centered panel on wide screens. */
 const popupClass =

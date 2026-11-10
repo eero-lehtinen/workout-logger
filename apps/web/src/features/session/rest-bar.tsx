@@ -86,7 +86,7 @@ export function RestBar() {
   const now = useNow(500);
   if (!state) return null;
   return (
-    <div className="fixed right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-full bg-ink py-1 pr-1 pl-4 text-chalk shadow-lg lg:right-6 lg:bottom-6">
+    <div className="fixed right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-full bg-float py-1 pr-1 pl-4 text-on-float shadow-lg lg:right-6 lg:bottom-6">
       <span className="text-sm" aria-live="polite">
         {state.finished ? (
           "Rest over"
@@ -103,7 +103,7 @@ export function RestBar() {
         type="button"
         aria-label={state.finished ? "Dismiss" : "Skip rest"}
         onClick={() => restTimer.skip()}
-        className="flex size-8 items-center justify-center rounded-full hover:bg-chalk/15"
+        className="flex size-8 items-center justify-center rounded-full hover:bg-on-float/15"
       >
         <X size={16} />
       </button>
