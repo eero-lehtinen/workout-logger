@@ -37,12 +37,10 @@ What this can't show: Dokploy's handling of the compose file, R2 itself, and Git
 Done on 2026-11-10: the first deploy (`120320f`) started on an empty
 volume, migrated, and uploaded to both buckets (Litestream's first LTX files,
 `daily/2026-11-10.db.gz`); the owner account exists for the GitHub profile
-email.
+email; the web signed in and synced its first session; Pulsetic checks
+`/api/status` for `"backupsOk":true`.
 
-1. Settings → Export snapshot on every device that has data, then sign in on the web; the existing browser data uploads on the first sync. The first sync is the riskiest moment for existing data.
-2. Check `/api/status` while signed in: both layers reported, Litestream's last upload within a minute.
-3. External uptime monitor on `https://lift.eerolehtinen.fi/api/status`, alerting when it is down or the body lacks `"backupsOk":true`.
-4. Release an APK (`v0.2.0`), install it over the current app, sign in, and check that the phone and the web stay in sync both ways. The sign-in's Custom Tab return and the deep link are only testable on a device.
+1. Release an APK (`v0.2.0`). On the phone, Settings → Export snapshot first, then install the APK over the current app, sign in, and check that the phone and the web stay in sync both ways. The sign-in's Custom Tab return and the deep link are only testable on a device.
 
 ## Exit checks
 
