@@ -1,4 +1,5 @@
 import type { LineSeriesOption, ScatterSeriesOption } from "echarts/charts";
+import type { ECharts } from "echarts/core";
 import { useEffect, useState } from "react";
 import { ChartFrame } from "./frame.tsx";
 import {
@@ -10,8 +11,10 @@ import {
   valueAxis,
   zoomOptions,
 } from "./options.ts";
+import { currentWindow } from "./pinch.ts";
 import { type ChartTheme, useChartTheme } from "./theme.ts";
-import type { TimeChartProps } from "./types.ts";
+import { linearTrend, type Trend } from "./trend.ts";
+import type { TimeChartProps, TimeSeries } from "./types.ts";
 import { useChartOption, useEChart, useZoomReset } from "./use-echart.ts";
 
 interface AxisParam {
@@ -24,7 +27,12 @@ export default function EChartsTimeChart(props: TimeChartProps) {
   const theme = useChartTheme();
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const chart = useEChart(el);
-  const option = timeChartOption(props, theme);
+  const range = useVisibleRange(chart);
+  const trends = props.series.flatMap((s) => {
+    const trend = s.trend && linearTrend(s.points, range?.start, range?.end);
+    return trend ? [{ series: s, trend }] : [];
+  });
+  const option = timeChartOption(props, theme, trends);
   const zoom = useZoomReset(chart, props.series.map((s) => s.id).join());
   const { onSelect } = props;
   useChartOption(chart, option);
@@ -40,17 +48,57 @@ export default function EChartsTimeChart(props: TimeChartProps) {
     };
   }, [chart, onSelect]);
 
+  const { formatTrend } = props;
+  const several = props.series.length > 1;
   return (
-    <ChartFrame
-      label={props.label}
-      height={props.height}
-      chartRef={setEl}
-      onReset={zoom.zoomed ? zoom.reset : undefined}
-    />
+    <>
+      <ChartFrame
+        label={props.label}
+        height={props.height}
+        chartRef={setEl}
+        onReset={zoom.zoomed ? zoom.reset : undefined}
+      />
+      {formatTrend && trends.length > 0 && (
+        <p className="tabular pt-1 text-sm text-ink-muted">
+          {trends
+            .map(
+              ({ series, trend }) =>
+                `${several ? `${series.label} trend` : "Trend"} ${formatTrend(trend.perDay)}`,
+            )
+            .join(", ")}
+          {zoom.zoomed && " in the shown range"}
+        </p>
+      )}
+    </>
   );
 }
 
-function timeChartOption(props: TimeChartProps, theme: ChartTheme) {
+/** The x range in view, in epoch ms; null before the first zoom. */
+function useVisibleRange(chart: ECharts | null) {
+  const [range, setRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!chart) return;
+    const onZoom = () => {
+      const w = currentWindow(chart);
+      setRange(w ? { start: w.startValue, end: w.endValue } : null);
+    };
+    chart.on("datazoom", onZoom);
+    return () => {
+      if (!chart.isDisposed()) chart.off("datazoom", onZoom);
+    };
+  }, [chart]);
+  return range;
+}
+
+const TREND_SUFFIX = ":trend";
+
+function timeChartOption(
+  props: TimeChartProps,
+  theme: ChartTheme,
+  trends: { series: TimeSeries; trend: Trend }[],
+) {
   const labels = new Map(props.series.map((s) => [s.id, s.label]));
   const colors = new Map(
     props.series.map((s) => [s.id, theme.colors[s.color]]),
@@ -70,7 +118,7 @@ function timeChartOption(props: TimeChartProps, theme: ChartTheme) {
         // Points that share a time (every set's e1RM) come as one entry each.
         const bySeries = new Map<string, number[]>();
         for (const p of params) {
-          if (!p.seriesId) continue;
+          if (!p.seriesId || p.seriesId.endsWith(TREND_SUFFIX)) continue;
           const v = (p.value as [number, number])[1];
           bySeries.set(p.seriesId, [...(bySeries.get(p.seriesId) ?? []), v]);
         }
@@ -87,7 +135,35 @@ function timeChartOption(props: TimeChartProps, theme: ChartTheme) {
         );
       },
     },
-    series: props.series.map((s) => seriesOption(s, theme)),
+    series: [
+      ...props.series.map((s) => seriesOption(s, theme)),
+      ...trends.map(({ series, trend }) => trendOption(series, trend, theme)),
+    ],
+  };
+}
+
+function trendOption(
+  s: TimeSeries,
+  trend: Trend,
+  theme: ChartTheme,
+): LineSeriesOption {
+  return {
+    id: `${s.id}${TREND_SUFFIX}`,
+    type: "line",
+    data: [
+      [trend.from.t, trend.from.v],
+      [trend.to.t, trend.to.v],
+    ],
+    showSymbol: false,
+    silent: true,
+    z: 1,
+    lineStyle: {
+      color: theme.colors[s.color],
+      width: 2,
+      type: [6, 4],
+      opacity: 0.6,
+    },
+    emphasis: { disabled: true },
   };
 }
 

@@ -19,6 +19,11 @@ export interface TimeSeries {
   /** `line` connects the points and marks each one; `points` only marks them. */
   kind: "line" | "points";
   color: ChartColor;
+  /**
+   * Draws a least-squares line through the points in view, refitted on
+   * zoom, and states its rate below the chart (`formatTrend`).
+   */
+  trend?: boolean;
 }
 
 export interface TimeChartProps {
@@ -29,6 +34,8 @@ export interface TimeChartProps {
   formatValue: (v: number) => string;
   /** Tooltip text for a time; the axis picks its own granularity. */
   formatTime: (t: number) => string;
+  /** Text for a trend's rate of change per day, e.g. "+0.8 kg per month". */
+  formatTrend?: (perDay: number) => string;
   /** CSS pixels. */
   height?: number;
   /** Tapping or clicking a point. */

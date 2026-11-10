@@ -65,6 +65,24 @@ export const ExerciseHistoryMetrics = pageStory({
   },
 });
 
+export const ExerciseHistoryTrend = pageStory({
+  fixture: withHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rate = await canvas.findByText(
+      /^Trend \+[\d.,]+ kg per month$/,
+      {},
+      {
+        timeout: 5000,
+      },
+    );
+    await expect(rate).toBeVisible();
+    await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
+    await expect(canvas.queryByText(/per month$/)).toBeNull();
+  },
+});
+
 export const ExerciseNeverLogged = pageStory({
   fixture: empty,
   url: () => bench,

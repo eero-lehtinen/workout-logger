@@ -14,6 +14,7 @@ import { TimeChart } from "../../components/chart/index.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
+import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import {
   formatSessionDate,
@@ -21,7 +22,12 @@ import {
   formatWeightWithUnit,
 } from "../../lib/format.ts";
 import { Marker } from "../session/marker.tsx";
-import { formatMetric, isWeighted, METRIC_LABELS } from "./metrics.ts";
+import {
+  formatMetric,
+  formatTrendRate,
+  isWeighted,
+  METRIC_LABELS,
+} from "./metrics.ts";
 import { RecordsSection } from "./records.tsx";
 
 const route = getRouteApi("/exercises/$exerciseId_/history");
@@ -103,6 +109,7 @@ function ProgressChart(props: { history: ExerciseHistory; unit: WeightUnit }) {
   const [metric, setMetric] = useState<HistoryMetric>(
     metrics[0] ?? "best_e1rm",
   );
+  const [trend, setTrend] = useState(true);
   const weights = isWeighted(exercise.type) ? loggedWeights(performances) : [];
   const [weightKg, setWeightKg] = useState(
     () =>
@@ -127,6 +134,12 @@ function ProgressChart(props: { history: ExerciseHistory; unit: WeightUnit }) {
           onChange={setMetric}
           options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
         />
+      </div>
+      <div className="flex items-center gap-3 pb-3 text-[0.9375rem]">
+        <Switch label="Trend line" checked={trend} onChange={setTrend} />
+        <span aria-hidden className="text-ink-muted">
+          Trend line
+        </span>
       </div>
       {metric === "reps_at_weight" && (
         <label className="flex items-center gap-2 pb-3 text-[0.9375rem]">
@@ -162,9 +175,11 @@ function ProgressChart(props: { history: ExerciseHistory; unit: WeightUnit }) {
               points,
               kind: metric === "set_e1rm" ? "points" : "line",
               color: "ink",
+              trend,
             },
           ]}
           formatValue={(v) => formatMetric(metric, v, unit)}
+          formatTrend={(perDay) => formatTrendRate(metric, perDay, unit)}
           formatTime={(t) =>
             new Intl.DateTimeFormat(undefined, {
               day: "numeric",

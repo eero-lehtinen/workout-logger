@@ -5,6 +5,7 @@ import {
   type HistoryMetric,
   type WeightUnit,
 } from "@workout-logger/core";
+import { DAYS_PER_MONTH } from "../../components/chart/trend.ts";
 import { formatDuration, formatKm } from "../../lib/format.ts";
 
 export const METRIC_LABELS: Record<HistoryMetric, string> = {
@@ -85,6 +86,31 @@ export function formatMetric(
   unit: WeightUnit,
 ) {
   return formatMeasure(METRIC_MEASURES[metric], value, unit);
+}
+
+const rateFormat = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+/** A trend's rate, e.g. `+0.8 kg per month`, from its change per day. */
+export function formatTrendRate(
+  metric: HistoryMetric,
+  perDay: number,
+  unit: WeightUnit,
+) {
+  const perMonth = perDay * DAYS_PER_MONTH;
+  switch (METRIC_MEASURES[metric]) {
+    case "kg":
+      return `${rateFormat.format(displayDerived(perMonth, unit))} ${unit} per month`;
+    case "reps":
+      return `${rateFormat.format(perMonth)} reps per month`;
+    case "s":
+      return `${rateFormat.format(perMonth)} s per month`;
+    case "m":
+      return `${rateFormat.format(perMonth / 1000)} km per month`;
+  }
 }
 
 export function formatHeadline(
