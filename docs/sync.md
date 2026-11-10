@@ -279,7 +279,7 @@ rolls back `seq`. It also loses changes that clients pushed after the restore
 point, which those clients already removed from their outboxes. The epoch
 handles this.
 
-1. The restore procedure ends with `server new-epoch`. It writes a new random `epoch`.
+1. A new random `epoch` is written before the restored database serves anything: automatically at startup when the restore left `app.db.restored` next to the database (Litestream's init step does), or with `server new-epoch` after a manual restore.
 2. Each client sees the new epoch on its next pull (or snapshot) and runs an **epoch reset**:
    - mark every local row as outbox ("re-upload all");
    - set the cursor to 0;

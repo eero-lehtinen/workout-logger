@@ -115,5 +115,5 @@ An external dead-man check is **required**: an uptime monitor polls
 | New or wiped device | Log in. The app bootstraps from the server snapshot. |
 | Restore a snapshot file into the app | Settings → Import snapshot. Rows are applied with the normal LWW merge, so importing never destroys newer data. "Replace everything" instead writes the snapshot rows with fresh HLCs plus tombstones for rows not in the snapshot, so it wins and syncs out. |
 | Undo a bad change everywhere | `wl restore --at <time> [--table T] [--id X]`, or a whole-account restore. It appends new changes (see [sync.md](sync.md#restores-through-the-log)). Requires a write-scoped key. The owner can pass `--user`. |
-| VPS lost, server DB corrupted | [deployment.md](deployment.md#recovery-procedures): restore from Litestream (or the newest daily copy), then `server new-epoch`. Devices re-upload what the server is missing. |
+| VPS lost, server DB corrupted | [deployment.md](deployment.md#recovery-procedures): restore from Litestream (or the newest daily copy) and start a new epoch; a lost VPS's automatic restore starts it itself. Devices re-upload what the server is missing. |
 | Account deleted | No restore; see [accounts.md](accounts.md#privacy) for how long copies persist. |

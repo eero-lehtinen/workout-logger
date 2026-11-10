@@ -18,17 +18,21 @@ x-logging: &logging
 
 services:
   # Restores app.db from the replica on a fresh volume; does nothing when the
-  # database exists or the replica is empty. Runs as root to hand the volumes
-  # to the node user (uid 1000), which the app and Litestream run as.
+  # database exists or the replica is empty. After a restore it leaves
+  # app.db.restored, and the app starts a new epoch before serving. Runs as
+  # root to hand the volumes to the node user (uid 1000), which the app and
+  # Litestream run as.
   litestream-init:
     image: litestream/litestream:0.5.18
     user: "0:0"
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/bin/sh", "-ec"]
     command:
-      - >-
-        litestream restore -config /etc/litestream.yml
-        -if-db-not-exists -if-replica-exists /data/app.db
-        && chown -R 1000:1000 /data /run/litestream
+      - |
+        if [ ! -e /data/app.db ]; then
+          litestream restore -config /etc/litestream.yml -if-replica-exists /data/app.db
+          if [ -e /data/app.db ]; then touch /data/app.db.restored; fi
+        fi
+        chown -R 1000:1000 /data /run/litestream
     environment: *litestream-env
     configs:
       - source: litestream

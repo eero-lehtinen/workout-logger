@@ -1,4 +1,4 @@
-import type { Generated } from "kysely";
+import { type Generated, sql } from "kysely";
 import type { UntypedKysely } from "../../migrations/types.ts";
 
 /** Append-only log of every change received. */
@@ -76,6 +76,13 @@ export const serverSyncMigration = {
       .on("change")
       .columns(["user_id", "seq"])
       .execute();
+    // The log is append-only: pull cursors and restores depend on it. Account
+    // deletion, when it exists, needs its own way past these.
+    for (const op of ["UPDATE", "DELETE"]) {
+      await sql`CREATE TRIGGER ${sql.raw(`change_no_${op.toLowerCase()}`)}
+        BEFORE ${sql.raw(op)} ON change
+        BEGIN SELECT RAISE(ABORT, 'change is append-only'); END`.execute(db);
+    }
 
     await db.schema
       .createTable("head")

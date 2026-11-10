@@ -1,10 +1,19 @@
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { push, readEpoch } from "@workout-logger/core/sync-server";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { authOptions } from "../auth/auth.ts";
-import { openDatabase } from "../db/database.ts";
+import { openDatabase, syncDb } from "../db/database.ts";
 import { readJob, runJob } from "../jobs.ts";
-import { dailyCopyJob, prepareDatabase } from "../startup.ts";
+import {
+  dailyCopyJob,
+  finishRestore,
+  prepareDatabase,
+  restoredMarker,
+} from "../startup.ts";
 import { DAILY_COPY_JOB } from "../status.ts";
 import { openTestApp } from "../testing.ts";
 import { dailyKeys } from "./db-copy.ts";
@@ -107,6 +116,53 @@ describe("pre-migration copy", () => {
     expect(
       sqlite.prepare("select name from sqlite_master").pluck().all(),
     ).toEqual(["legacy"]);
+  });
+});
+
+describe("restored database", () => {
+  it("gets a new epoch before serving, once", async () => {
+    const { db } = await openTestApp();
+    const sync = syncDb(db);
+    const path = join(mkdtempSync(join(tmpdir(), "wl-restore-")), "app.db");
+    const before = await readEpoch(sync);
+    await finishRestore(db, path);
+    expect(await readEpoch(sync)).toBe(before);
+
+    writeFileSync(restoredMarker(path), "");
+    await finishRestore(db, path);
+    const after = await readEpoch(sync);
+    expect(after).not.toBe(before);
+    expect(existsSync(restoredMarker(path))).toBe(false);
+    await finishRestore(db, path);
+    expect(await readEpoch(sync)).toBe(after);
+  });
+});
+
+describe("change log", () => {
+  it("refuses updates and deletes", async () => {
+    const { db } = await openTestApp();
+    await push(
+      syncDb(db),
+      "u1",
+      {
+        device_id: "d1",
+        client_version: "test",
+        changes: [
+          {
+            table: "setting",
+            id: "s",
+            hlc: "001700000000000-00000-d1",
+            deleted: false,
+            v: 1,
+            data: { value_json: "1" },
+          },
+        ],
+      },
+      { now: 1_700_000_000_000 },
+    );
+    await expect(db.deleteFrom("change" as never).execute()).rejects.toThrow(
+      "append-only",
+    );
   });
 });
 
