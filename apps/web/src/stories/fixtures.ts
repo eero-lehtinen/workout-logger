@@ -15,6 +15,8 @@ export interface FixtureIds {
   plankId?: string | undefined;
   idleSessionId?: string | undefined;
   idleSquatId?: string | undefined;
+  /** The latest ended session, a few days ago. */
+  pastSessionId?: string | undefined;
 }
 
 export type Fixture = (db: MemoryDb) => Promise<FixtureIds>;
@@ -196,12 +198,12 @@ export const withHistory: Fixture = async (db) => {
       [80, 9],
     ],
   );
-  await lowerDay(3, [
+  const last = await lowerDay(3, [
     [125, 6],
     [125, 5],
     [125, 5],
   ]);
-  return { routineId };
+  return { routineId, pastSessionId: last.sessionId };
 };
 
 /**

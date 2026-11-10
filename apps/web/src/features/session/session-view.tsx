@@ -7,11 +7,12 @@ import {
 } from "@tanstack/react-router";
 import {
   effectiveSessionEnd,
+  localDate,
   type SessionView,
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { Check, ListOrdered, Plus } from "lucide-react";
+import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -20,11 +21,13 @@ import { Confirm } from "../../components/sheet.tsx";
 import { GripHandle, SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
+  deviceTimeZone,
   formatDuration,
   formatSessionDate,
   formatSessionLength,
   formatSet,
   formatTime,
+  todayIso,
 } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
@@ -89,6 +92,24 @@ function SessionPanel({ view }: { view: SessionView }) {
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const now = useNow();
+  const ended = !effectiveSessionEnd(
+    {
+      started_at: session.startedAt,
+      ended_at: session.endedAt,
+      end_reason: session.endReason,
+    },
+    session.lastSetAt,
+    now,
+    settings.idle_threshold_s * 1000,
+  ).running;
+  // Today's sessions stay editable: an idle end may only be a long rest.
+  const readOnly =
+    !editing &&
+    ended &&
+    localDate(session.startedAt, deviceTimeZone()) !== todayIso();
+  const unit = settings.weight_unit as WeightUnit;
 
   return (
     <Screen
@@ -105,20 +126,31 @@ function SessionPanel({ view }: { view: SessionView }) {
             .join(", ")}
           back={{ to: "/", label: "Back to today" }}
           actions={
-            session.routineId && (
-              <Link
-                to="/routines/$routineId"
-                params={{ routineId: session.routineId }}
-                search={{
-                  sessionId: session.id,
-                  ...(session.dayId && { dayId: session.dayId }),
-                }}
-                aria-label="Edit routine"
-                title="Edit routine"
-                className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+            readOnly ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
               >
-                <ListOrdered size={20} />
-              </Link>
+                <Pencil size={16} />
+                Edit
+              </Button>
+            ) : (
+              session.routineId && (
+                <Link
+                  to="/routines/$routineId"
+                  params={{ routineId: session.routineId }}
+                  search={{
+                    sessionId: session.id,
+                    ...(session.dayId && { dayId: session.dayId }),
+                  }}
+                  aria-label="Edit routine"
+                  title="Edit routine"
+                  className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+                >
+                  <ListOrdered size={20} />
+                </Link>
+              )
             )
           }
         >
@@ -130,7 +162,9 @@ function SessionPanel({ view }: { view: SessionView }) {
         </PageHeader>
       }
     >
-      {view.exercises.length === 0 ? (
+      {readOnly ? (
+        <ReadOnlyExercises view={view} unit={unit} />
+      ) : view.exercises.length === 0 ? (
         <Empty>Add the exercises you're doing.</Empty>
       ) : (
         <SortableList
@@ -179,20 +213,22 @@ function SessionPanel({ view }: { view: SessionView }) {
         />
       )}
 
-      <div className="flex flex-col items-start gap-2 px-4 pt-4 lg:px-0">
-        <Button className="w-full" onClick={() => setAdding(true)}>
-          <Plus size={18} />
-          Add exercise
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          className="mt-4"
-          onClick={() => setConfirmDelete(true)}
-        >
-          Delete session
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-col items-start gap-2 px-4 pt-4 lg:px-0">
+          <Button className="w-full" onClick={() => setAdding(true)}>
+            <Plus size={18} />
+            Add exercise
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            className="mt-4"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete session
+          </Button>
+        </div>
+      )}
       <ExercisePicker
         open={adding}
         onOpenChange={setAdding}
@@ -231,6 +267,50 @@ function SessionPanel({ view }: { view: SessionView }) {
         ]}
       />
     </Screen>
+  );
+}
+
+/** A past session's sets; each exercise opens its history. */
+function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
+  const { view, unit } = props;
+  if (view.exercises.length === 0) return <Empty>No exercises.</Empty>;
+  return (
+    <ul className={listClass}>
+      {view.exercises.map((exercise) => (
+        <li key={exercise.id}>
+          <Link
+            to="/exercises/$exerciseId/history"
+            params={{ exerciseId: exercise.exerciseId }}
+            className={`${rowClass} block py-2.5`}
+          >
+            <p className="font-medium">
+              {exercise.name}
+              {exercise.substitutesName && (
+                <span className="font-normal text-ink-muted">
+                  {" "}
+                  for {exercise.substitutesName}
+                </span>
+              )}
+            </p>
+            {exercise.sets.length === 0 ? (
+              <p className="text-sm text-ink-muted">No sets</p>
+            ) : (
+              <ol className="flex flex-wrap gap-x-3">
+                {exercise.sets.map((set, i) => (
+                  <li
+                    // biome-ignore lint/suspicious/noArrayIndexKey: sets in order, read only
+                    key={i}
+                    className="numerals text-lg"
+                  >
+                    {formatSet(set, exercise.type, unit)}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

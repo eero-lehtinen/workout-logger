@@ -18,6 +18,24 @@ export default {
 
 export const TodayEmpty = pageStory({ fixture: empty, url: () => "/" });
 
+export const PastSessionReadOnly = pageStory({
+  fixture: withHistory,
+  url: (ids) => `/sessions/${ids.pastSessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("link", { name: /^Squat \(Barbell\)/ }),
+    ).toHaveAttribute("href", expect.stringMatching(/\/history$/));
+    await expect(
+      canvas.queryByRole("button", { name: "Add exercise" }),
+    ).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Edit" }));
+    await expect(
+      await canvas.findByRole("button", { name: "Add exercise" }),
+    ).toBeVisible();
+  },
+});
+
 export const TodayRunning = pageStory({
   fixture: running,
   url: () => "/",
