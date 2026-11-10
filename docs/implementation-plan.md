@@ -91,7 +91,7 @@ device pushing before its first pull couldn't detect a server restore; push
 responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
 [architecture.md](architecture.md#repository-layout-planned).
 
-## Phase 3: Logging slice, web (M–L)
+## Phase 3: Logging slice, web (M–L) [done]
 
 - DB worker in the web app with the VFS options and Web Lock tab ownership from [architecture.md](architecture.md#client-runtime), and the TanStack Query table-tag invalidation.
 - Component library choice: Base UI ([architecture.md](architecture.md#tech-stack)).
@@ -110,16 +110,27 @@ responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
 
 **Exit:** a full real workout logged in the phone's browser; the data survives reload and offline use.
 
-Status: built; waiting on the real-workout check. Progress and open items are in [plans/phase-3.md](plans/phase-3.md).
+Result: every screen above is built, plus the web rest timer, snapshot
+export and import, undo, and the PWA. Storybook stories cover every screen
+at phone and PC widths in both themes, with accessibility checks, and
+Playwright tests cover persistence, the tab handoff, and offline use of the
+production build. Review in a PC browser led to fixed screen headers with
+only the body scrolling, drag reordering, in-place set editing, marker
+explanations, and calmer warm visuals ([architecture.md](architecture.md)).
+
+The real-workout check on the phone moves to phase 4: a phone can only use
+the app over HTTPS, and M1 needs that anyway. Firefox (tab handoff, the
+storage prompt) is untested.
 
 ## Phase 4: FitNotes import (S–M)
 
+- Host the static web build over HTTPS on the VPS, so the phone can use it: the part of phase 6's deployment that doesn't need the server.
 - Importer in `core`, the exercise mapping file, the import report, re-import rules.
 - Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
 - Settings → Import.
 - Run it on your backup, then spot-check volumes, PRs, and session counts against FitNotes.
 
-**Exit:** **M1.** All history is visible, and markers and records look right on real data.
+**Exit:** **M1.** A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. All history is visible, and markers and records look right on real data.
 
 ## Phase 5: Android app (M)
 
@@ -161,7 +172,7 @@ Owner-only at first; multi-user hardening is phase 10.
 - Charting spike: try 2 libraries on real data and pick one. Record the choice in [architecture.md](architecture.md#tech-stack).
 - Exercise history graph, records table.
 - Calendar and frequency analytics ([features.md](features.md#calendar-and-frequency)).
-- Routine editor polish: reorder, duplicate, archive, slot notes, rest overrides.
+- Routine editor polish: duplicate, archive, slot notes, rest overrides.
 
 ## Phase 8: Measurements (M)
 

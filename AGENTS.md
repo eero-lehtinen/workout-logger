@@ -10,14 +10,15 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: phase 3 of [docs/implementation-plan.md](docs/implementation-plan.md)
-is built and awaiting its exit check. `apps/web` is a local-only PWA for
-logging workouts: the DB worker, tab ownership, sessions, the logging view,
-routines, exercises, settings, snapshots, and the web rest timer.
-`packages/core` has the DB drivers, schema v1 and migrations, the write API,
-the sync client and shared server sync module, the domain functions, and the
-UI's queries and commands; `packages/exercises` has the seed catalog. Android,
-the server, sync in the app, and the CLI are not built yet.
+Status: phases 0–3 of [docs/implementation-plan.md](docs/implementation-plan.md)
+are done; phase 4 (FitNotes import) is next. `apps/web` is a local-only PWA
+for logging workouts: the DB worker, tab ownership, sessions, the logging
+view, routines, exercises, settings, snapshots, and the web rest timer, with
+Storybook stories and Playwright tests. `packages/core` has the DB drivers,
+schema v1 and migrations, the write API, the sync client and shared server
+sync module, the domain functions, and the UI's queries and commands;
+`packages/exercises` has the seed catalog. Android, the server, sync in the
+app, and the CLI are not built yet.
 
 ## Read first
 
