@@ -28,6 +28,8 @@ export interface ExerciseLog {
     lastSetAt: number | null;
   };
   slotId: string | null;
+  /** The routine's reminder for the slot, e.g. "heavy, 6-10". */
+  slotNote: string | null;
   exercise: {
     id: string;
     name: string;
@@ -75,6 +77,7 @@ export const exerciseLog = defineQuery(
         "e.default_rest_s as defaultRestS",
         "e.notes",
         "slot.rest_s as slotRestS",
+        "slot.note as slotNote",
       ])
       .where("se.id", "=", args.sessionExerciseId)
       .where("se.deleted", "=", 0)
@@ -112,6 +115,7 @@ export const exerciseLog = defineQuery(
         lastSetAt: await lastSetAt(db, row.sessionId),
       },
       slotId: row.slotId,
+      slotNote: row.slotNote,
       exercise: {
         id: row.exerciseId,
         name: row.name,

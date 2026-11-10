@@ -388,6 +388,65 @@ describe("routines and exercises", () => {
     ]);
   });
 
+  it("keeps a slot's rest override and note, and uses them while logging", async () => {
+    const { query, run, ids } = await setup();
+    await run("updateSlot", {
+      slotId: ids.benchSlot,
+      restS: 180,
+      note: "  heavy, 6-10 ",
+    });
+    let detail = await query("routineDetail", { routineId: ids.routineId });
+    expect(detail?.days[0]?.slots[0]).toMatchObject({
+      restS: 180,
+      note: "heavy, 6-10",
+    });
+    const sessionId = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const view = await query("sessionView", { sessionId });
+    const log = await query("exerciseLog", {
+      sessionExerciseId: view?.exercises[0]?.id ?? "",
+    });
+    expect(log).toMatchObject({ restSeconds: 180, slotNote: "heavy, 6-10" });
+
+    await run("updateSlot", { slotId: ids.benchSlot, note: "" });
+    detail = await query("routineDetail", { routineId: ids.routineId });
+    expect(detail?.days[0]?.slots[0]).toMatchObject({ restS: 180, note: null });
+  });
+
+  it("duplicates routines and days with their slots", async () => {
+    const { query, run, ids } = await setup();
+    await run("updateSlot", { slotId: ids.benchSlot, note: "heavy" });
+    const copyId = await run("duplicateRoutine", { routineId: ids.routineId });
+    const copy = await query("routineDetail", { routineId: copyId });
+    expect(copy?.name).toBe("Upper/Lower (copy)");
+    expect(copy?.days.map((d) => d.name)).toEqual(["Upper", "Lower"]);
+    expect(copy?.days[0]?.slots).toMatchObject([
+      {
+        exerciseName: "Bench Press (Barbell)",
+        note: "heavy",
+        alternatives: [{ exerciseName: "Bench Press (Dumbbell)" }],
+      },
+    ]);
+    expect(copy?.days[0]?.slots[0]?.id).not.toBe(ids.benchSlot);
+
+    await run("duplicateDay", { dayId: ids.upper });
+    const original = await query("routineDetail", {
+      routineId: ids.routineId,
+    });
+    expect(original?.days.map((d) => d.name)).toEqual([
+      "Upper",
+      "Upper (copy)",
+      "Lower",
+    ]);
+    const routines = await query("routines", undefined);
+    expect(routines.map((r) => r.name)).toEqual([
+      "Upper/Lower",
+      "Upper/Lower (copy)",
+    ]);
+  });
+
   it("requires a primary muscle and rewrites targets", async () => {
     const { query, run, ids } = await setup();
     await expect(

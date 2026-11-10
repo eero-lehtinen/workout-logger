@@ -271,6 +271,9 @@ function Logger({ log }: { log: ExerciseLog }) {
           Substitute
         </Button>
       </div>
+      {log.slotNote && (
+        <p className="px-4 pb-1 font-medium lg:px-0">{log.slotNote}</p>
+      )}
       {exercise.notes && (
         <p className="px-4 pb-1 text-sm text-ink-muted lg:px-0">
           {exercise.notes}

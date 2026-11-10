@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-router";
 import type { RoutineDetail } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowLeftRight, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeftRight, Copy, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, IconButton } from "../../components/button.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
@@ -14,6 +14,7 @@ import { Confirm } from "../../components/sheet.tsx";
 import { GripHandle, SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { ExercisePicker } from "../exercises/picker.tsx";
+import { SlotDetails } from "./slot-details.tsx";
 
 const route = getRouteApi("/routines/$routineId");
 
@@ -78,6 +79,7 @@ function Editor({
   }, [highlightDayId]);
   const command = useCommand();
   const navigate = useNavigate();
+  const settings = useDbQuery("settings");
   const [pick, setPick] = useState<PickTarget | null>(null);
   const [dayName, setDayName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -134,6 +136,22 @@ function Editor({
                 {routine.archived ? "Unarchive" : "Archive"}
               </Button>
               <IconButton
+                label="Duplicate routine"
+                onClick={async () => {
+                  const copyId = await command("duplicateRoutine", {
+                    routineId: routine.id,
+                  });
+                  if (copyId) {
+                    await navigate({
+                      to: "/routines/$routineId",
+                      params: { routineId: copyId },
+                    });
+                  }
+                }}
+              >
+                <Copy size={19} />
+              </IconButton>
+              <IconButton
                 label="Delete routine"
                 variant="danger"
                 onClick={() => setConfirmDelete(true)}
@@ -175,6 +193,12 @@ function Editor({
                 onSave={(name) => command("renameDay", { dayId: day.id, name })}
                 className="flex-1 text-lg font-semibold"
               />
+              <IconButton
+                label={`Duplicate ${day.name}`}
+                onClick={() => command("duplicateDay", { dayId: day.id })}
+              >
+                <Copy size={17} />
+              </IconButton>
               <IconButton
                 label={`Delete ${day.name}`}
                 variant="danger"
@@ -268,6 +292,10 @@ function Editor({
                       Alternative
                     </button>
                   </div>
+                  <SlotDetails
+                    slot={slot}
+                    defaultRestS={settings.rest_default_s}
+                  />
                 </div>
               )}
             />

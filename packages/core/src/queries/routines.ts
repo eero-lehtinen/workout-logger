@@ -43,6 +43,10 @@ export interface RoutineDetail {
       exerciseId: string;
       /** Null if the exercise is missing or deleted. */
       exerciseName: string | null;
+      restS: number | null;
+      /** The exercise's own rest default, used when the slot has none. */
+      exerciseRestS: number | null;
+      note: string | null;
       alternatives: {
         id: string;
         exerciseId: string;
@@ -80,7 +84,10 @@ export const routineDetail = defineQuery(
             "slot.day_id",
             "slot.position",
             "slot.exercise_id",
+            "slot.rest_s",
+            "slot.note",
             "e.name",
+            "e.default_rest_s",
           ])
           .where("slot.day_id", "in", dayIds)
           .where("slot.deleted", "=", 0)
@@ -120,6 +127,9 @@ export const routineDetail = defineQuery(
             id: s.id,
             exerciseId: s.exercise_id,
             exerciseName: s.name,
+            restS: s.rest_s,
+            exerciseRestS: s.default_rest_s,
+            note: s.note,
             alternatives: alternatives
               .filter((a) => a.slot_id === s.id)
               .map((a) => ({
