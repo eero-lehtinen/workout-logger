@@ -332,6 +332,7 @@ from, where the dataset has one.
 
 - Muscle targets are set by hand, as factors 1.0 (primary) and 0.5 (secondary). The source data's targets are too coarse ("shoulders" instead of front, side, and rear delts) and sometimes wrong.
 - The muscle list has 19 muscles in 6 groups: Chest, Back, Shoulders, Arms, Legs, Core.
-- Keys (`barbell_bench_press`) are permanent: ids derive from them, and FitNotes mapping files refer to them.
+- Names are `<Movement> (<Equipment>)`, movement first so variants sort together: `Curl (Barbell)`, `Curl (Cable)`, `Curl (Dumbbell)`. Equipment is one of Barbell, Dumbbell, EZ Bar, Cable, Machine, Smith, Bodyweight, or Leg Press, or the attachment where that is the variant (`Triceps Pushdown (Rope)`). Cardio machines name the machine (`Running (Treadmill)`, `Cycling (Stationary)`). It is left out when the movement implies it (`Pull-Up`, `T-Bar Row`). English, Title Case, singular, hyphenated compounds.
+- Keys (`barbell_bench_press`) are permanent: ids derive from them, and FitNotes mapping files refer to them. Renaming an exercise doesn't change its key.
 - The body weight metric is the only built-in metric.
 - `seedCatalog(store)` writes everything as deterministic rows ([sync.md](sync.md#deterministic-writes)) and is safe to run on every start.
