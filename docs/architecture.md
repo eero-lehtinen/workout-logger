@@ -74,9 +74,9 @@ Principles:
 | Property tests | fast-check | Shrinking finds minimal failing sequences; used by the sync fuzz test. |
 | Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#reactive-queries). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
-| Server | Hono on Node (*candidate*) | Small, typed, and portable across runtimes. |
+| Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. Node runs the TypeScript sources directly by stripping types. |
 | Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
-| Hosting | Owner's VPS under Dokploy | See [deployment.md](deployment.md). |
+| Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
 | Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely, *candidate*) | Same engine as the clients. No platform row limits. |
 | Server backups | Litestream to Cloudflare R2 | Continuous replication with point-in-time restore, at a different provider than the VPS. |
 | Object storage | Cloudflare R2 | Litestream replica and daily DB copies, in separate buckets. |
@@ -88,7 +88,8 @@ Principles:
 apps/
   web/        React app; also the Capacitor web asset source
   android/    Capacitor Android project + native plugin code
-  server/     Hono server: auth, sync, quotas, snapshot job
+  server/     Hono server: serves the web build and /api/status; later
+              auth, sync, quotas, snapshot job
   cli/        `wl` command
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
@@ -252,7 +253,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 | --- | --- | --- |
 | Unit (Vitest, Node) | `pnpm test` | Everything in `core`: domain functions, queries, commands, migrations, snapshots, and the sync fuzz test. Pure web helpers. |
 | Stories (Storybook + `@storybook/addon-vitest`, Chromium) | `pnpm test`, `pnpm storybook` to browse | Every screen at phone and PC widths, light and dark, with interaction checks in `play` functions and axe accessibility checks that fail the test. |
-| End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, and offline use through the service worker. Runs against the production build. |
+| End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, and offline use through the service worker. Runs against the production build, served by `apps/server` with its production caching headers. |
 
 Screen stories don't mock data. They render the real router at a URL over
 `openMemoryDb()`: the real `core` store on an in-memory SQLite in the page,
@@ -269,7 +270,7 @@ Each user's devices push and pull through that user's change log on the server. 
 
 ## Deployment
 
-A single Node container on the owner's VPS, managed by Dokploy. It serves the API and the web app. Images are built in CI. Full design and recovery procedures: [deployment.md](deployment.md).
+A single Node container on the owner's VPS, managed by Dokploy, at <https://lift.eerolehtinen.fi>. It serves the API and the web app. Images are built in CI and deployed on every push to `main`. Full design and recovery procedures: [deployment.md](deployment.md).
 
 ## Accounts
 

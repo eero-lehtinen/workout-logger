@@ -1,11 +1,22 @@
 # Deployment
 
-The server runs on the owner's VPS under Dokploy. Backups go to Cloudflare R2,
-a different provider, so losing either the VPS or the bucket loses no data.
+The server runs on the owner's VPS under Dokploy, at
+<https://lift.eerolehtinen.fi>. Backups go to Cloudflare R2, a different
+provider, so losing either the VPS or the bucket loses no data.
+
+**Current state (phase 4):** the `app` container serves the static web build
+and `GET /api/status`. There is no database, auth, sync, Litestream, or
+scheduled job yet; phase 6 adds them to the same image, compose service, and
+CI pipeline. Sections below describe the full design and say where something
+is not built yet.
+
+The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
+database (OPFS is per origin). Moving the app to another hostname strands the
+data logged at the old one, unless it is exported as a snapshot first.
 
 ## Why a VPS instead of Cloudflare Workers + D1
 
-- Dokploy already runs there and handles domains, TLS (Traefik + Let's Encrypt), env vars, logs, and redeploys.
+- Dokploy already runs there and handles domains, routing (Traefik), env vars, logs, and redeploys.
 - The server database is a plain SQLite file. It works with the same tools as the client database and the CLI mirror, and has none of D1's daily row limits or 500 MB cap.
 - One runtime (Node) for the server, jobs, and tests.
 - Costs: the VPS is a single point of failure, and the OS is yours to maintain. Both are acceptable:
@@ -15,19 +26,23 @@ a different provider, so losing either the VPS or the bucket loses no data.
 ## Topology
 
 ```
-VPS (Dokploy, Traefik, TLS)
-└── compose project "workout-logger"
-    ├── litestream-init  one-shot: restore app.db from R2 if missing
-    ├── litestream       sidecar: streams app.db changes to R2 (wl-litestream)
-    ├── app              Node + Hono: /api (auth, sync, admin, status),
-    │                    static web build + PWA, scheduled jobs
-    └── volume "data":   app.db (SQLite, WAL)
+Cloudflare: DNS (*.eerolehtinen.fi, proxied), TLS, Tunnel
+└── cloudflared (Dokploy app on the VPS) ──HTTP──▶ Traefik
 
-Cloudflare R2
+VPS (Dokploy, Traefik)
+└── project "Workout Logger" / compose service "workout-logger"
+    ├── litestream-init  one-shot: restore app.db from R2 if missing   (phase 6)
+    ├── litestream       sidecar: streams app.db to R2 (wl-litestream) (phase 6)
+    ├── app              Node + Hono: static web build + PWA, /api/status;
+    │                    later /api (auth, sync, admin), scheduled jobs
+    └── volume "data":   app.db (SQLite, WAL)                          (phase 6)
+
+Cloudflare R2                                                          (phase 6)
 ├── wl-litestream/   continuous replica (Litestream token)
 └── wl-backups/      daily/, monthly/, pre-migration/ DB copies (app token)
 ```
 
+- **TLS ends at Cloudflare.** The VPS takes no inbound HTTP: a Cloudflare Tunnel, run by the `cloudflared` app in Dokploy, carries every `*.eerolehtinen.fi` request to Traefik over plain HTTP. A wildcard DNS record and a wildcard tunnel route already exist, so a new hostname needs only a Dokploy domain, with HTTPS and certificates off. Traefik sees cloudflared as the client; the visitor's IP is in `CF-Connecting-IP`.
 - **One container serves both the API and the web app**, so they share an origin. The web uses httpOnly cookie sessions. Android uses bearer tokens (see [accounts.md](accounts.md#login)).
 - **Single instance by design.** SQLite has one writer, and the sync protocol relies on it ([sync.md](sync.md#server-side)).
 - **Containers** run as the same non-root UID. Both the app and Litestream must be able to write `app.db`, `-wal`, `-shm`, and Litestream's metadata.
@@ -45,25 +60,64 @@ Settings to pin and verify against the Litestream 0.5 docs at implementation tim
 - **Init step:** `litestream restore -if-db-not-exists -if-replica-exists`. On a fresh VPS this restores automatically; on an existing one it does nothing.
 - **Never run two Litestream instances against the same replica path.** Rehearsal restores only read from it.
 
+## Static files
+
+`apps/server` serves `apps/web/dist`:
+
+- Everything under `/assets` has a content hash in its name and is sent with `Cache-Control: public, max-age=31536000, immutable`. A missing `/assets` file is a 404.
+- Everything else (`index.html`, `sw.js`, the workbox runtime, the manifest, icons) keeps its name across releases and is sent with `no-cache`, so the browser revalidates it and the service worker sees each new version. Cloudflare doesn't cache these either.
+- Other paths get `index.html`: they are client-side routes. Unknown `/api/*` paths are a JSON 404.
+
+The Playwright tests run against this server, so the headers are tested with
+the service worker and offline use.
+
 ## Build and release
 
-1. On push to `main`, GitHub Actions runs:
-   - lint, type checks, and tests;
-   - builds the web app and the server image;
-   - pushes the image to GHCR, tagged with the commit SHA.
-2. CI then calls the Dokploy deploy webhook with that SHA tag. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous.
-3. Server startup, before accepting requests:
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml), on push to `main`:
+
+1. `check`: lint, type checks, tests, build, and e2e, as on every branch and PR.
+2. `image`: builds the [Dockerfile](../Dockerfile) and pushes it to `ghcr.io/eero-lehtinen/workout-logger`, tagged with the commit SHA. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous.
+3. `deploy`: uploads [`deploy/compose.yaml`](../deploy/compose.yaml) with `IMAGE_TAG` replaced by the SHA (`compose.update` in the Dokploy API), queues a deploy (`compose.deploy`), and waits until `/api/status` reports the new commit.
+
+Dokploy's deploy webhooks can't choose a tag (the compose webhook only
+redeploys, and the application webhook refuses any tag but the configured
+one), so CI uses the API. Its key belongs to a Dokploy member user that can
+reach only this service, because Dokploy API keys can't be scoped themselves.
+
+The image is two stages on `node:24-slim`. The build stage installs the
+workspace from the lockfile, builds the web app, and `pnpm deploy`s the
+server with production dependencies only. The runtime stage holds the server
+and `web/dist`, runs as the `node` user, and has a health check on
+`/api/status`. Node runs `server/src/main.ts` directly by stripping types.
+Node doesn't strip types under `node_modules`, so once the server imports
+workspace packages (copied there by `pnpm deploy`), the server needs a bundle
+step.
+
+Dokploy pulls the private image with a GHCR registry entry (Settings →
+Registry) that uses a classic GitHub token with only `read:packages`.
+
+Planned for phase 6:
+
+1. Server startup, before accepting requests:
    1. Take the pre-migration DB copy to R2 (see [backups.md](backups.md#layers)).
    2. Run migrations: Better Auth tables, `change`, `head`, usage, invites. The single instance has an exclusive DB lock while migrating.
 
    The health check has a long enough start period that a slow migration doesn't cause a restart loop.
-4. Android APKs are built in the same workflow on tags and attached to the GitHub release. The app checks GitHub releases for a newer APK.
+2. Android APKs are built in the same workflow on tags and attached to the GitHub release. The app checks GitHub releases for a newer APK.
 
 Images are built in CI, not on the VPS, so that builds don't compete with the running server for CPU and RAM.
 
 ## Configuration
 
-Set as Dokploy environment variables, never committed:
+Set in the image:
+
+| Variable | Purpose |
+| --- | --- |
+| `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status` |
+| `PORT` | `3000`; the Dokploy domain points at it |
+| `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
+
+Set as Dokploy environment variables, never committed (phase 6):
 
 | Variable | Purpose |
 | --- | --- |
@@ -74,7 +128,9 @@ Set as Dokploy environment variables, never committed:
 | `LITESTREAM_R2_*` | Endpoint, bucket, and token for `wl-litestream` (Litestream only) |
 | `MIN_CLIENT_VERSION` | Older apps get HTTP 426 "update the app" |
 
-The Dokploy deploy webhook URL and GHCR credentials live in GitHub and Dokploy secrets.
+The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
+The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
+with the workflow's own `GITHUB_TOKEN`.
 
 The owner account is created once with `server create-owner --email <email>`,
 run via Dokploy's container terminal. The command refuses to run if an owner
@@ -83,7 +139,7 @@ signing up first.
 
 ## Scheduled jobs
 
-These run in-process with a scheduler library (candidate: `croner`). On
+Phase 6. These run in-process with a scheduler library (candidate: `croner`). On
 startup, each job checks its last-run time and catches up on a run missed
 during downtime.
 
@@ -97,8 +153,8 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 
 ## Monitoring
 
-- Dokploy container logs, with Docker log rotation configured.
-- `GET /api/status`: app version, server epoch, DB size, free disk, backup freshness, and the last rehearsal result (see [backups.md](backups.md#visibility)).
+- Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
+- `GET /api/status`: app version and commit now. Phase 6 adds server epoch, DB size, free disk, backup freshness, and the last rehearsal result (see [backups.md](backups.md#visibility)).
 - An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or reports stale backups.
 - If Litestream can't upload, the WAL keeps growing. Free disk and Litestream lag on `/api/status` catch this early.
 
@@ -106,9 +162,9 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 
 | Situation | Procedure |
 | --- | --- |
-| Bad deploy without a migration | Redeploy the previous SHA tag in Dokploy. |
+| Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. |
 | Bad deploy with a migration | Stop `app`. Restore the `pre-migration/<version>` copy into the volume, or restore Litestream to before the deploy. Run `server new-epoch`. Redeploy the previous SHA. |
 | Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` ([backups.md](backups.md#restore-procedures)). |
 | Server DB corrupted | Stop `app`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy. Run `server new-epoch`, then start `app`. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). |
-| VPS lost | Provision a new VPS, install Dokploy, and create the compose project with the same env vars. `litestream-init` restores `app.db` on first start. Run `server new-epoch`. Point DNS at the new VPS. |
+| VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start. Run `server new-epoch`. |
 | R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy covers the gap. |

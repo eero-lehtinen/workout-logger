@@ -153,15 +153,14 @@ Owner-only at first; multi-user hardening is phase 10.
 - **Client sync loop:**
   - triggers, status UI (last sync, unsynced count, errors), clock repair;
   - the login/logout/merge flows from [accounts.md](accounts.md#without-an-account).
-- **Deployment:**
-  - Dockerfile;
-  - compose with `litestream-init`, `litestream`, and `app`;
-  - GHCR and the Dokploy webhook with pinned SHAs;
+- **Deployment** (the image, GHCR, and the CI deploy with pinned SHAs exist since phase 4):
+  - a bundle step for the server once it imports workspace packages ([deployment.md](deployment.md#build-and-release));
+  - the `data` volume, and `litestream-init` and `litestream` in `deploy/compose.yaml`;
   - R2 buckets and tokens;
   - Litestream config (14-day retention).
 - **Backups:**
   - daily DB copy job;
-  - `/api/status`;
+  - backup fields in `/api/status`;
   - external uptime monitor;
   - owner warning badges.
 

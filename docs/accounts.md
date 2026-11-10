@@ -58,7 +58,7 @@ discard local data, or merge it into the new account.
 
 ## Rate limits and request hygiene
 
-- **Per-IP limits run before auth** on every route. The client IP comes from `X-Forwarded-For` only when the request arrives through Traefik (a trusted proxy setting); otherwise the header is ignored.
+- **Per-IP limits run before auth** on every route. Every request arrives through the Cloudflare Tunnel, so Traefik and the app see cloudflared as the client. The client IP comes from `CF-Connecting-IP`, which Cloudflare sets at its edge ([deployment.md](deployment.md#topology)).
 - **Tight limits on auth endpoints:** sign-in, sign-up, invite redemption, and password reset. For example, 5 per minute per IP.
 - **Per-user request rate** applies after auth (quota below).
 - **Body size limit** on `/api/sync/v1/push` (1 MB).
