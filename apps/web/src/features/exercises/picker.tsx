@@ -1,7 +1,6 @@
 import type { ExerciseItem } from "@workout-logger/core";
 import { Search } from "lucide-react";
 import { Suspense, useState } from "react";
-import { Select } from "../../components/select.tsx";
 import { Sheet } from "../../components/sheet.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
@@ -12,7 +11,8 @@ import {
   sharesPrimaryMuscle,
   useMuscleMap,
 } from "./muscles.ts";
-import { EXERCISE_SORTS, sortExercises, useExerciseSort } from "./sort.ts";
+import { sortExercises, useExerciseSort } from "./sort.ts";
+import { ExerciseSortSelect } from "./sort-select.tsx";
 
 /**
  * Picks an exercise. For a substitution, the slot's alternatives come first,
@@ -60,7 +60,7 @@ function PickerBody(props: {
   const muscles = useMuscleMap();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<string | null>(null);
-  const [sort, setSort] = useExerciseSort();
+  const [sort] = useExerciseSort();
 
   const sections = (() => {
     const inGroup = (e: ExerciseItem) =>
@@ -115,15 +115,9 @@ function PickerBody(props: {
             className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            label="Sort exercises"
-            value={sort}
-            onChange={setSort}
-            options={EXERCISE_SORTS}
-          />
-          <MuscleGroupFilter value={group} onChange={setGroup} />
-        </div>
+        <MuscleGroupFilter value={group} onChange={setGroup}>
+          <ExerciseSortSelect />
+        </MuscleGroupFilter>
       </div>
       {sections.length === 0 && (
         <p className="px-4 py-8 text-center text-ink-muted">

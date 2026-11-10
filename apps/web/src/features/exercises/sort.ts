@@ -3,9 +3,10 @@ import { usePreference } from "../../lib/preference.ts";
 
 export type ExerciseSort = "name" | "recent" | "most";
 
+/** Short labels: the dropdown sits beside the search with a sort icon. */
 export const EXERCISE_SORTS = [
   { value: "name", label: "Name" },
-  { value: "recent", label: "Recently logged" },
+  { value: "recent", label: "Recent" },
   { value: "most", label: "Most logged" },
 ] as const satisfies readonly { value: ExerciseSort; label: string }[];
 

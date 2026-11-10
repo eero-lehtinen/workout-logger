@@ -31,7 +31,7 @@ export const SortRecentlyLogged = pageStory({
     const canvas = within(canvasElement);
     await userEvent.selectOptions(
       canvas.getByRole("combobox", { name: "Sort exercises" }),
-      "Recently logged",
+      "Recent",
     );
     // The last set of the latest session was a leg curl.
     const [first] = canvas.getAllByRole("link", { name: /\(/ });

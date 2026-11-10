@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Button, buttonClass } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
-import { Select } from "../../components/select.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
 import {
@@ -14,7 +13,8 @@ import {
   primaryMuscles,
   useMuscleMap,
 } from "./muscles.ts";
-import { EXERCISE_SORTS, sortExercises, useExerciseSort } from "./sort.ts";
+import { sortExercises, useExerciseSort } from "./sort.ts";
+import { ExerciseSortSelect } from "./sort-select.tsx";
 
 export function ExercisesPage() {
   const exercises = useDbQuery("exercises");
@@ -22,7 +22,7 @@ export function ExercisesPage() {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [sort, setSort] = useExerciseSort();
+  const [sort] = useExerciseSort();
 
   const matching = sortExercises(
     exercises.filter(
@@ -49,30 +49,25 @@ export function ExercisesPage() {
           }
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex gap-2">
-              <div className="relative min-w-0 flex-1 lg:w-80">
-                <Search
-                  size={18}
-                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search exercises"
-                  aria-label="Search exercises"
-                  className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
-                />
-              </div>
-              <Select
-                label="Sort exercises"
-                value={sort}
-                onChange={setSort}
-                options={EXERCISE_SORTS}
-                className="h-11 shrink-0"
+            <div className="relative lg:w-80 lg:shrink-0">
+              <Search
+                size={18}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search exercises"
+                aria-label="Search exercises"
+                className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
               />
             </div>
-            <MuscleGroupFilter value={group} onChange={setGroup} />
+            <div className="min-w-0 flex-1">
+              <MuscleGroupFilter value={group} onChange={setGroup}>
+                <ExerciseSortSelect />
+              </MuscleGroupFilter>
+            </div>
           </div>
         </PageHeader>
       }

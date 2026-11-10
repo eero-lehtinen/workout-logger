@@ -1,13 +1,18 @@
 import { MUSCLE_GROUPS } from "@workout-logger/exercises";
 import { clsx } from "clsx";
+import type { ReactNode } from "react";
 
-/** Chips that pick one muscle group, or all exercises with `null`. */
+/**
+ * Chips that pick one muscle group, or all exercises with `null`.
+ * `children` (e.g. the sort) wrap with the chips, at the end of the row.
+ */
 export function MuscleGroupFilter(props: {
   value: string | null;
   onChange: (group: string | null) => void;
+  children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {[null, ...MUSCLE_GROUPS].map((g) => (
         <button
           key={g ?? "all"}
@@ -24,6 +29,7 @@ export function MuscleGroupFilter(props: {
           {g ?? "All"}
         </button>
       ))}
+      {props.children && <div className="ml-auto">{props.children}</div>}
     </div>
   );
 }
