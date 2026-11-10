@@ -107,6 +107,20 @@ export const LoggingDark = pageStory({
   theme: "dark",
 });
 
+export const EarlierSessions = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Earlier sessions" }),
+    );
+    await expect(
+      canvas.getAllByRole("button", { name: /^Use set 1 95 × 8 from/ }),
+    ).toHaveLength(1);
+  },
+});
+
 export const EditSetInFooter = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

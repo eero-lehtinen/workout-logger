@@ -310,7 +310,7 @@ function Logger({ log }: { log: ExerciseLog }) {
               Earlier sessions
             </button>
             {showEarlier && (
-              <ul className="flex flex-col gap-3 pt-1 pb-2">
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-5 pt-2 pb-2 sm:grid-cols-3">
                 {earlier.map((p) => (
                   <EarlierPerformance
                     key={p.sessionId}
@@ -468,26 +468,31 @@ function EarlierPerformance(props: {
   onCopy: (set: LoggedSet) => void;
 }) {
   const { performance, log, unit } = props;
+  const date = formatSessionDate(performance.startedAt, performance.tz);
+  // A small column like the "last time" one: numbered sets, one per row.
   return (
-    <li>
-      <p className="text-sm text-ink-muted">
-        {formatSessionDate(performance.startedAt, performance.tz)}
-      </p>
-      <div className="flex flex-wrap gap-1.5 pt-1">
-        {performance.sets.map((set) => (
-          <button
-            key={set.id}
-            type="button"
-            onClick={() => props.onCopy(set)}
-            className="flex h-9 items-center gap-1 rounded-lg bg-surface px-2.5 hover:bg-rule"
-          >
-            <span className="numerals text-lg">
-              {formatSet(set, log.exercise.type, unit)}
-            </span>
-            <Marker marker={set.marker} />
-          </button>
-        ))}
-      </div>
+    <li className="min-w-0">
+      <h2 className="pb-1 text-sm text-ink-muted">{date}</h2>
+      <ol>
+        {performance.sets.map((set, i) => {
+          const text = formatSet(set, log.exercise.type, unit);
+          return (
+            <li key={set.id}>
+              <button
+                type="button"
+                onClick={() => props.onCopy(set)}
+                className="-ml-2 flex h-10 w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+              >
+                <span className="sr-only">Use set </span>
+                <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>
+                <span className="numerals truncate text-lg">{text}</span>
+                <span className="sr-only"> from {date}</span>
+                <Marker marker={set.marker} />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </li>
   );
 }
