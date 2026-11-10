@@ -18,6 +18,7 @@ const sizes = {
   sm: "h-8 gap-1.5 rounded-md px-2.5 text-sm",
   md: "h-10 gap-2 rounded-lg px-3.5 text-[0.9375rem]",
   lg: "h-14 gap-2 rounded-xl px-5 text-lg font-semibold",
+  xl: "h-20 gap-2.5 rounded-2xl px-6 text-xl font-semibold",
 };
 
 export function buttonClass(

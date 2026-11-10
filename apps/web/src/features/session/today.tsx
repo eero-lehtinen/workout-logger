@@ -39,9 +39,9 @@ export function TodayPage() {
             ) : (
               <Link
                 to="/start"
-                className={`${buttonClass("primary", "lg")} w-full`}
+                className={`${buttonClass("primary", "xl")} w-full`}
               >
-                <Play size={20} fill="currentColor" />
+                <Play size={22} fill="currentColor" />
                 Start session
               </Link>
             )}
