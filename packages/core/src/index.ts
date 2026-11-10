@@ -36,6 +36,7 @@ export type {
 } from "./migrations/types.ts";
 export { upgradeRow } from "./migrations/upgrade.ts";
 export * from "./schema/tables.ts";
+export * from "./snapshot/snapshot.ts";
 export {
   type DeterministicRow,
   writeDeterministic,
