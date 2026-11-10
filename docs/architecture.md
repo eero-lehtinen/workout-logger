@@ -4,7 +4,7 @@ Status: draft. Library choices marked *candidate* still need checking against
 current docs before we commit to them.
 
 The UI targets two screens: logging is phone-first, while history, routine
-editing, settings, and the planned charts must be comfortable on a PC screen.
+editing, settings, and charts must be comfortable on a PC screen.
 Narrow screens get one pane with bottom navigation; wide screens (Tailwind
 `lg`) get a sidebar and side-by-side panes, e.g. the session's exercise list
 next to the logging pane.
@@ -73,7 +73,8 @@ Principles:
 | Worker RPC | Comlink | Calls into the DB worker and proxies change events back. |
 | Lint/format | Biome | One fast tool for both. |
 | Tests | Vitest; Storybook stories as browser tests; Playwright end-to-end | See [testing](#testing). |
-| Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
+| Charts | Apache ECharts (`echarts`, tree-shaken through `echarts/core`), loaded lazily by screens with a chart | Multi-series time charts with an overview slider for zoom, linked axes and crosshairs for stacked panels, tooltips, and the later chart types (scatter, calendar heatmap) built in. Chosen over uPlot on the owner's real history: uPlot is 25 kB gzipped against ECharts' 196 kB and never blocks page scrolling, but needed hand-written tooltips and touch zoom, and gives no visible sign that a chart zooms. See [charts](#charts). |
+| Statistics | `simple-statistics` | Least-squares trend lines. |
 | Local DB | Official SQLite WASM build (`@sqlite.org/sqlite-wasm`, pinned; verified on 3.54.1-build1) with the OPFS SAH-pool VFS, on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. Verified in Chrome, Firefox, and the Android WebView; see [client runtime](#client-runtime). |
 | Query layer | Kysely, with its stock SQLite dialect over a small `Driver` interface in `core`: sqlite-wasm in the browser, better-sqlite3 on Node (tests, CLI, server) | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
 | Ids | `uuid` (v7 for new rows, v5 for deterministic ids) | Maintained, implements both versions. |
@@ -135,7 +136,7 @@ testing.ts   in-memory store and server, migration fixture helpers
 ```
 db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind; chart/ is
-             the chart API the screens use, independent of the library
+             the chart API the screens use and its ECharts implementation
 features/    screens by area: session, history, exercises, routines, settings
 lib/         formatting, the rest timer and its web and Android alarms,
              storage persistence, PWA install, the account and sign-in, the
@@ -286,6 +287,14 @@ The weight unit is a per-user display setting. Storage is always kg.
 - **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
 - **APK:** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. The APK carries its own web build and registers no service worker. See [deployment.md](deployment.md#android-releases).
 - **Server:** the Android app sends its version in `X-Client-Version` on `/api/sync/*` and `/api/me`. Below `MIN_CLIENT_VERSION` the server returns 426, and Settings shows "update the app". Local builds (`0.0.0`) pass. The web app sends no version: the server it talks to serves it, and a stale PWA gets the "reload to update" prompt. Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+
+## Charts
+
+- **API.** Screens use `TimeChart` and `BarChart` from `components/chart`, whose props don't mention ECharts. The library is loaded with a dynamic import when a chart first renders, so the logging screens never download it; the PWA precaches it in the background.
+- **Theme.** Canvas can't read CSS variables, so `useChartTheme` resolves the color tokens (including the `day-1`..`day-6` routine day colors) to `rgb()` values and re-resolves them when the theme changes.
+- **Page scrolling.** Every screen body scrolls vertically, and a chart must not swallow that. The chart has `touch-action: pan-y`; the inside zoom has `preventDefaultMouseMove: false`; plain wheel events are stopped before ECharts sees them, so the wheel scrolls the page and ctrl+wheel (a trackpad pinch) zooms. ECharts' own pinch zooms a fixed step per touch event, so a small handler (`pinch.ts`) zooms by the fingers' distance instead. A swipe that starts on the 22 px slider strip still moves the slider.
+- **Zoom.** Time charts start at the full range. Mouse: ctrl+wheel, drag, or the slider; touch: pinch or the slider. "Show all" and a double click go back to the full range.
+- **Trend lines.** A series can ask for a least-squares line (`simple-statistics`) fitted to its points in view. It is refitted on every zoom, and its rate is shown below the chart, e.g. "+0.4 kg per month".
 
 ## Testing
 

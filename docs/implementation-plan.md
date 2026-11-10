@@ -189,12 +189,20 @@ and password: the Android app signs in through a Custom Tab and a deep link
 devices through the real server. The restore rehearsal job and the warning
 for old on-device snapshots moved to phase 11.
 
-## Phase 7: History, records, calendar (M)
+## Phase 7: History, records, calendar (M) [done]
 
 - Charting spike: try 2 libraries on real data and pick one. Record the choice in [architecture.md](architecture.md#tech-stack).
 - Exercise history graph, records table.
 - Calendar and frequency analytics ([features.md](features.md#calendar-and-frequency)).
 - Routine editor polish: duplicate, archive, slot notes, rest overrides.
+
+Result: ECharts over uPlot, both built against the same chart API and
+compared on the owner's FitNotes history converted to a snapshot
+([architecture.md](architecture.md#charts)). The history graph got trend
+lines that refit on zoom. Exercises open their history screen; a History tab
+holds the calendar and the frequency stats; past sessions open read-only.
+Only routines can be archived: days and slots have no archived flag, and
+deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 
 ## Phase 8: Measurements (M)
 

@@ -10,12 +10,14 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: phases 0–5 of [docs/implementation-plan.md](docs/implementation-plan.md)
+Status: phases 0–5 and 7 of [docs/implementation-plan.md](docs/implementation-plan.md)
 are done; phase 6 (server, sync) is built and waits for its rollout
 ([docs/plans/phase-6.md](docs/plans/phase-6.md)). `apps/web` is a
 local-first PWA for logging workouts: the DB worker, tab ownership, sessions,
-the logging view, routines, exercises, settings, snapshots, the web rest
-timer, GitHub sign-in, and sync, with Storybook stories and Playwright tests.
+the logging view, routines, exercises, exercise history with ECharts graphs
+and records, the calendar and frequency stats, settings, snapshots, the web
+rest timer, GitHub sign-in, and sync, with Storybook stories and Playwright
+tests.
 `packages/core` has the DB drivers, schema v1 and migrations, the write API,
 the sync client and run and the shared server sync module, the domain
 functions, and the UI's queries and commands; `packages/exercises` has the
