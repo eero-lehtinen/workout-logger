@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { Minus, Plus } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 export interface StepperProps {
   label: string;
@@ -17,12 +17,16 @@ export interface StepperProps {
 /**
  * A number with −/+ buttons and a text field that opens the numeric keypad.
  * While the field has focus it shows the typed text; otherwise `format`.
+ * The first character typed after focusing replaces the value, like a
+ * select-all, without selecting: on phones a selection brings up handles and
+ * the copy/paste bar over the entry panel.
  */
 export function Stepper(props: StepperProps) {
   const id = useId();
   const format = props.format ?? String;
   const parse = props.parse ?? parseNumber;
   const [draft, setDraft] = useState<string | null>(null);
+  const fresh = useRef(false);
   const text = draft ?? (props.value === null ? "" : format(props.value));
   const large = props.size !== "md";
 
@@ -60,13 +64,21 @@ export function Stepper(props: StepperProps) {
           autoComplete="off"
           enterKeyHint="done"
           value={text}
-          onFocus={(e) => {
+          onFocus={() => {
             setDraft(text);
-            e.currentTarget.select();
+            fresh.current = true;
           }}
           onChange={(e) => {
-            setDraft(e.target.value);
-            props.onChange(parse(e.target.value));
+            const input = e.nativeEvent as InputEvent;
+            const typed = input.inputType?.startsWith("insert")
+              ? input.data
+              : null;
+            const next = fresh.current
+              ? replaceOnInsert(text, e.target.value, typed)
+              : e.target.value;
+            fresh.current = false;
+            setDraft(next);
+            props.onChange(parse(next));
           }}
           onBlur={() => setDraft(null)}
           className={clsx(
@@ -107,6 +119,20 @@ function StepButton(props: {
       {props.children}
     </button>
   );
+}
+
+/**
+ * If typing `inserted` only added it to `before`, returns `inserted`;
+ * otherwise `after`. Deleting and replacing a selection edit normally.
+ */
+export function replaceOnInsert(
+  before: string,
+  after: string,
+  inserted: string | null,
+): string {
+  return inserted && after.length === before.length + inserted.length
+    ? inserted
+    : after;
 }
 
 /** Accepts a comma as the decimal separator; empty text is no value. */

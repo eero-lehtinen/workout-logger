@@ -270,6 +270,27 @@ export const EditSetInFooter = pageStory({
   },
 });
 
+export const TypeOverPrefill = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Log set 3" });
+    const reps = canvas.getByLabelText("Reps") as HTMLInputElement;
+    await expect(reps.value).not.toBe("");
+
+    // A tap must not select the value: a selection opens the phone's copy
+    // and paste bar. Typing still replaces the prefilled value.
+    await userEvent.click(reps);
+    await expect(reps.selectionStart).toBe(reps.selectionEnd);
+    await userEvent.type(reps, "12", { skipClick: true });
+    await expect(reps).toHaveValue("12");
+
+    await userEvent.type(reps, "{Backspace}5", { skipClick: true });
+    await expect(reps).toHaveValue("15");
+  },
+});
+
 export const UndoToastDark = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
