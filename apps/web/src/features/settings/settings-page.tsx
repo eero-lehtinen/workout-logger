@@ -259,10 +259,24 @@ function DataSection() {
             ? "This browser doesn't report whether your data is protected from cleanup."
             : persisted
               ? "Protected: the browser won't clear your data to free space."
-              : "Not protected: the browser may clear your data when space runs low. Export regularly."
+              : "Not protected: the browser may clear your data when space runs low. Installing the app usually protects it. Until then, export regularly."
         }
       >
-        {persisted === false && <Button onClick={request}>Protect</Button>}
+        {persisted === false && (
+          <Button
+            onClick={async () => {
+              if (!(await request())) {
+                toasts.add({
+                  title: "The browser didn't allow it",
+                  description:
+                    "Chrome decides on its own, mostly once the app is installed. Install it, then try again.",
+                });
+              }
+            }}
+          >
+            Ask browser
+          </Button>
+        )}
       </Row>
       <Confirm
         open={importBytes !== null}

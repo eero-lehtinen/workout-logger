@@ -18,15 +18,29 @@ export async function requestPersistenceOnce(): Promise<void> {
   }
 }
 
+/**
+ * Whether storage is persistent; null if the browser doesn't say. Rechecked
+ * when the page becomes visible, since installing the app can grant it.
+ */
 export function usePersistence() {
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => {
-    void navigator.storage
-      ?.persisted?.()
-      .then(setPersisted, () => setPersisted(null));
+    const check = () =>
+      void navigator.storage
+        ?.persisted?.()
+        .then(setPersisted, () => setPersisted(null));
+    const onVisible = () => document.visibilityState === "visible" && check();
+    check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
   return {
     persisted,
-    request: async () => setPersisted(await navigator.storage.persist()),
+    /** Chrome grants or refuses silently; Firefox prompts. */
+    request: async (): Promise<boolean> => {
+      const granted = await navigator.storage.persist();
+      setPersisted(granted);
+      return granted;
+    },
   };
 }
