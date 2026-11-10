@@ -10,10 +10,12 @@ Cloudflare R2), and a CLI. Used by the
 owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
-Status: scaffolding only (phase 0 of
-[docs/implementation-plan.md](docs/implementation-plan.md)). The workspace,
-tooling, CI, `packages/core`, and a hello page in `apps/web` exist. The docs
-describe the intended system; anything beyond that is not built yet.
+Status: phase 2 of [docs/implementation-plan.md](docs/implementation-plan.md)
+is done. The workspace, tooling, CI, and a hello page in `apps/web` exist.
+`packages/core` has the DB drivers, schema v1 and migrations, the write API,
+the sync client and shared server sync module, and the domain functions;
+`packages/exercises` has the seed catalog. The docs describe the intended
+system; apps beyond the hello page are not built yet.
 
 ## Read first
 
@@ -88,6 +90,7 @@ the repo root.
 | `pnpm format` | Apply Biome's formatting and safe fixes. |
 | `pnpm typecheck` | `tsc` in every package. |
 | `pnpm test` | Vitest across all packages; `pnpm test <filter>` to narrow by file name. |
+| `SYNC_FUZZ_RUNS=5000 pnpm test fuzz` | Longer sync fuzz run (CI runs 300). Run it after changing clock, merge, or sync code. |
 | `pnpm check` | lint, typecheck, test, build: what CI runs. |
 
 - Workspace packages export their TypeScript sources directly; there is no per-package build step for `packages/*`.

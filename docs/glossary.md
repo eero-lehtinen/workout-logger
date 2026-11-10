@@ -11,7 +11,7 @@ mixed up.
 | **Exercise** | A movement that can be logged, e.g. "Barbell Row". Built-in or user-created. Has an exercise type and muscle targets. |
 | **Exercise type** | What a set of this exercise records: `weight_reps` (most lifts), `bodyweight_reps` (pull-ups, optional added weight), `reps`, `time` (plank), `distance_time` (cardio). Decides which input fields and stats apply. |
 | **Muscle** | An entry in a fixed list of muscles, e.g. lats, upper back, biceps, quads. Detailed enough for useful analytics without needing anatomical precision. |
-| **Muscle group** | A coarse grouping of muscles used in pickers and summaries, e.g. Back = lats + upper back + lower back. |
+| **Muscle group** | A coarse grouping of muscles used in pickers and summaries, e.g. Back = lats + upper back + traps + lower back. |
 | **Muscle target** | An exercise-to-muscle link with a contribution factor in `0..1`. A row is lats 1.0, upper back 1.0, biceps 0.5, rear delts 0.5. |
 | **Primary muscle** | Any muscle target with factor 1.0. Used to find substitutes. |
 

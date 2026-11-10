@@ -54,7 +54,7 @@ in the design docs.
 
 Health Connect and charting spikes are deferred to their phases; they are lower risk.
 
-## Phase 2: Core foundations (M)
+## Phase 2: Core foundations (M) [done]
 
 `packages/core`, all unit-tested on Node.
 
@@ -85,6 +85,11 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
   - the seeding routine.
 
 **Exit:** the fuzz test converges over thousands of random runs. Domain functions have tests for every rule in [features.md](features.md#progress-markers).
+
+Result: 5000 runs of up to 150 operations converge. The fuzz test found that a
+device pushing before its first pull couldn't detect a server restore; push
+responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
+[architecture.md](architecture.md#repository-layout-planned).
 
 ## Phase 3: Logging slice, web (M–L)
 

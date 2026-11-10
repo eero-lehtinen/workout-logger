@@ -52,8 +52,8 @@ Format: a fixed-width string that sorts correctly as text.
 001762780000000-00000-k3j9x2
 ```
 
-- **Node id.** A random device id generated at install, or a fixed *pseudo-node* for deterministic writes: `seed`, `hc` (Health Connect), `fitnotes`, `restore`. Node ids are unique per writer, so HLCs are unique and ties never happen between different writers.
-- **Validation.** The server checks the format with a strict regex and rejects anything else.
+- **Node id.** A random device id generated at install (12 hex characters), or a fixed *pseudo-node* for deterministic writes: `seed`, `hc` (Health Connect), `fitnotes`, `restore`, `fix` (data fixes, see [migrations.md](migrations.md#data-fixes)). Node ids are unique per writer, so HLCs are unique and ties never happen between different writers.
+- **Validation.** The server checks the format with a strict regex (`^\d{15}-\d{5}-[0-9a-z]{1,16}$`) and rejects anything else.
 
 Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
 
@@ -69,7 +69,7 @@ Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
     - otherwise: `0`
 - **Counter overflow** (> 99999): advance `wall` by 1 ms and reset the counter to 0.
 - **Persistence.** The clock state (`last_hlc`) is read and updated inside each write transaction, so it survives restarts and can never go backwards.
-- **Write guard.** A local write stamps `max(clock.now(), row.hlc⁺)`, where `x⁺` is `x` with the counter incremented. A local edit therefore always beats the version it edits, even if that version came from a node whose clock was ahead.
+- **Write guard.** A local write stamps `max(clock.now(), row.hlc⁺)`, where `x⁺` is `x` with the counter incremented. A local edit therefore always beats the version it edits, even if that version came from a node whose clock was ahead. It is computed as `clock.receive(row.hlc)`, which yields the same order. Pulls already move the clock past every received HLC; the guard matters for rows the clock never observed: deterministic writes, whose HLCs come from their source, and rows written before a clock repair.
 - **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. The app shows a clock warning and offers "repair clock". That resets `last_hlc` to the current time and re-stamps the outbox rows that were not pushed.
 
 ## Client side
@@ -83,11 +83,12 @@ deleted  INTEGER NOT NULL DEFAULT 0
 ...domain columns
 ```
 
-Two internal tables are local only and never synced:
+Three internal tables are local only and never synced:
 
 ```
 _outbox      (table_name, id, PRIMARY KEY (table_name, id))
 _sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, last_sync_at
+_undo        (seq, tx, table_name, id, previous)   -- previous row versions, see features.md#data
 ```
 
 `_sync_state` must never be restored onto another device. Android Auto Backup
@@ -95,11 +96,15 @@ is disabled (`allowBackup=false`) so that a device id can't be cloned.
 
 ### Write path
 
-Writes always go through `core`. In one SQLite transaction:
+Writes always go through `core` (`Store.write`). In one SQLite transaction:
 
 1. Stamp the HLC per the write guard.
 2. Upsert the domain row. A delete sets `deleted = 1`; rows are never removed.
 3. Upsert `_outbox (table_name, id)`.
+4. Record the previous row version in `_undo`, unless the write is marked not undoable.
+
+After commit, the store notifies subscribers of the tables the transaction
+changed. Sync applies emit the same events.
 
 Deletes don't cascade. Deleting a session writes only the session's tombstone.
 Its exercises and sets remain, and queries hide children of deleted parents.
@@ -111,29 +116,37 @@ This means:
 ### Push
 
 1. In one read transaction, take up to N outbox entries joined with their current rows. `hlc` comes from the row.
-2. Send `POST /api/sync/v1/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`.
-3. The response has a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`future_clock`, `conflict`, `quota`, `schema_outdated`).
-4. Delete outbox entries that are `ok` and whose row `hlc` still equals the sent `hlc`. If the row was edited during the request, its entry stays and the new version goes in the next push.
-5. Rejected entries stay in the outbox and the UI shows the reason. A `quota` rejection stops the push loop until the next day.
+2. Send `POST /api/sync/v1/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`. `data` is a flat JSON object of the row's domain columns.
+3. The response is `{ epoch, results }`, with a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`invalid`, `future_clock`, `conflict`, `quota`, `schema_outdated`).
+4. If no epoch is stored yet, store the response's `epoch`. A known epoch is never replaced here; the next pull compares it.
+5. Delete outbox entries that are `ok` and whose row `hlc` still equals the sent `hlc`. If the row was edited during the request, its entry stays and the new version goes in the next push.
+6. Rejected entries stay in the outbox and the UI shows the reason. A `quota` rejection stops the push loop until the next day.
+
+Step 4 matters for a device that pushes before it ever pulls, e.g. on its
+first sync. Without a stored epoch it couldn't notice a server restore that
+lost the changes it just removed from its outbox.
 
 ### Pull
 
-1. Send `GET /api/sync/v1/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`.
+1. Send `GET /api/sync/v1/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`; each change also carries its `seq`.
 2. If `epoch` differs from the stored `server_epoch`, the server was restored. Run [epoch reset](#server-restore-and-epoch) and stop this pull.
 3. Apply the page in one transaction:
    - Call `clock.receive` with the page's max HLC.
    - For each change:
-     - if there is no local row, or `change.hlc > local.hlc`, overwrite the local row (including `deleted`) and drop the row's outbox entry, because its local edit lost;
+     - if there is no local row, or `change.hlc > local.hlc`, overwrite the local row (including `deleted`) and drop the row's outbox entry, because its local edit lost. Also drop the undo entries of every local transaction that touched the row: undoing them would overwrite the winning version;
      - otherwise skip it. This covers echoes of this device's own pushes and older versions.
-   - Rows with `v` newer than the client supports are not applied. Sync pauses with "update the app", and the cursor does not advance past them.
+   - Rows with `v` newer than the client supports are not applied. Sync pauses with "update the app", and the cursor stops at the `seq` before the first such change.
    - Store the new cursor in the same transaction.
 4. Repeat while `more` is true.
 
 ### Bootstrap
 
-A new device (empty `_sync_state`) calls `GET /api/sync/v1/snapshot`. The response
+A new device (no cursor yet) calls `GET /api/sync/v1/snapshot`. The response
 holds the head rows and the max `seq`, both read in one server transaction. The
-device applies them as a pull page and stores that `seq` as its cursor.
+device applies them as a pull page and stores that `seq` as its cursor. If the
+device already stored a different epoch from an earlier push, it runs the
+epoch reset instead. A snapshot with any row newer than the client supports is
+not applied at all.
 
 ### When it runs
 
@@ -153,9 +166,10 @@ missing or deleted.
 
 ### Ordering
 
-`position` columns are fractional index strings. Candidate library:
-`fractional-indexing`. Ties between equal keys, which concurrent inserts can
-produce, are broken by `id`. Every ordered query uses `ORDER BY position, id`.
+`position` columns are fractional index strings from `fractional-indexing`.
+Ties between equal keys, which concurrent inserts can produce, are broken by
+`id`. Every ordered query uses `ORDER BY position, id`; in code, `compareOrder`
+in `core` does the same.
 
 ## Deterministic writes
 
@@ -165,9 +179,14 @@ HLC are derived from the source:
 
 | Source | id | HLC wall | Node |
 | --- | --- | --- | --- |
-| Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(builtin key) | Catalog version timestamp | `seed` |
+| Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(`muscle:<key>`, `exercise:<key>`, `exercise_muscle:<exercise key>:<muscle key>`, `metric:<key>`) | Catalog version timestamp | `seed` |
 | Health Connect record | UUIDv5(HC record id) | Record's last-modified time | `hc` |
 | FitNotes import | UUIDv5(FitNotes natural key; see [fitnotes-import.md](fitnotes-import.md#ids)) | Import time; see [fitnotes-import.md](fitnotes-import.md#re-import) | `fitnotes` |
+
+Each source has its own fixed UUIDv5 namespace (`ID_NAMESPACES` in `core`), so
+keys from different sources can't collide. The namespaces never change.
+Deterministic rows are written with counter 0 and their source's HLC. They are
+not undoable.
 
 The rules:
 
@@ -177,8 +196,11 @@ The rules:
 
 ## Server side
 
-The sync part of the server is a few hundred lines. Auth and quotas are in
-[accounts.md](accounts.md).
+The sync part of the server is a few hundred lines. It lives in `core`
+(`@workout-logger/core/sync-server`), so the fuzz test runs the same code as
+the server: push, pull, snapshot, `newEpoch`, and the migration that creates
+the tables below. Each function takes the authenticated `user_id`. Auth and
+quotas are in [accounts.md](accounts.md).
 
 ```
 change (
@@ -206,13 +228,15 @@ user_sync (user_id PRIMARY KEY, max_v)
 All endpoints act only on the authenticated `user_id`.
 
 - **`POST /push`** runs in one transaction. For each change, in order:
-  1. Validate the HLC format and the future-clock bound.
-  2. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know. Otherwise raise `max_v` if needed.
-  3. `INSERT` into `change`. If the unique key already exists:
-     - identical `data` and `deleted`: `ok` (duplicate);
+  1. Validate the shape (table name, id, `v`, `data` a flat object of scalars) and reject anything else as `invalid`. Validate the HLC format and the future-clock bound.
+  2. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
+  3. If the unique key already exists:
+     - identical `data` and `deleted`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal;
      - different: `conflict`, which means a node-id or determinism bug. It is logged.
-  4. If inserted, upsert `head` when `hlc > head.hlc`.
-  5. Count inserted rows against quota. Duplicates don't count. When the quota is reached, the remaining changes are rejected as `quota`.
+  4. If the quota is used up, reject it as `quota`. Duplicates don't count, so they are still `ok`.
+  5. `INSERT` into `change`, upsert `head` when `hlc > head.hlc`, and raise `max_v` if needed.
+
+  The response carries the current `epoch`.
 - **`GET /pull?after=&limit=`**: `SELECT ... FROM change WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`, plus `epoch`.
 - **`GET /snapshot`**: `head` rows (including tombstones) plus `max(seq)`, both read in one transaction, plus `epoch`.
 
@@ -239,7 +263,7 @@ point, which those clients already removed from their outboxes. The epoch
 handles this.
 
 1. The restore procedure ends with `server new-epoch`. It writes a new random `epoch`.
-2. Each client sees the new epoch on its next pull and runs an **epoch reset**:
+2. Each client sees the new epoch on its next pull (or snapshot) and runs an **epoch reset**:
    - mark every local row as outbox ("re-upload all");
    - set the cursor to 0;
    - store the new epoch;
@@ -297,11 +321,25 @@ Full rules, including data fixes and server migrations: [migrations.md](migratio
 
 ## Testing
 
-The clock and the merge logic are covered by a model-based fuzz test. It
-simulates several devices with skewed clocks, random edits and deletes, random
-delivery order, duplicated and dropped requests, and an epoch reset. It then
-asserts that all devices converge to the same state, and that a local edit
-always beats the version it was made on.
+The clock and the merge logic are covered by a model-based fuzz test
+(`packages/core/src/sync/sync.fuzz.test.ts`, fast-check). Three devices with
+skewed clocks run random edits, deletes, undos, and seeds of deterministic
+rows, some with HLCs ahead of the device clock. Pushes are lost, duplicated,
+or lose their response, possibly with edits in between. Pulls use random page
+sizes. The server is restored from a checkpoint with a new epoch. Everything
+runs against the real client code and the shared server module on in-memory
+SQLite.
+
+It asserts:
+
+- after every operation, the device clock is at least every non-deterministic HLC stored on the device;
+- a local edit always beats the version it was made on;
+- after syncing until nothing changes, every device's synced tables equal the server's head rows, and all outboxes are empty.
+
+CI runs 300 sequences of up to 150 operations. `SYNC_FUZZ_RUNS=5000 pnpm test
+fuzz` runs a longer check. Each assertion was checked to catch a deliberately
+broken merge, write guard, acknowledgement, epoch reset, head upsert, and
+`receive` rule.
 
 ## Alternatives considered
 

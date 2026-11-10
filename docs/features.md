@@ -78,7 +78,7 @@ The app is shared with a few invited users, each with their own private data. Se
 | List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle sorted by most recently used, then search across all exercises. |
-| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)). Logging into an idle-ended session asks whether to continue it or start a new one. |
+| Session timer with manual start/stop and idle auto-end | P0 | Starts on the first logged set or a manual start. Idle auto-end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. Logging into an idle-ended session asks whether to continue it or start a new one. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
 | Session notes | P1 | |
 
@@ -86,7 +86,7 @@ The app is shared with a few invited users, each with their own private data. Se
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Fast weight and reps entry | P0 | Steppers plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). |
+| Fast weight and reps entry | P0 | Steppers plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). Duration and distance follow the reps rule. |
 | Tap a previous-performance row to copy it into the input | P0 | |
 | Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
 | Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Rules in [progress markers](#progress-markers). |
@@ -114,7 +114,7 @@ don't count.
   - if both this set and the reference set have an e1RM: this set's e1RM is greater;
   - otherwise (either is above the cap): this set dominates the reference, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
 - **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
-- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`.
+- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight.
 
 ### Other exercise types
 
@@ -128,7 +128,7 @@ don't count.
 
 - "Greater" means greater by more than an epsilon (1e-6 kg). Ties get no marker.
 - No reference set (first session of the exercise, or more sets than last time): no set record or weight increase marker.
-- The first session of an exercise never shows PRs, because everything would be one.
+- The first session of an exercise never shows PRs, because everything would be one. For the same reason, a PR needs at least one earlier comparable set: one with an e1RM, or for the other kinds, a value of the same kind.
 - Markers in history are computed against the history before each session, so they show what was achieved at the time.
 
 ## Rest timer

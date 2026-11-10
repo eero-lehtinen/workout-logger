@@ -17,25 +17,34 @@ migration sequence, because the server never interprets domain data.
 
 ## Domain schema changes
 
-Every version step `n → n+1` lives in `packages/core/migrations/<n+1>.ts` and has:
+Every version step `n → n+1` lives in `packages/core/src/migrations/v<n+1>.ts`,
+is appended to `MIGRATIONS`, and raises `SCHEMA_VERSION`. A step (`Migration`
+in `core`) has:
 
-1. **DDL** for local tables: `CREATE`/`ALTER`/rebuild via Kysely.
-2. **A row upgrade per affected synced table:**
-   `upgrade(table, data) → [{ table, id, data }]`.
+1. **DDL** for local tables (`up`): `CREATE`/`ALTER`/rebuild via an untyped Kysely, since the current types describe the latest schema, not this step's.
+2. **A row upgrade per affected synced table** (`upgrade`, keyed by the table name at version `n`):
+   `({ id, data }) → [{ table, id, data }]`.
    - It is pure, deterministic, and total. It never throws; values it can't map go to a notes field or a default.
    - It usually returns one row with the same table and id.
    - It can return a different table, for a rename, or several rows, for a split. Rows it creates get deterministic ids (UUIDv5 of the source id plus a suffix).
-3. **Optional local-only work:** rebuilding indexes or caches in non-synced tables.
+3. **DDL after the row upgrade** (`cleanup`), e.g. dropping a renamed table, and optional local-only work: rebuilding indexes or caches in non-synced tables.
+
+The schema version of a local database is `PRAGMA user_version`.
 
 The same upgrade functions are used everywhere:
 
 - **Client migration** (on startup, in the worker, in one transaction, after copying the DB file):
   1. Run the DDL.
-  2. Read every row of the affected tables.
+  2. Read every row of the affected tables, before writing any. Rows an upgrade produces in another table are not upgraded again in the same step.
   3. Pass each row through `upgrade`.
-  4. Write the result back.
+  4. Write the result back with the source row's HLC and deleted flag, and remove the source row if the result doesn't keep its table and id.
+  5. Run the cleanup DDL and set `user_version`.
+
+  A row waiting in the outbox stays queued under its new table and id. The undo stack is cleared, because it holds row versions in the old format.
 
   There's no separate SQL data migration that could disagree with the function. The data is small, so a full pass is cheap.
+
+  `migrate` takes a `beforeMigrate(from, to)` hook, called for an existing database before the transaction starts. The caller copies the database file there. A database from a newer app (`user_version` above the app's version) is never touched; opening it fails with "update the app".
 - **Sync pull:** incoming rows with `v < SCHEMA_VERSION` are passed through each step up to the current version before the LWW comparison.
 - **Snapshot import, the CLI mirror, and `wl restore`** use the same path.
 
@@ -48,8 +57,10 @@ The same upgrade functions are used everywhere:
 - **Enum values are a schema change.** Adding a value bumps the version, because older clients can't interpret it.
 - **Each step has fixture tests:**
   - rows as written by version `n` upgrade to the expected rows at `n+1`;
-  - the full chain from every past version reaches the current version;
-  - a DB created at the old version and migrated equals the old rows passed through `upgrade` and inserted into a fresh current-version DB.
+  - the full chain from every past version reaches the current version (`upgradeRow(row, fromVersion)`);
+  - a DB created at the old version and migrated equals the old rows passed through `upgrade` and inserted into a fresh current-version DB. `migrateFixture` in `@workout-logger/core/testing` builds both and returns their dumps.
+
+  The runner's own tests use a synthetic step with a new column, a rename, and a split (`packages/core/src/migrations/migrations.test.ts`).
 
 ## Pending local changes during an upgrade
 
@@ -98,11 +109,14 @@ Every fix is idempotent: running it on already-fixed data writes nothing.
 
 ## Seed catalog updates
 
-Built-in exercises and muscles change through the seed catalog, not through
-migrations. A new catalog version is written with deterministic ids and HLCs,
-and user edits to built-ins win ([sync.md](sync.md#deterministic-writes)).
-Removing a built-in archives it; it is never deleted, because history refers
-to it.
+Built-in exercises and muscles change through the seed catalog
+(`packages/exercises`), not through migrations. A new catalog version raises
+`CATALOG_VERSION` and is written with deterministic ids and HLCs, and user
+edits to built-ins win ([sync.md](sync.md#deterministic-writes)). Seeding runs
+on every start; rows already at the current version are skipped.
+
+- Removing a built-in exercise archives it; it is never deleted, because history refers to it.
+- Removing a muscle target from a built-in needs an explicit tombstone row in the seed. Dropping the entry alone leaves the old target in place on devices that already seeded it.
 
 ## Server migrations
 

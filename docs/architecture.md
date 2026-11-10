@@ -50,7 +50,10 @@ Principles:
 | Tests | Vitest | Shares Vite's config and transforms. |
 | Charts | Undecided. Try several (e.g. ECharts, uPlot) on real data | Needs multi-series time charts with zoom, a shared crosshair, and multiple axes. |
 | Local DB | Official SQLite WASM build (`@sqlite.org/sqlite-wasm`, pinned; verified on 3.54.1-build1) with the OPFS SAH-pool VFS, on both web and Android | One code path: Android runs the same build inside the Capacitor WebView. Real SQL for analytics, same engine as the FitNotes backup. Runs in a worker and doesn't need COOP/COEP headers. Verified in Chrome, Firefox, and the Android WebView; see [client runtime](#client-runtime). |
-| Query layer | Kysely | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
+| Query layer | Kysely, with its stock SQLite dialect over a small `Driver` interface in `core`: sqlite-wasm in the browser, better-sqlite3 on Node (tests, CLI, server) | Typed SQL builder that still allows hand-written analytics SQL (CTEs, window functions). The same tool on client, server, and CLI. |
+| Ids | `uuid` (v7 for new rows, v5 for deterministic ids) | Maintained, implements both versions. |
+| Ordering | `fractional-indexing` | Position keys that sort as plain strings. |
+| Property tests | fast-check | Shrinking finds minimal failing sequences; used by the sync fuzz test. |
 | Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#client-runtime). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Server | Hono on Node (*candidate*) | Small, typed, and portable across runtimes. |
@@ -72,9 +75,25 @@ apps/
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
               idle end), queries, sync client, FitNotes importer
-  exercises/  seed exercise catalog (JSON) + muscle list
+  exercises/  seed exercise catalog + muscle list, seeding routine
 docs/
 ```
+
+`packages/core/src`:
+
+```
+db/          Driver interface, better-sqlite3 and sqlite-wasm drivers
+schema/      table types, SCHEMA_VERSION, synced column registry
+migrations/  version steps, runner, row upgrade chain
+store/       Store: write API, undo, change events, deterministic writes
+sync/        HLC, ids, protocol types, client push/pull/apply
+sync/server/ server push/pull/snapshot, shared with apps/server
+domain/      pure functions: e1RM, markers, prefill, next day, session end, units
+testing.ts   in-memory store and server, migration fixture helpers
+```
+
+Entry points: `@workout-logger/core` (browser-safe), `/node` (better-sqlite3
+driver), `/wasm` (sqlite-wasm driver), `/sync-server`, `/testing`.
 
 ## Data model (client)
 
@@ -85,6 +104,9 @@ Every table below is synced, so every row also carries:
 - `deleted` (soft-delete flag)
 
 See [sync.md](sync.md). `position` columns are fractional index strings.
+Timestamps (`*_at`) are INTEGER UTC epoch milliseconds. Flags (`deleted`,
+`archived`) are INTEGER 0/1. The local-only tables `_outbox`, `_sync_state`,
+and `_undo` are described in [sync.md](sync.md#client-side).
 
 ```
 muscle            (id, name, group_name)               -- seeded, effectively static
@@ -113,7 +135,7 @@ Notes:
 - Weight is stored in kg as REAL. See [units and rounding](#units-and-rounding).
 - The routine's active day is not stored. It is derived (see [features.md](features.md#starting-a-session)), so the derived state cannot get out of sync with the logs.
 - **Session end.** `ended_at` is written only by a manual stop. Idle auto-end is derived at query time, not stored:
-  - effective end = `ended_at`, or else the last `set_log.logged_at` if `now` minus that time exceeds the idle threshold, or else still running;
+  - effective end = `ended_at`, or else the last `set_log.logged_at` (or `started_at` without sets) if `now` minus that time exceeds the idle threshold, or else still running;
   - deriving it means nothing is written in the background and no device can overwrite another's edits with a computed value.
 - **Logging into an idle-ended session.** Opening a session whose effective end has passed and logging a set asks "continue that session or start a new one?". Continuing writes nothing extra; the idle rule then simply measures from the new last set.
 - **Calendar date** of a session is the local date of `started_at` in the session's `tz`. Weeks start on Monday (a setting).
@@ -303,11 +325,13 @@ directly.
 
 ## Exercise catalog seed
 
-Start from an open, permissively licensed exercise dataset that has primary and
-secondary muscles. Candidates:
+`packages/exercises` holds a hand-curated catalog of 110 common gym exercises,
+drawn from [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+(public domain, the Unlicense). Entries record the source id they were curated
+from, where the dataset has one.
 
-- free-exercise-db (public domain JSON)
-- the wger exercise database (CC-BY-SA)
-
-Map its muscles onto our muscle list and convert primary/secondary into factors
-1.0 / 0.5. Then curate. License and data quality still need checking.
+- Muscle targets are set by hand, as factors 1.0 (primary) and 0.5 (secondary). The source data's targets are too coarse ("shoulders" instead of front, side, and rear delts) and sometimes wrong.
+- The muscle list has 19 muscles in 6 groups: Chest, Back, Shoulders, Arms, Legs, Core.
+- Keys (`barbell_bench_press`) are permanent: ids derive from them, and FitNotes mapping files refer to them.
+- The body weight metric is the only built-in metric.
+- `seedCatalog(store)` writes everything as deterministic rows ([sync.md](sync.md#deterministic-writes)) and is safe to run on every start.
