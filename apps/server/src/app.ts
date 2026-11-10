@@ -1,8 +1,21 @@
 import { serveStatic } from "@hono/node-server/serve-static";
+import { EXPECTED_USER_HEADER } from "@workout-logger/core";
 import { Hono, type MiddlewareHandler } from "hono";
+import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
 import { androidRoutes, type ReleaseSource } from "./android-release.ts";
+import { type Auth, sessionUser } from "./auth/auth.ts";
+import {
+  type AuthEnv,
+  CLIENT_VERSION_HEADER,
+  requireClientVersion,
+  requireUser,
+} from "./auth/middleware.ts";
+import { nativeAuthRoutes } from "./auth/native-auth.ts";
+import { type ServerKysely, syncDb } from "./db/database.ts";
+import { ownerStatus, publicStatus, type StatusSource } from "./status.ts";
+import { syncRoutes } from "./sync-routes.ts";
 
 export interface AppOptions {
   /** Directory with the built web app (`apps/web/dist`). */
@@ -11,11 +24,13 @@ export interface AppOptions {
   commit?: string | undefined;
   /** Android releases, if the server is configured to read them. */
   releases?: ReleaseSource | undefined;
-}
-
-export interface Status {
-  version: string;
-  commit: string | null;
+  db: ServerKysely;
+  auth: Auth;
+  databasePath: string;
+  backupsConfigured: boolean;
+  litestreamSocket?: string | undefined;
+  minClientVersion?: string | undefined;
+  now?: () => number;
 }
 
 // Vite content-hashes everything under /assets. Everything else (index.html,
@@ -23,6 +38,9 @@ export interface Status {
 // releases, so browsers must revalidate it or they never see an update.
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const REVALIDATE = "no-cache";
+
+/** The Android app's WebView origin (docs/architecture.md#storage-durability). */
+const ANDROID_ORIGIN = "https://localhost";
 
 // Set after the response exists: serveStatic's onFound runs after it has built
 // the response, and headers set there are dropped.
@@ -33,8 +51,10 @@ const cacheControl =
     if (c.res.ok) c.header("Cache-Control", value);
   };
 
-export function createApp({ webRoot, commit, releases }: AppOptions): Hono {
-  const app = new Hono();
+export function createApp(options: AppOptions): Hono<AuthEnv> {
+  const { webRoot, auth } = options;
+  const now = options.now ?? Date.now;
+  const app = new Hono<AuthEnv>();
 
   app.use(secureHeaders());
 
@@ -45,11 +65,55 @@ export function createApp({ webRoot, commit, releases }: AppOptions): Hono {
     c.header("Cache-Control", "no-store");
   });
 
-  app.get("/api/status", (c) =>
-    c.json<Status>({ version: pkg.version, commit: commit ?? null }),
-  );
+  // The Android app calls with a bearer token, never with cookies.
+  const androidCors = cors({
+    origin: ANDROID_ORIGIN,
+    allowMethods: ["GET", "POST"],
+    allowHeaders: [
+      "Authorization",
+      "Content-Type",
+      CLIENT_VERSION_HEADER,
+      EXPECTED_USER_HEADER,
+    ],
+  });
+  for (const path of [
+    "/api/status",
+    "/api/sync/*",
+    "/api/me",
+    "/api/native-auth/*",
+  ]) {
+    app.use(path, androidCors);
+  }
 
-  app.route("/api/android", androidRoutes(releases));
+  const status: StatusSource = {
+    db: options.db,
+    version: pkg.version,
+    commit: options.commit ?? null,
+    databasePath: options.databasePath,
+    backupsConfigured: options.backupsConfigured,
+    litestreamSocket: options.litestreamSocket,
+    now,
+  };
+  app.get("/api/status", async (c) => {
+    const user = await sessionUser(auth, c.req.raw.headers);
+    return c.json(
+      user?.role === "owner"
+        ? await ownerStatus(status)
+        : await publicStatus(status),
+    );
+  });
+
+  app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+  app.route("/api/native-auth", nativeAuthRoutes(auth, now));
+
+  for (const path of ["/api/me", "/api/sync/*"]) {
+    app.use(path, requireClientVersion(options.minClientVersion));
+    app.use(path, requireUser(auth));
+  }
+  app.get("/api/me", (c) => c.json(c.get("user")));
+  app.route("/api/sync/v1", syncRoutes(syncDb(options.db), now));
+
+  app.route("/api/android", androidRoutes(options.releases));
   app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
 
   app.get(

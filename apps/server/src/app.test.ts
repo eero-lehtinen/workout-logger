@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import pkg from "../package.json" with { type: "json" };
-import { createApp } from "./app.ts";
+import { openTestApp } from "./testing.ts";
 
 const webRoot = mkdtempSync(join(tmpdir(), "wl-server-"));
 const files: Record<string, string> = {
@@ -21,7 +21,7 @@ for (const [name, content] of Object.entries(files)) {
 }
 afterAll(() => rmSync(webRoot, { recursive: true, force: true }));
 
-const app = createApp({ webRoot, commit: "abc123" });
+const { app } = await openTestApp({ webRoot, commit: "abc123" });
 
 describe("static files", () => {
   it.each([
@@ -86,12 +86,14 @@ describe("/api", () => {
     expect(await res.json()).toEqual({
       version: pkg.version,
       commit: "abc123",
+      backupsOk: true,
     });
   });
 
   it("reports a null commit when none was built in", async () => {
-    const res = await createApp({ webRoot }).request("/api/status");
-    expect(await res.json()).toEqual({ version: pkg.version, commit: null });
+    const { app } = await openTestApp({ webRoot });
+    const res = await app.request("/api/status");
+    expect(await res.json()).toMatchObject({ commit: null });
   });
 
   it("never falls back to index.html", async () => {

@@ -5,11 +5,25 @@
   "type": "module",
   "scripts": {
     "start": "node src/main.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "node build.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.6",
-    "hono": "^4.13.17"
+    "better-sqlite3": "^13.0.3"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@types/better-sqlite3": "^9.6.0",
+    "@workout-logger/core": "workspace:*",
+    "aws4fetch": "^1.0.20",
+    "better-auth": "1.7.18",
+    "compare-versions": "^6.1.1",
+    "croner": "^11.0.0",
+    "esbuild": "^0.28.2",
+    "hono": "^4.13.17",
+    "kysely": "^0.29.8"
+  },
+  "files": [
+    "dist"
+  ]
 }

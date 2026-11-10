@@ -1,36 +1,42 @@
-import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { githubReleases } from "./android-release.ts";
 import { createApp } from "./app.ts";
+import { readConfig } from "./config.ts";
+import { startJobs } from "./jobs.ts";
+import { dailyCopyJob, openServer } from "./startup.ts";
 
-const port = Number(process.env.PORT ?? 3000);
-const webRoot =
-  process.env.WEB_ROOT ??
-  fileURLToPath(new URL("../../web/dist", import.meta.url));
-
-const releasesToken = process.env.GITHUB_RELEASES_TOKEN;
+const config = readConfig();
+const { database, auth, backups } = await openServer(config);
+const stopJobs = await startJobs(
+  database.db,
+  backups ? [dailyCopyJob(database.db, backups)] : [],
+);
 
 const app = createApp({
-  webRoot,
-  commit: process.env.GIT_COMMIT || undefined,
-  releases: releasesToken
-    ? githubReleases({
-        repository:
-          process.env.GITHUB_RELEASES_REPOSITORY ??
-          "eero-lehtinen/workout-logger",
-        token: releasesToken,
-      })
-    : undefined,
+  webRoot: config.webRoot,
+  commit: config.commit,
+  releases: config.releases ? githubReleases(config.releases) : undefined,
+  db: database.db,
+  auth,
+  databasePath: config.databasePath,
+  backupsConfigured: backups !== undefined,
+  litestreamSocket: config.litestreamSocket,
+  minClientVersion: config.minClientVersion,
 });
 
-const server = serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Serving ${webRoot} on port ${info.port}`);
+const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
+  console.log(`Serving ${config.webRoot} on port ${info.port}`);
+  if (!config.github) console.warn("GITHUB_CLIENT_ID is unset: sign-in is off");
 });
 
 // Node as PID 1 ignores SIGTERM unless handled, so `docker stop` would wait
 // for its timeout and then kill the process.
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
-    server.close(() => process.exit(0));
+    stopJobs();
+    server.close(async () => {
+      await database.close();
+      process.exit(0);
+    });
   });
 }

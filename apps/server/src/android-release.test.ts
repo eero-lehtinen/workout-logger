@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { githubReleases, type ReleaseSource } from "./android-release.ts";
-import { createApp } from "./app.ts";
+import { openTestApp } from "./testing.ts";
 
 const ASSET_URL = "https://api.github.com/repos/someone/app/releases/assets/42";
 const SIGNED_URL = "https://objects.example/app-release.apk?sig=abc";
@@ -79,12 +79,12 @@ describe("githubReleases", () => {
 });
 
 describe("/api/android", () => {
-  const app = (releases?: ReleaseSource) =>
-    createApp({ webRoot: "unused", releases });
+  const app = async (releases?: ReleaseSource) =>
+    (await openTestApp({ releases })).app;
   const configured = () => app(source(fakeGithub(RELEASE)));
 
   it("reports the latest version to the app's origin", async () => {
-    const res = await configured().request("/api/android/latest", {
+    const res = await (await configured()).request("/api/android/latest", {
       headers: { origin: "https://localhost" },
     });
     expect(res.status).toBe(200);
@@ -96,7 +96,7 @@ describe("/api/android", () => {
   });
 
   it("gives the app GitHub's signed URL", async () => {
-    const res = await configured().request("/api/android/download", {
+    const res = await (await configured()).request("/api/android/download", {
       headers: { origin: "https://localhost" },
     });
     expect(await res.json()).toEqual({ version: "1.4.0", url: SIGNED_URL });
@@ -106,7 +106,7 @@ describe("/api/android", () => {
   });
 
   it("redirects the download to GitHub's signed URL", async () => {
-    const res = await configured().request("/api/android/apk");
+    const res = await (await configured()).request("/api/android/apk");
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe(SIGNED_URL);
     expect(res.headers.get("cache-control")).toBe("no-store");
@@ -115,20 +115,22 @@ describe("/api/android", () => {
   it.each(["/api/android/latest", "/api/android/apk"])(
     "answers 404 without a release: %s",
     async (path) => {
-      const res = await app(source(fakeGithub(null))).request(path);
+      const res = await (await app(source(fakeGithub(null)))).request(path);
       expect(res.status).toBe(404);
     },
   );
 
   it("answers 503 when no token is configured", async () => {
-    const res = await app().request("/api/android/latest");
+    const res = await (await app()).request("/api/android/latest");
     expect(res.status).toBe(503);
   });
 
   it("answers 502 when GitHub fails", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = vi.fn(async () => new Response(null, { status: 500 }));
-    const res = await app(source(failing)).request("/api/android/latest");
+    const res = await (await app(source(failing))).request(
+      "/api/android/latest",
+    );
     expect(res.status).toBe(502);
     error.mockRestore();
   });
