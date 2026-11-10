@@ -93,10 +93,11 @@ jobs:
 
       - name: Wait for the new version
         run: |
-          for _ in $(seq 60); do
+          for attempt in $(seq 60); do
             # Until the container is up, Traefik answers with a plain-text 404.
-            # The query string keeps a Cloudflare-cached answer out of the way.
-            commit=$(curl --silent "$APP_URL/api/status?deploy=$GITHUB_SHA" | jq -r '.commit // empty' 2> /dev/null || true)
+            # A new query string per attempt never hits a Cloudflare-cached
+            # answer, even one cached from a server that didn't send no-store.
+            commit=$(curl --silent "$APP_URL/api/status?deploy=$GITHUB_SHA-$attempt" | jq -r '.commit // empty' 2> /dev/null || true)
             if [ "$commit" = "$GITHUB_SHA" ]; then
               echo "$APP_URL serves $commit"
               exit 0
