@@ -24,7 +24,10 @@ export function SettingsPage() {
     >
       <div className="pb-10">
         <Section title="Units and steps">
-          <Row label="Weight unit" hint="Stored in kg either way.">
+          <Row
+            label="Weight unit"
+            hint="Switching doesn't change your logged weights."
+          >
             <Segmented
               label="Weight unit"
               value={unit}
@@ -60,10 +63,7 @@ export function SettingsPage() {
         </Section>
 
         <Section title="Sessions">
-          <Row
-            label="Rest time"
-            hint="m:ss, unless an exercise or slot sets its own."
-          >
+          <Row label="Rest time" hint="m:ss. Exercises can set their own.">
             <SettingInput
               label="Rest time"
               value={settings.rest_default_s}
@@ -74,7 +74,7 @@ export function SettingsPage() {
           </Row>
           <Row
             label="Idle end (minutes)"
-            hint="A session ends at its last set after this long without a new one."
+            hint="With no new set for this long, a session ends at its last set."
           >
             <SettingInput
               label="Idle end in minutes"
@@ -287,7 +287,7 @@ function DataSection() {
         open={importBytes !== null}
         onOpenChange={(open) => !open && setImportBytes(null)}
         title="Import snapshot"
-        description="Merge keeps whichever version of each row is newer. Replace makes your data match the file exactly; it can be undone right after."
+        description="Merge keeps the newer version of anything in both. Replace makes your data match the file exactly; you can undo it right after."
         actions={[
           { label: "Merge", onClick: () => runImport("merge") },
           {

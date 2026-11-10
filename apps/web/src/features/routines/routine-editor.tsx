@@ -146,7 +146,7 @@ function Editor({
       }
     >
       {routine.days.length === 0 && (
-        <Empty>Add the days of the cycle in the order you train them.</Empty>
+        <Empty>Add your workout days in the order you do them.</Empty>
       )}
       <SortableList
         items={routine.days}

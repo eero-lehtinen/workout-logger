@@ -396,7 +396,7 @@ function Logger({ log }: { log: ExerciseLog }) {
         title="This session has ended"
         description={
           ended &&
-          `It ${ended.reason === "idle" ? "went idle" : "ended"} at ${formatTime(ended.endedAt, Intl.DateTimeFormat().resolvedOptions().timeZone)}. Log this set into it, or start a new session?`
+          `${ended.reason === "idle" ? "No sets since" : "It ended at"} ${formatTime(ended.endedAt, Intl.DateTimeFormat().resolvedOptions().timeZone)}. Add this set to it, or start a new session?`
         }
         actions={[
           { label: "Continue that session", onClick: continueSession },

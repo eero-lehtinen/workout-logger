@@ -220,8 +220,7 @@ function ExerciseForm({
                 hasPrimary ? "text-ink-muted" : "text-danger",
               )}
             >
-              At least one primary muscle. Frequency stats count primary
-              muscles.
+              Pick at least one primary muscle.
             </p>
             <div className="gap-x-8 sm:columns-2">
               {MUSCLE_GROUPS.map((group) => (

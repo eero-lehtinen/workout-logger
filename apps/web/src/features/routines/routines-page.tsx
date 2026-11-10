@@ -32,10 +32,6 @@ export function RoutinesPage() {
       scrollId="routines"
       width="medium"
     >
-      <p className="px-4 pb-4 text-[0.9375rem] text-ink-muted lg:px-0">
-        A routine is a cycle of workout days. Each day lists what to train,
-        never how much.
-      </p>
       {active.length === 0 ? (
         <Empty>No routines yet. Name your first one below.</Empty>
       ) : (
