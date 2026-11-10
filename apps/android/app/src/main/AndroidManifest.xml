@@ -32,6 +32,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- GitHub sign-in returns here from the Custom Tab, e.g.
+                 fi.eerolehtinen.lift://auth?code=... The scheme is the
+                 application id, so the debug build gets its own. The server
+                 only redirects to these ids (docs/accounts.md). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${applicationId}" android:host="auth" />
+            </intent-filter>
         </activity>
 
         <service
