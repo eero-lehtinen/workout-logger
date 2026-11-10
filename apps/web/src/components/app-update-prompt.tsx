@@ -3,8 +3,8 @@ import { checkForUpdate, downloadUpdate } from "../lib/app-update.ts";
 import { toasts } from "./toasts.tsx";
 
 /**
- * The Android app's counterpart of UpdatePrompt: on start, offers a newer
- * APK as a toast that stays until answered.
+ * The Android app's counterpart of WebUpdate: on start, offers a newer APK
+ * as a toast that stays until answered, since installing needs the user.
  */
 export function AppUpdatePrompt() {
   useEffect(() => {

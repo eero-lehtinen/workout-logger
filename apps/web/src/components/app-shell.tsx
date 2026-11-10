@@ -16,7 +16,7 @@ import { isNative } from "../lib/platform.ts";
 import { useBackupWarning } from "../lib/server-status.ts";
 import { AppUpdatePrompt } from "./app-update-prompt.tsx";
 import { ToastLayer } from "./toasts.tsx";
-import { UpdatePrompt } from "./update-prompt.tsx";
+import { WebUpdate } from "./web-update.tsx";
 
 const NAV = [
   { to: "/", label: "Today", icon: House, exact: true },
@@ -53,7 +53,7 @@ export function AppShell() {
       <ToastLayer />
       {/* The APK carries its own web build, so it has no service worker to
           update; it is replaced as a whole. */}
-      {isNative ? <AppUpdatePrompt /> : <UpdatePrompt />}
+      {isNative ? <AppUpdatePrompt /> : <WebUpdate />}
       <Suspense fallback={null}>
         <KeepScreenAwake />
         {isNative && <AutoSnapshot />}

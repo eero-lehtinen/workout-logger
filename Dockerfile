@@ -12,7 +12,9 @@ RUN pnpm fetch
 
 COPY . .
 RUN pnpm install --offline --frozen-lockfile
-RUN pnpm --filter @workout-logger/web build
+# The web build shows the commit in Settings; the image has no .git.
+ARG GIT_COMMIT
+RUN GIT_COMMIT=${GIT_COMMIT} pnpm --filter @workout-logger/web build
 RUN pnpm --filter @workout-logger/server build
 # Not --offline: deploy re-checks the release-age policy against registry
 # metadata, which pnpm fetch doesn't store.

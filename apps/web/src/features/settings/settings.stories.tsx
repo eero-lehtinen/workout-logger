@@ -13,6 +13,17 @@ export default {
 
 export const Defaults = pageStory({ fixture: empty, url: () => "/settings" });
 
+/** Every build shows its commit and build time. */
+export const WebBuild = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Web app build")).toBeVisible();
+    await expect(canvas.getByText(/^[0-9a-f]{7}, built /)).toBeVisible();
+  },
+});
+
 export const InPounds = pageStory({
   fixture: inPounds,
   url: () => "/settings",

@@ -104,7 +104,7 @@ responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
   - settings: units, increments, rest default, idle threshold, e1RM cap.
 - Web rest timer (in-page).
 - Snapshot export/import (file) and the undo snackbar.
-- PWA: installable, offline, "reload to update" prompt.
+- PWA: installable, offline, updates applied when no session is running.
 - Frontend tests: Storybook stories of every screen as browser tests, Playwright end-to-end tests of persistence, tab ownership, and offline use ([architecture.md](architecture.md#testing)).
 
 **Exit:** a full real workout logged in the phone's browser; the data survives reload and offline use.

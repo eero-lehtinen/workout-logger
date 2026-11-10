@@ -173,7 +173,7 @@ Set in the image:
 
 | Variable | Purpose |
 | --- | --- |
-| `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status` |
+| `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status`, and baked into the web build for Settings → About |
 | `PORT` | `3000`; the Dokploy domain points at it |
 | `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
 

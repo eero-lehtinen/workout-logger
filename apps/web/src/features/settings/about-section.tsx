@@ -7,10 +7,32 @@ import {
   checkForUpdate,
   downloadUpdate,
 } from "../../lib/app-update.ts";
+import { formatDateTime } from "../../lib/format.ts";
+import { isNative } from "../../lib/platform.ts";
 import { Row, Section } from "./settings-rows.tsx";
 
-/** Android only: the installed version and a manual update check. */
+/** The running web build; on Android also the installed version and an update check. */
 export function AboutSection() {
+  return (
+    <Section title="About">
+      {isNative && <AppVersionRow />}
+      <Row label="Web app build" hint={webBuild()} />
+    </Section>
+  );
+}
+
+function webBuild(): string {
+  const commit = import.meta.env.BUILD_COMMIT;
+  const time = Date.parse(import.meta.env.BUILD_TIME);
+  return [
+    commit ? commit.slice(0, 7) : "Unknown commit",
+    Number.isNaN(time) ? null : `built ${formatDateTime(time)}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function AppVersionRow() {
   const [version, setVersion] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   useEffect(() => {
@@ -44,16 +66,14 @@ export function AboutSection() {
   }
 
   return (
-    <Section title="About">
-      <Row
-        stacked
-        label="Version"
-        hint={`${version ?? "…"}. Updates are also checked when the app starts.`}
-      >
-        <Button disabled={checking} onClick={check}>
-          Check for updates
-        </Button>
-      </Row>
-    </Section>
+    <Row
+      stacked
+      label="Version"
+      hint={`${version ?? "…"}. Updates are also checked when the app starts.`}
+    >
+      <Button disabled={checking} onClick={check}>
+        Check for updates
+      </Button>
+    </Row>
   );
 }

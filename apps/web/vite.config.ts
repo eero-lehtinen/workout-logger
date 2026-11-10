@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -5,7 +6,25 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+/**
+ * The commit this build is from, shown in Settings. The Docker build gets it
+ * as GIT_COMMIT (the image has no .git), the APK build as GITHUB_SHA.
+ */
+function buildCommit(): string {
+  const fromEnv = process.env.GIT_COMMIT || process.env.GITHUB_SHA;
+  if (fromEnv) return fromEnv;
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
 export default defineConfig({
+  define: {
+    "import.meta.env.BUILD_COMMIT": JSON.stringify(buildCommit()),
+    "import.meta.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     // Must run before the React plugin.
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
@@ -13,7 +32,7 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
     VitePWA({
-      // An update waits for the user's "reload", never mid-session.
+      // A new version waits until WebUpdate switches to it, never mid-session.
       registerType: "prompt",
       injectRegister: false,
       manifest: {

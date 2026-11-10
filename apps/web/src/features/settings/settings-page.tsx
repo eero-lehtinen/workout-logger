@@ -188,7 +188,7 @@ export function SettingsPage() {
         </Section>
 
         <DataSection />
-        {isNative && <AboutSection />}
+        <AboutSection />
       </div>
     </Screen>
   );

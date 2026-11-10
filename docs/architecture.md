@@ -294,9 +294,10 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 ### Updates and version compatibility
 
-- **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
+- **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode, so a new version waits until the app switches to it. The app does that without asking (`WebUpdate`): when a new version has finished installing, no session is running, and the page is hidden (another tab or app, or the screen off). The reload happens out of sight and never mid-workout. During a session the new version waits until the session ends, manually or by idle auto-end. Logged sets are in the database either way; a reload would only lose what is on screen. Closing every tab of the app also switches.
+- **Build identity:** every web build carries its commit SHA and build time (`import.meta.env.BUILD_COMMIT`, `BUILD_TIME`), shown in Settings → About on every platform. Docker passes the commit as `GIT_COMMIT`, the APK build has `GITHUB_SHA`, and a local build asks `git`.
 - **APK:** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. The APK carries its own web build and registers no service worker. See [deployment.md](deployment.md#android-releases).
-- **Server:** the Android app sends its version in `X-Client-Version` on `/api/sync/*` and `/api/me`. Below `MIN_CLIENT_VERSION` the server returns 426, and Settings shows "update the app". Local builds (`0.0.0`) pass. The web app sends no version: the server it talks to serves it, and a stale PWA gets the "reload to update" prompt. Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+- **Server:** the Android app sends its version in `X-Client-Version` on `/api/sync/*` and `/api/me`. Below `MIN_CLIENT_VERSION` the server returns 426, and Settings shows "update the app". Local builds (`0.0.0`) pass. The web app sends no version: the server it talks to serves it, and a stale PWA switches to the new version as above. Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
 
 ## Charts
 
