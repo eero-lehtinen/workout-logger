@@ -17,7 +17,7 @@ variables (`${VAR:?}`), so set them first.
    - one API token per bucket with Object Read & Write on that bucket only;
    - lifecycle rules: `wl-litestream` everything older than 16 days; `wl-backups` `daily/` after 30 days, `monthly/` after 365 days, `pre-migration/` after 90 days.
 3. **Dokploy** environment of the `workout-logger` compose service: `AUTH_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, the four `BACKUP_R2_*`, and the four `LITESTREAM_R2_*` ([deployment.md](../deployment.md#configuration)). Keep `GITHUB_RELEASES_TOKEN`.
-4. Check that Dokploy's Docker Compose supports `configs` with `content:` (Compose 2.23.1+). If not, mount `litestream.yml` with Dokploy's file mounts instead and update the compose file and deployment.md.
+4. Run `docker compose version` on the VPS: `configs` with `content:` needs Compose 2.23.1+. Dokploy itself passes the section through (it parses the file with `yaml`, adds its labels and network, and writes it back). If the version is older, update Docker, or mount `litestream.yml` with Dokploy's file mounts and update the compose file and deployment.md.
 
 Rehearsed locally on 2026-11-10 with the production image, `deploy/compose.yaml`
 as is, and SeaweedFS's S3 server in place of R2 (Docker Compose 5.7):
