@@ -138,7 +138,8 @@ db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind; chart/ is
              the chart API the screens use and its ECharts implementation
 features/    screens by area: session, history, exercises, routines, settings
-lib/         formatting, the rest timer and its web and Android alarms,
+lib/         formatting, device-only view preferences (`localStorage`, not
+             synced), the rest timer and its web and Android alarms,
              storage persistence, PWA install, the account and sign-in, the
              sync scheduler, and the Android-only parts: snapshot files, the
              update check, the token store
@@ -209,7 +210,7 @@ Notes:
 - **Calendar date** of a session is the local date of `started_at` in the session's `tz`. Weeks start on Monday (a setting).
 - Editing a routine never rewrites past sessions. History queries go by `exercise_id`.
 - The `set_log` columns are deliberately minimal. There are no set types (warm-up, superset, drop set), RPE, or per-set notes.
-- e1RM, set records, PRs, and volume are computed by queries, not stored. If they get slow, cache them in a local table that is not synced.
+- e1RM, set records, PRs, and weighted sets are computed by queries, not stored. If they get slow, cache them in a local table that is not synced.
 - Built-in exercises, muscles, and the body weight metric use deterministic ids and HLCs, so every device seeds identical rows. Seeding never overwrites user edits ([sync.md](sync.md#deterministic-writes)).
 - Every exercise has at least one primary muscle (factor 1.0). The editor enforces this, because frequency stats count primary muscles.
 
@@ -291,7 +292,8 @@ The weight unit is a per-user display setting. Storage is always kg.
 ## Charts
 
 - **API.** Screens use `TimeChart` and `BarChart` from `components/chart`, whose props don't mention ECharts. The library is loaded with a dynamic import when a chart first renders, so the logging screens never download it; the PWA precaches it in the background.
-- **Theme.** Canvas can't read CSS variables, so `useChartTheme` resolves the color tokens (including the `day-1`..`day-6` routine day colors) to `rgb()` values and re-resolves them when the theme changes.
+- **Theme.** Canvas can't read CSS variables, so `useChartTheme` resolves the color tokens to `rgb()` values. The cache is keyed by the theme (the forced `data-theme` and the system scheme), so a chart that mounts after a theme change, with none mounted to hear it, still gets the right colors.
+- **Colors.** Series are colored from `seriesColor(n)`: the routine day palette (`day-1`..`day-6`), distinct hues that are none of the marker colors. A lone series' trend line is a neutral dashed line, so it reads apart from the data; with several series, each trend takes its series' color, and a legend names them.
 - **Page scrolling.** Every screen body scrolls vertically, and a chart must not swallow that. The chart has `touch-action: pan-y`; the inside zoom has `preventDefaultMouseMove: false`; plain wheel events are stopped before ECharts sees them, so the wheel scrolls the page and ctrl+wheel (a trackpad pinch) zooms. ECharts' own pinch zooms a fixed step per touch event, so a small handler (`pinch.ts`) zooms by the fingers' distance instead. A swipe that starts on the 22 px slider strip still moves the slider.
 - **Zoom.** Time charts start at the full range. Mouse: ctrl+wheel, drag, or the slider; touch: pinch or the slider. "Show all" and a double click go back to the full range.
 - **Trend lines.** A series can ask for a least-squares line (`simple-statistics`) fitted to its points in view. It is refitted on every zoom, and its rate is shown below the chart, e.g. "+0.4 kg per month".

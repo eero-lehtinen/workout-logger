@@ -53,7 +53,7 @@ Breaking these causes data loss or leaks. Don't take shortcuts here.
 4. **Merge rule is row-level LWW by HLC, applied by clients.** The server's head table uses the same comparison, but the server never interprets `data`. The HLC rules in docs/sync.md are exact, and the sync fuzz test must pass after any change to clock or merge code.
 5. **Every server query is scoped by the authenticated `user_id`** through the data-access module. No handler builds its own unscoped SQL.
 6. **No foreign key enforcement on synced tables.** Queries must tolerate missing or deleted parents.
-7. **Derived values (e1RM, records, volume) are not stored in synced tables.**
+7. **Derived values (e1RM, records, weighted sets) are not stored in synced tables.**
 8. **Weights are stored in kg.** Unit conversion happens only in the UI.
 9. **Domain schema changes follow [docs/migrations.md](docs/migrations.md):**
    - Each change is a new version step with DDL, a pure row `upgrade` function, and fixture tests.

@@ -49,10 +49,9 @@ previous performance, not by prescribing.
 | **PR** (personal record, trophy) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
 | **Set record** (star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM cap, at least as much weight and reps with one of them strictly more. |
 | **Weight increase** (up arrow) | A set with more weight than its reference set that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
-| **Volume** | `weight * reps` summed over sets. |
 | **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |
 | **Weight increment** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. |
-| **Weighted sets** | A set count per muscle, where each set counts by the muscle target factor. 3 sets of rows = 3 lats, 3 upper back, 1.5 biceps, 1.5 rear delts. |
+| **Weighted sets** | A set count per muscle, where each set counts by the muscle target factor. 3 sets of rows = 3 lats, 3 upper back, 1.5 biceps, 1.5 rear delts. For a muscle group, each set counts once, by its largest factor in the group: the same rows are 3 back sets and 1.5 arm sets. |
 
 ## Measurements (custom data)
 

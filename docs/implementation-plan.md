@@ -198,9 +198,14 @@ for old on-device snapshots moved to phase 11.
 
 Result: ECharts over uPlot, both built against the same chart API and
 compared on the owner's FitNotes history converted to a snapshot
-([architecture.md](architecture.md#charts)). The history graph got trend
-lines that refit on zoom. Exercises open their history screen; a History tab
-holds the calendar and the frequency stats; past sessions open read-only.
+([architecture.md](architecture.md#charts)). Review on that data replaced
+volume and per-session totals with sets per week, and days per muscle group
+with weighted sets per week ([features.md](features.md#calendar-and-frequency)).
+The history graph got trend lines that refit on zoom, one line per set
+number for every set's e1RM, and a period that filters the whole page; view
+choices are remembered on the device. Exercises open their history screen;
+a History tab holds the calendar and the frequency stats; past sessions open
+read-only.
 Only routines can be archived: days and slots have no archived flag, and
 deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 
@@ -215,7 +220,7 @@ deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 - Importer in `core`, the exercise mapping file, the import report, re-import rules.
 - Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
 - Settings → Import.
-- Run it on your backup, then spot-check volumes, PRs, and session counts against FitNotes.
+- Run it on your backup, then spot-check set counts, PRs, and session counts against FitNotes.
 
 **Exit:** **M1.** All FitNotes history is visible on every synced device, and markers and records look right on real data. A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
 
@@ -239,7 +244,7 @@ deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 
 ## Phase 12: Analytics and P2 (ongoing)
 
-- Analytics page: weekly weighted sets per muscle, volume, durations, PR list.
+- Analytics page: weekly weighted sets per muscle over time, durations, PR list.
 - Multi-step undo/redo, year heatmap, scatter plots, relative strength, kg/lb display polish.
 - Server push notifications (SSE) instead of polling.
 
