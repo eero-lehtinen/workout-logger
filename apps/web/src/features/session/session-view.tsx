@@ -25,7 +25,6 @@ import {
   formatDuration,
   formatSessionDate,
   formatSessionLength,
-  formatSet,
   formatTime,
   todayIso,
 } from "../../lib/format.ts";
@@ -232,17 +231,13 @@ function SessionPanel(props: {
                     </p>
                   )}
                   {exercise.sets.length > 0 && (
-                    <p className="truncate text-sm text-ink-muted tabular">
-                      {exercise.sets
-                        .map((s) =>
-                          formatSet(
-                            s,
-                            exercise.type,
-                            settings.weight_unit as WeightUnit,
-                          ),
-                        )
-                        .join(", ")}
-                    </p>
+                    <div className="pt-0.5">
+                      <SetLine
+                        sets={exercise.sets}
+                        type={exercise.type}
+                        unit={unit}
+                      />
+                    </div>
                   )}
                 </div>
               </Link>

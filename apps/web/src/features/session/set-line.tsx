@@ -8,10 +8,11 @@ import { formatSet } from "../../lib/format.ts";
 import { Marker } from "./marker.tsx";
 
 /**
- * A finished performance's sets on one wrapping line, each after its small
- * set number, e.g. "1 125 × 6   2 125 × 5". Quiet on purpose: the bold
- * numerals are for the sets being logged. Markers are icons only, since the
- * line usually sits inside a link and their explanation is a button.
+ * Logged sets as they read anywhere outside the logging screen: one quiet,
+ * wrapping line of dot-separated sets, each with the marker it earned, e.g.
+ * "100 × 8 🏆 · 100 × 7". The logging screen has its own large figures, since sets there
+ * are tapped and compared. Markers are icons only: the line usually sits
+ * inside a link, and an explained marker is a button.
  */
 export function SetLine(props: {
   sets: readonly (SetValues & {
@@ -22,18 +23,28 @@ export function SetLine(props: {
   unit: WeightUnit;
 }) {
   return (
-    <ol className="flex flex-wrap gap-x-4 gap-y-0.5 text-[0.9375rem] text-ink-muted">
+    <ul className="flex flex-wrap gap-x-2 gap-y-0.5 text-[0.9375rem] text-ink/85">
       {props.sets.map((set, i) => (
-        <li key={set.id ?? i} className="inline-flex items-center gap-1.5">
-          <span className="tabular text-xs">{i + 1}</span>
-          <span className="tabular text-ink/85">
-            {formatSet(set, props.type, props.unit)}
-          </span>
+        <li
+          key={set.id ?? i}
+          className="tabular inline-flex items-center gap-1"
+        >
+          {i > 0 && (
+            <span aria-hidden className="pr-1 text-ink-muted/50">
+              ·
+            </span>
+          )}
+          {formatSet(set, props.type, props.unit)}
           {set.marker && (
-            <Marker marker={set.marker} type={props.type} unit={props.unit} />
+            <Marker
+              marker={set.marker}
+              type={props.type}
+              unit={props.unit}
+              size={15}
+            />
           )}
         </li>
       ))}
-    </ol>
+    </ul>
   );
 }

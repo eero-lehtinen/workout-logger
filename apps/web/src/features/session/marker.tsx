@@ -22,14 +22,15 @@ const LABELS: Record<ProgressMarker, string> = {
 };
 
 /** PR: trophy. Set record: outline star. Weight increase: up arrow. */
-function MarkerIcon({ marker }: { marker: ProgressMarker }) {
+function MarkerIcon(props: { marker: ProgressMarker; size: number }) {
+  const { marker, size } = props;
   if (marker === "pr") {
-    return <Trophy size={18} strokeWidth={2.25} className="text-pr" />;
+    return <Trophy size={size} strokeWidth={2.25} className="text-pr" />;
   }
   if (marker === "set_record") {
-    return <Star size={18} strokeWidth={2.25} className="text-record" />;
+    return <Star size={size} strokeWidth={2.25} className="text-record" />;
   }
-  return <ArrowUp size={18} strokeWidth={2.75} className="text-increase" />;
+  return <ArrowUp size={size} strokeWidth={2.75} className="text-increase" />;
 }
 
 /**
@@ -41,6 +42,8 @@ export function Marker(props: {
   basis?: MarkerExplanation | null;
   type: ExerciseType;
   unit: WeightUnit;
+  /** Icon size; smaller beside running text than beside logged sets. */
+  size?: number;
 }) {
   const { marker, basis } = props;
   if (!marker) return null;
@@ -48,7 +51,7 @@ export function Marker(props: {
   if (!basis) {
     return (
       <span role="img" aria-label={label} title={label} className="inline-flex">
-        <MarkerIcon marker={marker} />
+        <MarkerIcon marker={marker} size={props.size ?? 18} />
       </span>
     );
   }
@@ -58,13 +61,13 @@ export function Marker(props: {
         aria-label={label}
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-surface data-popup-open:bg-surface"
       >
-        <MarkerIcon marker={marker} />
+        <MarkerIcon marker={marker} size={props.size ?? 18} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner className="z-40" side="top" sideOffset={6}>
           <Popover.Popup className="w-max max-w-80 origin-[var(--transform-origin)] rounded-xl border border-rule bg-raised p-3 text-ink shadow-lg outline-none transition-[scale,opacity] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <Popover.Title className="flex items-center gap-1.5 text-sm font-semibold">
-              <MarkerIcon marker={marker} />
+              <MarkerIcon marker={marker} size={18} />
               {label}
             </Popover.Title>
             <Comparison

@@ -196,6 +196,19 @@ describe("logging", () => {
     ]);
   });
 
+  it("gives the session view the same markers as the logging view", async () => {
+    const { query, run, first, second, se2 } = await logged();
+    await run("logSet", { sessionExerciseId: se2, values: set(102.5, 8) });
+    await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
+    const markers = async (sessionId: string) =>
+      (await query("sessionView", { sessionId }))?.exercises[0]?.sets.map(
+        (s) => s.marker,
+      );
+    // The first session has nothing earlier to beat.
+    expect(await markers(first)).toEqual([null, null, null]);
+    expect(await markers(second)).toEqual(["pr", "set_record"]);
+  });
+
   it("edits and deletes sets", async () => {
     const { query, run, se2 } = await logged();
     const a = await run("logSet", {

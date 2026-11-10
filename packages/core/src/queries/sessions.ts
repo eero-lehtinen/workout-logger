@@ -1,5 +1,5 @@
 import { type Kysely, sql } from "kysely";
-import type { SetValues } from "../domain/markers.ts";
+import type { ProgressMarker, SetValues } from "../domain/markers.ts";
 import { nextDay } from "../domain/next-day.ts";
 import { compareOrder } from "../domain/position.ts";
 import type {
@@ -7,7 +7,9 @@ import type {
   ExerciseType,
   SessionEndReason,
 } from "../schema/tables.ts";
+import { readSettings } from "../settings.ts";
 import { defineQuery } from "./define.ts";
+import { loadPerformances, markPerformanceSets } from "./performances.ts";
 
 export interface SessionSummary {
   id: string;
@@ -179,7 +181,8 @@ export interface SessionExerciseItem {
   slotId: string | null;
   /** The slot's default exercise, when this one substitutes it. */
   substitutesName: string | null;
-  sets: SetValues[];
+  /** With the markers they earned against the exercise's earlier history. */
+  sets: (SetValues & { id: string; marker: ProgressMarker | null })[];
 }
 
 export interface SessionView {
@@ -196,6 +199,7 @@ export const sessionView = defineQuery(
     "routine",
     "routine_day",
     "slot",
+    "setting",
   ],
   async (db, args: { sessionId: string }): Promise<SessionView | null> => {
     const session = await sessionSummaries(db)
@@ -242,6 +246,12 @@ export const sessionView = defineQuery(
       .where("set_log.deleted", "=", 0)
       .execute();
     sets.sort(compareOrder);
+    const markers = await sessionMarkers(
+      db,
+      args.sessionId,
+      session.startedAt,
+      exercises,
+    );
 
     return {
       session: toSummary(session),
@@ -257,13 +267,42 @@ export const sessionView = defineQuery(
             : null,
         sets: sets
           .filter((s) => s.session_exercise_id === e.id)
-          .map(({ weight_kg, reps, duration_s, distance_m }) => ({
+          .map(({ id, weight_kg, reps, duration_s, distance_m }) => ({
+            id,
             weight_kg,
             reps,
             duration_s,
             distance_m,
+            marker: markers.get(id) ?? null,
           })),
       })),
     };
   },
 );
+
+/**
+ * Set id → marker for the session's sets, each judged against its
+ * exercise's history up to this session, as the logging view does.
+ */
+async function sessionMarkers(
+  db: Kysely<Database>,
+  sessionId: string,
+  startedAt: number,
+  exercises: readonly { exerciseId: string; type: ExerciseType }[],
+): Promise<Map<string, ProgressMarker | null>> {
+  const { e1rm_rep_cap } = await readSettings(db);
+  const markers = new Map<string, ProgressMarker | null>();
+  const types = new Map(exercises.map((e) => [e.exerciseId, e.type]));
+  for (const [exerciseId, type] of types) {
+    const performances = await loadPerformances(db, exerciseId, {
+      sessionId,
+      startedAt,
+    });
+    const current = markPerformanceSets(type, performances, e1rm_rep_cap).at(
+      -1,
+    );
+    if (current?.sessionId !== sessionId) continue;
+    for (const set of current.sets) markers.set(set.id, set.marker);
+  }
+  return markers;
+}
