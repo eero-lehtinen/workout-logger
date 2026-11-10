@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import { createOwner } from "../cli.ts";
 import { openTestApp } from "../testing.ts";
@@ -47,6 +48,18 @@ describe("create-owner", () => {
     await expect(createOwner(auth, "other@example.com", "x")).rejects.toThrow(
       "an owner already exists",
     );
+  });
+});
+
+describe("deleting a user", () => {
+  it("deletes the user's sessions", async () => {
+    const { db, signIn } = await openTestApp();
+    const { userId } = await signIn("alice@example.com");
+    await sql`delete from user where id = ${userId}`.execute(db);
+    const { rows } = await sql<{
+      n: number;
+    }>`select count(*) as n from session where userId = ${userId}`.execute(db);
+    expect(rows[0]?.n).toBe(0);
   });
 });
 

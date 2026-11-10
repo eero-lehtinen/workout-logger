@@ -50,6 +50,9 @@ export function openDatabase(path: string): ServerDatabase {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("busy_timeout = 5000");
   sqlite.pragma("synchronous = NORMAL");
+  // Better Auth's session and account tables cascade from user; SQLite
+  // ignores that without this. The sync tables declare no foreign keys.
+  sqlite.pragma("foreign_keys = ON");
   const db = createKysely<ServerTables>(nodeDriver(sqlite));
   return { db, sqlite, close: () => db.destroy() };
 }
