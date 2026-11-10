@@ -6,3 +6,4 @@ data/
 .tanstack/
 .vitest/
 *.tsbuildinfo
+.claude/worktrees/
