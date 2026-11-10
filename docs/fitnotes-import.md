@@ -1,5 +1,23 @@
 # FitNotes import
 
+The owner's FitNotes history comes over once, at the cutover. A private
+script outside this repo (`workout-logger-fitnotes`, next to this checkout)
+converts the backup into a [snapshot](backups.md#snapshot-format) with this
+repo's `core` and `exercises` packages. The owner imports it with Settings →
+Import snapshot. Neither the app nor the CLI has a FitNotes import.
+
+This document is the reference for that conversion: the FitNotes schema and
+the mapping rules, which also say how imported data looks in the app. The
+conversion implements the rules the owner's backup needs. It refuses a backup
+with data it has no rule for, such as comments or body tracker values,
+instead of reporting it.
+
+If another user ever needs an import, it should need no hand-written
+mapping. Built-ins are matched by name, everything else becomes a custom
+exercise with its FitNotes name and a muscle guessed from the category, and
+the user cleans up in the app (rename, edit muscles, a merge action that
+doesn't exist yet).
+
 ## Source
 
 FitNotes' "Android DB" backup produces a `.fitnotes` file, which is a plain
@@ -8,20 +26,19 @@ SQLite database. That file is the import source.
 The CSV export is not used: it is lossy and lacks routines.
 
 The FitNotes schema is undocumented. The schema below was read from a real
-backup with `PRAGMA user_version = 22`. The importer checks `user_version`
-and warns before importing a backup with a different version.
+backup with `PRAGMA user_version = 22`. The conversion refuses a backup with
+a different version.
 
 ## Principles
 
 - **Nothing is silently dropped.** Every FitNotes field ends up in one of three places:
   1. a matching field;
   2. the nearest notes field, as text the user can edit later;
-  3. the import report.
+  3. the report: listed for the user instead of imported.
 
   Exceptions are values that FitNotes derives or that only hold FitNotes UI state. They are listed under [Skipped](#skipped).
-- **Import report.** Shown after import, and kept as a session-less note. It lists counts per entity, what went into notes, and what was skipped and why.
-- **Idempotent.** Ids are UUIDv5 of a FitNotes natural key (see [Ids](#ids)), written by the `fitnotes` pseudo-node ([sync.md](sync.md#deterministic-writes)).
-- **No guessing on unverified paths.** Some features have no rows in the backup the mapping was verified against (see [Unverified](#unverified)). Until a synthetic backup confirms their encoding, rows that need them go to the import report instead of being imported.
+- **Stable ids.** Ids are UUIDv5 of a FitNotes natural key (see [Ids](#ids)), written by the `fitnotes` pseudo-node ([sync.md](sync.md#deterministic-writes)), so converting a newer backup gives the same rows the same ids.
+- **No guessing on unverified paths.** Some features have no rows in the backup the mapping was verified against (see [Unverified](#unverified)). Until a synthetic backup confirms their encoding, rows that need them aren't imported.
 
 ## Schema
 
@@ -39,7 +56,7 @@ integers when they are whole.
 | Table | Holds | Imported as |
 | --- | --- | --- |
 | `exercise` | The exercise catalog, including FitNotes' default exercises. | `exercise` |
-| `Category` | One category per exercise (Chest, Back, ...), with a colour. Users can add categories. | Hint in the exercise mapping file |
+| `Category` | One category per exercise (Chest, Back, ...), with a colour. Users can add categories. | Muscle guess |
 | `training_log` | One row per set. | `session`, `session_exercise`, `set_log` |
 | `WorkoutTime` | Workout timer start and end, at most one per date. | `session.started_at`, `ended_at` |
 | `Comment` | Comments attached to other rows, e.g. a set. | `session_exercise.notes` or `session.notes` |
@@ -162,24 +179,24 @@ section unless it was prefilled from a predefined set.
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
-| `exercise` | `exercise` | Via the [exercise mapping file](#exercise-mapping-file): matched to a built-in exercise or created as a custom exercise, renamed, merged, split by date, or skipped. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults; the report counts them. |
-| `exercise_type_id` 0 | `weight_reps` or `bodyweight_reps` | The mapping file decides. For `bodyweight_reps`, `metric_weight` is the added weight. |
+| `exercise` | `exercise` | Via the [exercise mapping](#exercise-mapping): matched to a built-in exercise or created as a custom exercise, renamed, merged, split by date, or skipped. Only exercises with at least one set or routine slot are imported. The rest are FitNotes catalog defaults. |
+| `exercise_type_id` 0 | `weight_reps`, `bodyweight_reps`, or `reps` | The mapping decides. For `bodyweight_reps`, `metric_weight` is the added weight. A `reps` target takes no weight. |
 | `exercise_type_id` 1 | `distance_time` | |
 | `exercise_type_id` 3 | `time` | |
 | `exercise.notes` | `exercise.notes` | Only for custom exercises; for a built-in match, the text goes in the report. |
 | `weight_increment` | `weight_increment_kg` | |
 | `default_rest_time` | `default_rest_s` | |
-| `Category` | Muscle group hint | Used only to generate mapping file guesses. Not stored. |
+| `Category` | Muscle guess | Only for guessing a custom exercise's muscle. Not stored. |
 
 ### Sessions and sets
 
 | FitNotes | Ours | Rule |
 | --- | --- | --- |
 | Distinct `training_log.date` | `session` | One session per date, so two workouts on one date are one session, as in FitNotes. `routine_id` and `day_id` stay null. |
-| `WorkoutTime` | `session.started_at`, `ended_at` | `end_reason = 'manual'`. Times are kept as recorded; sessions longer than 5 h or shorter than 5 min are listed in the report so they can be fixed by hand. |
+| `WorkoutTime` | `session.started_at`, `ended_at` | `end_reason = 'manual'`. Times are kept as recorded; sessions longer than 5 h or shorter than 5 min (forgotten or accidental timers) are listed. The conversion can instead keep their start and give them no duration, as for a date without a timer. |
 | Date without `WorkoutTime` | `session` | `started_at` = local noon of the date, `ended_at = started_at`, `end_reason = 'unknown'`. Excluded from duration stats. |
 | (none) | `session.tz` | The import takes an IANA zone, defaulting to the device zone. Local noon uses it. A `WorkoutTime` offset that doesn't match the zone at that instant (travel) is listed in the report; the instant is kept. |
-| Distinct `(date, target exercise)` | `session_exercise` | The target is our exercise after the mapping file, so merged duplicates logged on one date become one session exercise. Positioned by the first set's `_id`. Alternating sets of A and B merge into one session exercise each. `slot_id` stays null. |
+| Distinct `(date, target exercise)` | `session_exercise` | The target is our exercise after the mapping, so merged duplicates logged on one date become one session exercise. Positioned by the first set's `_id`. Alternating sets of A and B merge into one session exercise each. `slot_id` stays null. |
 | `training_log` row | `set_log` | `position` by `_id`. Columns by exercise type: `weight_kg = metric_weight` and `reps` for the two rep types; `distance_m` and `duration_s` for `distance_time`; `duration_s` for `time`. |
 | (none) | `set_log.logged_at` | Synthetic: spread evenly over `[started_at, ended_at]` in `(date, _id)` order. This keeps the order across alternating exercises. For date-only sessions all sets get `started_at`. Not real set times. |
 | `Comment` on a `training_log` row | `session_exercise.notes` | Appended as `Set 2: <comment>`. We have no per-set notes. |
@@ -223,7 +240,7 @@ FitNotes UI state:
 - `is_complete`, `timer_auto_start`, `is_pending_update`.
 - `ExerciseGraphFavourite`, `RepMaxGridFavourite`, `default_graph_id`, `is_favourite`.
 - `Barbell`, `Plate`, `Category.colour`, `Category.sort_order`.
-- `settings`, except the values listed above. Those are shown in the report for the user to apply by hand, so a re-import never overwrites our settings.
+- `settings`. The user sets units, the week start, and the rest time in the app, so an import never overwrites them.
 
 ### Ids
 
@@ -231,7 +248,8 @@ UUIDv5 of these keys:
 
 | Ours | Key |
 | --- | --- |
-| `exercise` (custom) | `custom:<name>`, the `create.name` from the mapping file. Duplicates mapped to the same name share one exercise. |
+| `exercise` (custom) | `custom:<name>`, the custom exercise's name in the mapping. Duplicates mapped to the same name share one exercise. |
+| `exercise_muscle` (custom) | `exercise_muscle:<name>:<muscle key>` |
 | `session` | `session:<date>` |
 | `session_exercise` | `session_exercise:<date>:<target exercise id>` |
 | `set_log` | `training_log:<_id>` |
@@ -256,72 +274,35 @@ FitNotes on a test device, back up, and inspect.
 - `populate_sets_type` values; `RoutineSectionExerciseSet.unit`.
 - `WorkoutGroup` semantics.
 
-The lb case is the exception to "report instead of guess": `metric_weight` is
-kg regardless of `unit`, so an unexpected `unit` value doesn't change the
+The lb case is the exception to "don't guess": `metric_weight` is kg
+regardless of `unit`, so an unexpected `unit` value doesn't change the
 imported weight.
 
-Importer test fixtures are SQL scripts (FitNotes DDL plus synthetic rows),
-never real backups.
+## Exercise mapping
 
-## Exercise mapping file
+The owner's mapping is code in the private repo, with the analysis behind
+it. It says what each FitNotes exercise becomes, which is the step that needs
+human judgment. FitNotes history often has:
 
-A JSON file maps FitNotes exercise names to our exercises, or to "create
-custom". New custom exercises also get muscle targets and an exercise type
-(`weight_reps` or `bodyweight_reps` for FitNotes type 0). The importer
-generates the file with best guesses from the name and category when none is
-given. It lists only exercises that will be imported, and it is reused on
-re-import.
-
-Hand-curating the file is the step that needs human judgment. FitNotes
-history often has:
-
-- **Inconsistent names.** A `create` entry sets the name of the new custom exercise.
+- **Inconsistent names.** A custom target sets the name of the new exercise.
 - **Duplicates.** Several FitNotes exercises map to the same target.
-- **One FitNotes exercise used for different variants over time**, e.g. a pushdown done with a straight bar and later with a rope. Mixed together, records and progress markers compare different movements. A FitNotes exercise maps to a list of targets, each covering sets up to an `until` date (inclusive); the last entry has no `until` and covers the rest.
-- **History not worth keeping**, e.g. a one-off home exercise. A `skip` target leaves the exercise and its sets out; the import report lists them with set counts.
+- **One FitNotes exercise used for different variants over time**, e.g. a pushdown done with a straight bar and later with a rope. Mixed together, records and progress markers compare different movements. A FitNotes exercise maps to a list of targets, each covering sets up to an `until` date (inclusive); the last has no `until` and covers the rest. Routine slots get the last target.
+- **History not worth keeping**, e.g. a one-off home exercise. A skip target leaves the exercise, its sets, and its routine slots out.
 
-Example (synthetic):
+Unmapped FitNotes exercises fail the conversion; nothing falls back silently.
+Finding where to split was done by hand: chart each exercise's best e1RM per
+session and look for jumps.
 
-```json
-{
-  "exercises": {
-    "Triceps Pushdown": [
-      { "until": "2000-06-30", "create": { "name": "Bar Pushdown", "type": "weight_reps", "muscles": { "triceps": 1 } } },
-      { "builtin": "rope_pushdown" }
-    ],
-    "Flat Bench": [{ "builtin": "barbell_bench_press" }],
-    "Bench Press": [{ "builtin": "barbell_bench_press" }],
-    "Towel Curl": [{ "skip": true }]
-  }
-}
-```
+## Importing
 
-Unmapped FitNotes exercises fail the import; nothing falls back silently.
-Finding where to split is done by hand: chart each exercise's best e1RM per
-session and look for jumps. The importer has no analysis for this.
+The conversion writes its rows into a fresh in-memory store seeded with the
+catalog, all with one `fitnotes` HLC at conversion time, and saves the store
+as a snapshot. Merging it applies the normal LWW rule
+([backups.md](backups.md)), and the rows sync like any other data. Converting
+a newer backup gives the same rows the same ids with a newer HLC, so a second
+merge overwrites edits made to imported rows in the app, and doesn't remove
+rows deleted in FitNotes. So the owner imports once, from a backup taken on
+cutover day, and stops using FitNotes.
 
-The file names the user's exercises and the dates they changed technique,
-so it is private data like the backup itself: the owner's copy lives in the
-git-ignored `data/` directory and is never committed.
-
-## Re-import
-
-FitNotes stays the source of truth until cutover. A re-import:
-
-- updates rows still owned by the import, i.e. last written by the `fitnotes` node, when their data changed. They get a fresh HLC (wall = import time);
-- skips rows edited in our app since import, i.e. last written by another node. User edits win;
-- soft-deletes import-owned rows that are missing from the new backup.
-
-After cutover, FitNotes isn't used and re-import isn't needed.
-
-## Running it
-
-The importer lives in `packages/core`. It reads the file with SQLite and
-writes through the normal core write path, so the result syncs like any other
-data. It runs:
-
-- in the app: Settings → Import → FitNotes;
-- from the CLI: `wl import fitnotes <file>`, with a write-scoped key.
-
-Importing years of history exceeds the daily change quota for `user` accounts.
-The owner grants a temporary import exemption ([accounts.md](accounts.md#quotas)).
+The conversion checks its output against the backup: per target exercise,
+the set count, session count, and best e1RM must match.

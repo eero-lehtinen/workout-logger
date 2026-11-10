@@ -217,16 +217,20 @@ deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 
 ## Phase 9: FitNotes import (S–M)
 
-- Importer in `core`, the exercise mapping file, the import report, re-import rules.
-- Curate your mapping file by hand before the real import: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping-file)).
-- Settings → Import.
-- Run it on your backup, then spot-check set counts, PRs, and session counts against FitNotes.
+- A private conversion script, outside this repo, that turns the owner's backup into a snapshot ([fitnotes-import.md](fitnotes-import.md)). No import in the app or the CLI: only the owner has FitNotes history.
+- Curate the mapping by hand: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping)).
+- Convert a backup taken on cutover day, check set counts, sessions, and best e1RM against it, and import the snapshot with Settings → Import snapshot.
 
 **Exit:** **M1.** All FitNotes history is visible on every synced device, and markers and records look right on real data. A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
 
+Status: built before phase 8. The conversion and the mapping are in the
+private `workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it
+matches FitNotes per exercise on set count, session count, and best e1RM.
+Left: the real import, the check on the phone, and the cutover.
+
 ## Phase 10: CLI (S–M)
 
-- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup [--all]`, `restore`, `import fitnotes`.
+- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup [--all]`, `restore`.
 - API keys in the app settings, with read and write scopes.
 - Owner backup task: `wl backup --all` plus restic, scheduled on your PC.
 

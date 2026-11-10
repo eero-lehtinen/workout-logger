@@ -92,7 +92,7 @@ Defaults for `user`, changeable by the owner per user. The owner has none.
 Enforcement:
 
 - Only **newly inserted** changes count. Duplicates from retries are free.
-- **Exempt:** the first upload after login, the re-upload within 24 h of a server epoch change, and imports run with a write-scoped key the owner has flagged. FitNotes history can exceed the daily limit, so imports need this.
+- **Exempt:** the first upload after login, the re-upload within 24 h of a server epoch change, and imports run with a write-scoped key the owner has flagged. A snapshot of years of history can exceed the daily limit, so imports need this.
 - A push processes changes in order. Once the quota is reached, the remaining changes are rejected individually as `quota` (see [sync.md](sync.md#push)). Local logging keeps working, and the app shows "sync paused: quota reached".
 - Counters live in the `usage` table, updated in the push transaction. Old rows are pruned daily.
 

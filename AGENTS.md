@@ -27,7 +27,9 @@ build, with the Kotlin `RestTimer` plugin; a `v*` tag releases a signed APK.
 endpoints, Better Auth, and sync, copies its database to R2, and has the
 `server` command; every push to `main` deploys it to
 <https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
-Invites, quotas, the FitNotes import, and the CLI are not built yet.
+Invites, quotas, measurements, and the CLI are not built yet. The owner's
+FitNotes history is converted to a snapshot by a private script outside this
+repo ([docs/fitnotes-import.md](docs/fitnotes-import.md)).
 
 ## Read first
 
