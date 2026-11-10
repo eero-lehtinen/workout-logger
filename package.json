@@ -8,12 +8,14 @@
   },
   "scripts": {
     "dev": "pnpm --filter @workout-logger/web dev",
+    "storybook": "pnpm --filter @workout-logger/web storybook",
     "build": "pnpm -r build",
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "e2e": "pnpm --filter @workout-logger/web e2e",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",

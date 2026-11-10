@@ -10,6 +10,9 @@ permissions:
   "@tanstack/router-plugin":
     skills: [router-plugin]
 
+  esbuild:
+    build: false
+
 skills:
   dirs:
     - .claude/skills

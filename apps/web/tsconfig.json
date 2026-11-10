@@ -5,5 +5,12 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "vite-plugin-pwa/react"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "e2e",
+    ".storybook",
+    "vite.config.ts",
+    "vitest.storybook.config.ts",
+    "playwright.config.ts"
+  ]
 }

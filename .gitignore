@@ -1,5 +1,8 @@
 node_modules/
 dist/
+storybook-static/
+test-results/
+playwright-report/
 data/
 *.fitnotes
 .env*

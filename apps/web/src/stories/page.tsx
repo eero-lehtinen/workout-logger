@@ -1,0 +1,71 @@
+import type { StoryObj } from "@storybook/react-vite";
+import {
+  createMemoryHistory,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { useState } from "react";
+import { within } from "storybook/test";
+import type { DbClient } from "../db/client.ts";
+import { type MemoryDb, openMemoryDb } from "../db/memory.ts";
+import { DbClientProvider } from "../db/react.tsx";
+import { routeTree } from "../routeTree.gen.ts";
+import type { Fixture, FixtureIds } from "./fixtures.ts";
+
+interface Loaded {
+  db: MemoryDb;
+  url: string;
+}
+
+/**
+ * A whole screen: the real router at `url`, over an in-memory database that
+ * `fixture` filled through the real commands.
+ */
+export function pageStory(options: {
+  fixture: Fixture;
+  url: (ids: FixtureIds) => string;
+  viewport?: "phone" | "pc";
+  theme?: "light" | "dark";
+  play?: StoryObj["play"];
+}): StoryObj {
+  return {
+    loaders: [
+      async (): Promise<Loaded> => {
+        const db = await openMemoryDb();
+        return { db, url: options.url(await options.fixture(db)) };
+      },
+    ],
+    render: (_args, { loaded }) => {
+      const { db, url } = loaded as Loaded;
+      return <Page client={db.client} url={url} />;
+    },
+    globals: {
+      viewport: { value: options.viewport ?? "phone", isRotated: false },
+      ...(options.theme && { theme: options.theme }),
+    },
+    // Wait for the screen's data, so checks run on the screen, not on a
+    // loading state.
+    play: async (context) => {
+      await within(context.canvasElement).findAllByRole(
+        "heading",
+        { level: 1 },
+        { timeout: 10_000 },
+      );
+      await options.play?.(context);
+    },
+  };
+}
+
+function Page(props: { client: DbClient; url: string }) {
+  const [router] = useState(() =>
+    createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: [props.url] }),
+    }),
+  );
+  return (
+    <DbClientProvider client={props.client}>
+      <RouterProvider router={router} />
+    </DbClientProvider>
+  );
+}

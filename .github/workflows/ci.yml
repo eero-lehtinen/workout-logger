@@ -25,10 +25,13 @@ jobs:
           install: false
 
       - run: pnpm install --frozen-lockfile
+      # Story tests and e2e tests run in Chromium.
+      - run: pnpm --filter @workout-logger/web exec playwright install --with-deps chromium
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm e2e
 
       - name: Check committed route tree is up to date
         run: git diff --exit-code -- apps/web/src/routeTree.gen.ts
