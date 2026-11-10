@@ -10,11 +10,15 @@ const LOCK_NAME = "workout-logger-db";
 // for a moment.
 const OPEN_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 150;
+// A paused tab holds them until it runs again, which may take minutes.
+const BLOCKED_RETRY_MS = 2000;
 
 export type DbState =
   | { status: "starting" }
   | { status: "ready"; client: DbClient }
   | { status: "elsewhere" }
+  /** We hold the lock, but a paused tab's worker still holds the files. */
+  | { status: "blocked" }
   | { status: "error"; error: unknown };
 
 /** Holds the lock and the worker; observable for React. */
@@ -23,6 +27,10 @@ export class DbOwner {
   #listeners = new Set<() => void>();
   #worker: DbWorker | undefined;
   #waiting: AbortController | undefined;
+  /** Aborted when the lock we hold is stolen or given up. */
+  #held: AbortController | undefined;
+  #release: (() => void) | undefined;
+  #wake: (() => void) | undefined;
   #started = false;
 
   subscribe = (listener: () => void) => {
@@ -36,6 +44,13 @@ export class DbOwner {
   start() {
     if (this.#started) return;
     this.#started = true;
+    document.addEventListener("freeze", () => this.#freeze());
+    document.addEventListener("resume", () =>
+      this.#request({ ifAvailable: true }),
+    );
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.#wake?.();
+    });
     this.#request({ ifAvailable: true });
   }
 
@@ -48,6 +63,10 @@ export class DbOwner {
 
   /** Retries after an open failure, with a fresh worker. */
   retry() {
+    if (this.#wake) {
+      this.#wake();
+      return;
+    }
     this.#set({ status: "starting" });
     this.#request({ ifAvailable: true });
   }
@@ -64,9 +83,13 @@ export class DbOwner {
         // look like a cancellation.
         if (this.#waiting?.signal !== options.signal) this.#waiting?.abort();
         this.#waiting = undefined;
-        const opened = await this.#open();
-        // Hold the lock for the life of the tab, unless it is stolen.
-        if (opened) await new Promise(() => {});
+        const held = new AbortController();
+        this.#held = held;
+        if (!(await this.#open(held.signal))) return;
+        // Hold the lock until it is stolen or the page freezes.
+        await new Promise<void>((resolve) => {
+          this.#release = resolve;
+        });
       })
       .catch((error: unknown) => {
         // Our own cancellation of a waiting request.
@@ -88,30 +111,79 @@ export class DbOwner {
     this.#request({ signal: waiting.signal });
   }
 
-  async #open(): Promise<boolean> {
+  async #open(held: AbortSignal): Promise<boolean> {
     let lastError: unknown;
-    for (let attempt = 0; attempt < OPEN_ATTEMPTS; attempt++) {
+    for (let attempt = 1; !held.aborted; attempt++) {
       try {
-        this.#worker = await startDbWorker();
-        this.#set({ status: "ready", client: this.#worker.client });
+        const worker = await startDbWorker();
+        if (held.aborted) {
+          worker.terminate();
+          return false;
+        }
+        this.#worker = worker;
+        this.#set({ status: "ready", client: worker.client });
         return true;
       } catch (error) {
         lastError = error;
-        // A newer schema won't open on retry.
         if (error instanceof Error && error.name === "SchemaTooNewError") break;
-        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        if (attempt < OPEN_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+          continue;
+        }
+        if (
+          !(error instanceof Error) ||
+          error.name !== "NoModificationAllowedError"
+        )
+          break;
+        // A frozen tab can't see that its lock was stolen, so its worker
+        // keeps the files until it runs again. Keep the lock meanwhile, so
+        // that tab doesn't take the database back when it wakes.
+        this.#set({ status: "blocked" });
+        await this.#nextChance();
       }
     }
-    this.#set({ status: "error", error: lastError });
+    if (!held.aborted) this.#set({ status: "error", error: lastError });
     return false;
+  }
+
+  #nextChance(): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.#wake = undefined;
+        resolve();
+      };
+      const timer = setTimeout(done, BLOCKED_RETRY_MS);
+      this.#wake = done;
+    });
   }
 
   /** Another tab stole the lock: release the database and wait. */
   #lost() {
-    this.#worker?.terminate();
-    this.#worker = undefined;
+    this.#close();
     this.#set({ status: "elsewhere" });
     this.#waitForRelease();
+  }
+
+  /**
+   * A frozen page runs no code, so it couldn't let go if another tab took
+   * over. Let go now; `resume` opens again or waits.
+   */
+  #freeze() {
+    this.#waiting?.abort();
+    this.#waiting = undefined;
+    this.#close();
+    this.#release?.();
+    this.#release = undefined;
+    this.#set({ status: "starting" });
+  }
+
+  #close() {
+    this.#held?.abort();
+    this.#held = undefined;
+    this.#wake?.();
+    this.#worker?.terminate();
+    this.#worker = undefined;
   }
 
   #set(state: DbState) {

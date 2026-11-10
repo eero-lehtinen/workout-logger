@@ -61,6 +61,10 @@ export const GateElsewhere: StoryObj = {
   render: () => <DbGate state="elsewhere" takeOver={noop} retry={noop} />,
 };
 
+export const GateBlocked: StoryObj = {
+  render: () => <DbGate state="blocked" takeOver={noop} retry={noop} />,
+};
+
 export const GateError: StoryObj = {
   render: () => (
     <DbGate

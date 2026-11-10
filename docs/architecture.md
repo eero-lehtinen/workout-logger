@@ -223,6 +223,10 @@ The weight unit is a per-user display setting. Storage is always kg.
 - The SAH-pool VFS holds a sync access handle on every pool file, so only one context can open the database. A second open fails with `NoModificationAllowedError`.
 - The tab holding the Web Lock `workout-logger-db` owns the database. Other tabs get the lock with `ifAvailable: true`, see that it's taken, and show "open in another tab" with a "use here" button. Proxying queries between tabs is not worth it.
 - "Use here" requests the lock with `steal: true`. The old tab's lock request rejects with `AbortError`. It then terminates its worker, which releases the handles, and shows "open in another tab". The new tab opens the database with a fresh worker, retrying on failure. In Chrome and Firefox the first attempt succeeded, in about 50 ms.
+- A frozen page runs no code, so it can't see that its lock was stolen, and its worker keeps the files. Android freezes a background Chrome tab, for example while the installed app is in front. Two measures:
+  - On the Page Lifecycle `freeze` event, the owning tab terminates its worker and releases the lock. A waiting tab takes over by itself. On `resume`, the tab asks for the lock again and opens, or shows "open in another tab". A write in flight at that moment is lost and rolled back.
+  - If the files are still held after a steal's ten retries, the new tab keeps the lock and shows "still open in another window". It retries every 2 s, when the page becomes visible, and on "try again". Keeping the lock means the old tab, once it runs again, terminates its worker and waits instead of taking the database back. This covers tabs frozen without the event and tabs running a version without the handler.
+  - Headless Chromium doesn't freeze pages, so the e2e tests dispatch `freeze` and `resume` themselves, and stall a tab's main thread to stand in for a frozen tab.
 - A worker terminated mid-transaction leaves a rollback journal, which SQLite recovers on the next open.
 
 ### Storage durability

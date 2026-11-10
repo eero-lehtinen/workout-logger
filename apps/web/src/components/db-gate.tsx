@@ -32,6 +32,20 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
       </Centered>
     );
   }
+  if (state === "blocked") {
+    return (
+      <Centered>
+        <h1 className="text-xl font-semibold">Still open in another window</h1>
+        <p className="max-w-xs text-ink-muted">
+          The browser has paused the other window, so it can't let go of your
+          log yet. Switch to it or close it; this opens on its own after that.
+        </p>
+        <Button variant="primary" onClick={retry}>
+          Try again
+        </Button>
+      </Centered>
+    );
+  }
   const tooNew = error instanceof Error && error.name === "SchemaTooNewError";
   return (
     <Centered>

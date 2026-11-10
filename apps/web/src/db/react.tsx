@@ -21,7 +21,7 @@ import {
 } from "react";
 import { toasts } from "../components/toasts.tsx";
 import type { DbClient } from "./client.ts";
-import { DbOwner } from "./ownership.ts";
+import { DbOwner, type DbState } from "./ownership.ts";
 
 const DbContext = createContext<DbClient | null>(null);
 
@@ -90,7 +90,7 @@ export function DbClientProvider(props: {
 }
 
 export type GateView = (props: {
-  state: "starting" | "elsewhere" | "error";
+  state: Exclude<DbState["status"], "ready">;
   error?: unknown;
   takeOver: () => void;
   retry: () => void;
