@@ -11,19 +11,21 @@ owner and a few invited users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
 Status: phases 0–5 of [docs/implementation-plan.md](docs/implementation-plan.md)
-are done; phase 6 (server, sync) is next. `apps/web` is a local-only PWA
-for logging workouts: the DB worker, tab ownership, sessions, the logging
-view, routines, exercises, settings, snapshots, and the web rest timer, with
-Storybook stories and Playwright tests. `packages/core` has the DB drivers,
-schema v1 and migrations, the write API, the sync client and shared server
-sync module, the domain functions, and the UI's queries and commands;
-`packages/exercises` has the seed catalog. `apps/android` is the Capacitor
-shell around the same web build, with the Kotlin `RestTimer` plugin; a
-`v*` tag releases a signed APK. `apps/server` only serves the web build,
-`/api/status`, and the Android update endpoints; every push to `main` deploys
-it to <https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
-The server's auth and sync, sync in the app, the FitNotes import, and the CLI
-are not built yet.
+are done; phase 6 (server, sync) is built and waits for its rollout
+([docs/plans/phase-6.md](docs/plans/phase-6.md)). `apps/web` is a
+local-first PWA for logging workouts: the DB worker, tab ownership, sessions,
+the logging view, routines, exercises, settings, snapshots, the web rest
+timer, GitHub sign-in, and sync, with Storybook stories and Playwright tests.
+`packages/core` has the DB drivers, schema v1 and migrations, the write API,
+the sync client and run and the shared server sync module, the domain
+functions, and the UI's queries and commands; `packages/exercises` has the
+seed catalog. `apps/android` is the Capacitor shell around the same web
+build, with the Kotlin `RestTimer` plugin; a `v*` tag releases a signed APK.
+`apps/server` serves the web build, `/api/status`, the Android update
+endpoints, Better Auth, and sync, copies its database to R2, and has the
+`server` command; every push to `main` deploys it to
+<https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
+Invites, quotas, the FitNotes import, and the CLI are not built yet.
 
 ## Read first
 
@@ -44,7 +46,7 @@ are not built yet.
 Breaking these causes data loss or leaks. Don't take shortcuts here.
 
 1. **All writes to synced tables go through the `core` write API.** It stamps the HLC and writes the outbox entry in the same transaction. Never `INSERT`/`UPDATE` synced tables directly from UI or feature code.
-2. **Never hard-delete synced rows on the client.** Set `deleted = 1`. Deletes don't cascade: deleting a parent writes only the parent's tombstone, and queries hide children of deleted parents.
+2. **Never hard-delete synced rows on the client.** Set `deleted = 1`. Deletes don't cascade: deleting a parent writes only the parent's tombstone, and queries hide children of deleted parents. The one exception is discarding another account's data at sign-in (`adoptAccount`, [docs/sync.md](docs/sync.md#accounts-on-a-device)).
 3. **Ids are client-generated:** UUIDv7 for new entities. Seeds and imports (builtins, FitNotes, Health Connect) use deterministic ids *and* HLCs from their pseudo-node ([docs/sync.md](docs/sync.md#deterministic-writes)). Never use autoincrement ids for synced tables.
 4. **Merge rule is row-level LWW by HLC, applied by clients.** The server's head table uses the same comparison, but the server never interprets `data`. The HLC rules in docs/sync.md are exact, and the sync fuzz test must pass after any change to clock or merge code.
 5. **Every server query is scoped by the authenticated `user_id`** through the data-access module. No handler builds its own unscoped SQL.
@@ -99,7 +101,8 @@ the repo root.
 | `pnpm typecheck` | `tsc` in every package. |
 | `pnpm test` | Vitest across all packages, including every Storybook story as a browser test; `pnpm test <filter>` to narrow by file name, `--project storybook` for stories only. |
 | `pnpm storybook` | Storybook on http://localhost:6006: every screen with fixture data, at phone and PC widths, light and dark. |
-| `pnpm start` | Serve the last `pnpm build` of the web app with the production server on http://localhost:3000. |
+| `pnpm start` | Serve the last `pnpm build` of the web app with the production server on http://localhost:3000, with its database in `apps/server/data/app.db`. `pnpm dev` proxies `/api` to it. Sign-in needs a GitHub OAuth app ([docs/deployment.md](docs/deployment.md#github-oauth-app)). |
+| `node apps/server/src/cli.ts create-owner --email <email>` | Create the owner account in the local server database (`new-epoch` ends a restore). |
 | `pnpm e2e` | Playwright end-to-end tests against a fresh production build, served by `apps/server`. |
 | `docker build -t workout-logger . && docker run --rm -p 3000:3000 workout-logger` | Build and run the deployed image locally. |
 | `SYNC_FUZZ_RUNS=5000 pnpm test fuzz` | Longer sync fuzz run (CI runs 300). Run it after changing clock, merge, or sync code. |

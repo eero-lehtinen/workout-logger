@@ -70,7 +70,7 @@ Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
 - **Counter overflow** (> 99999): advance `wall` by 1 ms and reset the counter to 0.
 - **Persistence.** The clock state (`last_hlc`) is read and updated inside each write transaction, so it survives restarts and can never go backwards.
 - **Write guard.** A local write stamps `max(clock.now(), row.hlc⁺)`, where `x⁺` is `x` with the counter incremented. A local edit therefore always beats the version it edits, even if that version came from a node whose clock was ahead. It is computed as `clock.receive(row.hlc)`, which yields the same order. Pulls already move the clock past every received HLC; the guard matters for rows the clock never observed: deterministic writes, whose HLCs come from their source, and rows written before a clock repair.
-- **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. The app shows a clock warning and offers "repair clock". That resets `last_hlc` to the current time and re-stamps the outbox rows that were not pushed.
+- **Future clocks.** The server rejects a *single change* whose wall is more than 1 h ahead of server time; the rest of the batch is still accepted. Settings shows a clock warning and offers "repair clock" (`repairClock` in `core`). Once the device's clock is right, it pulls `last_hlc` back to `now + 1 h - 5 min`, just under the server's limit, re-stamps each queued row above that from there, and syncs. Not back to `now`: the re-stamped edit must still beat the version it replaced, which the device no longer has, and every version the server accepted had a wall at most 1 h ahead of it.
 
 ## Client side
 
@@ -87,7 +87,7 @@ Three internal tables are local only and never synced:
 
 ```
 _outbox      (table_name, id, PRIMARY KEY (table_name, id))
-_sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, last_sync_at
+_sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, last_sync_at, user_id
 _undo        (seq, tx, table_name, id, previous)   -- previous row versions, see features.md#data
 ```
 
@@ -120,7 +120,7 @@ This means:
 3. The response is `{ epoch, results }`, with a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`invalid`, `future_clock`, `conflict`, `quota`, `schema_outdated`).
 4. If no epoch is stored yet, store the response's `epoch`. A known epoch is never replaced here; the next pull compares it.
 5. Delete outbox entries that are `ok` and whose row `hlc` still equals the sent `hlc`. If the row was edited during the request, its entry stays and the new version goes in the next push.
-6. Rejected entries stay in the outbox and the UI shows the reason. A `quota` rejection stops the push loop until the next day.
+6. Rejected entries stay in the outbox and the UI shows the reason. The run's next batch skips past them. A `quota` rejection ends the push for this run.
 
 Step 4 matters for a device that pushes before it ever pulls, e.g. on its
 first sync. Without a stored epoch it couldn't notice a server restore that
@@ -150,14 +150,31 @@ not applied at all.
 
 ### When it runs
 
-- On app start and on resume.
-- 3 s after the last local write, while online.
+- On app start, on resume (the page becoming visible, or Capacitor's `resume`), and when the browser comes back online.
+- 3 s after the last local write, while signed in.
 - Every 60 s while the app is open.
-- On manual "sync now".
+- Right after signing in, and on manual "sync now".
 
-Each run pushes first, then pulls. Later, a server-sent-events "poke" with the
-latest `seq` can replace polling. Pull stays the source of truth.
+Each run pushes first, then pulls (`syncOnce` in `core`). An epoch reset
+during the run starts it over, once. Later, a server-sent-events "poke" with
+the latest `seq` can replace polling. Pull stays the source of truth.
 
+The run happens in the DB worker (`syncOverHttp`), next to the database, so
+no rows cross to the main thread. The main thread (`lib/sync.ts` in the web
+app) decides when to run and passes the credentials: nothing on the web, where
+the session cookie goes along, and the bearer token on Android. HTTP 401 means
+the session ended: the app asks to sign in again and keeps the outbox. HTTP 426
+means the Android app is below the server's minimum version. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
+
+### Accounts on a device
+
+`_sync_state.user_id` records which account the device's data belongs to. It
+stays after logout. Before a run, the app compares it with the signed-in user
+(`matchAccount`):
+
+- no account yet: bind the device (`adoptAccount(..., "keep")`); its outbox already holds every row, so all of it uploads;
+- the same account: sync;
+- another account: wait for the user's choice, asked on whatever screen is open ([accounts.md](accounts.md#without-an-account)). `merge` queues every row and clears the epoch and cursor, so the device uploads everything and bootstraps from the new account. `discard` deletes the synced rows, the outbox, and the undo history, and clears the epoch and cursor; the app re-seeds the catalog. This is the only place synced rows are removed on a device, and no tombstones are written: the rows belong to the other account, which keeps them.
 ### Referential integrity
 
 Synced tables don't enforce foreign keys. Changes can arrive child-before-parent

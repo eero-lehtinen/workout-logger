@@ -120,12 +120,14 @@ on every start; rows already at the current version are skipped.
 
 ## Server migrations
 
-Server tables (Better Auth, `change`, `head`, `server_meta`, `user_sync`,
-invites, usage, quotas) use the Kysely migrator. Better Auth's own migrations
-run through its CLI or API at the same point.
+Server tables (`change`, `head`, `server_meta`, `user_sync`, `job_run`, and
+later invites, usage, quotas) use Kysely's migrator, with the steps in
+`apps/server/src/db/migrations.ts` (`0001_sync`, `0002_job_run`, ...). Better
+Auth's tables are migrated by its `getMigrations` API right after, from the
+same configuration the server runs with.
 
-- **When:** on startup, before the server accepts requests ([deployment.md](deployment.md#build-and-release)).
-- **Order:** take the pre-migration DB copy to R2, then migrate in one transaction.
+- **When:** on startup, before the server accepts requests ([deployment.md](deployment.md#build-and-release)), and when the `server` command opens the database.
+- **Order:** take the pre-migration DB copy to R2 (only for a database that has tables), then Kysely's steps, each in its own transaction, then Better Auth's.
 - **Forward only.** To roll back: restore the pre-migration copy, run `server new-epoch`, and redeploy the previous SHA ([deployment.md](deployment.md#recovery-procedures)).
 - No expand/contract dance: there is one instance and a few seconds of downtime, and clients are offline-tolerant.
 - Server migrations never touch `data` in `change` or `head`. Domain data changes go through data fixes.

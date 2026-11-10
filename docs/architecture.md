@@ -80,10 +80,13 @@ Principles:
 | Property tests | fast-check | Shrinking finds minimal failing sequences; used by the sync fuzz test. |
 | Reactive queries | TanStack Query + table-tag invalidation | See [client runtime](#reactive-queries). |
 | Android shell | Capacitor | Reuses the web UI unchanged. |
-| Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. Node runs the TypeScript sources directly by stripping types. |
-| Auth | Better Auth (*candidate*) | TypeScript auth library with Hono and SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. |
+| Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
+| Auth | Better Auth (pinned 1.7.18), GitHub sign-in | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
-| Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely, *candidate*) | Same engine as the clients. No platform row limits. |
+| Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely) | Same engine as the clients. No platform row limits. Kysely's migrator for the server's tables. |
+| Server jobs | `croner` | In-process cron with overrun protection; the daily DB copy. |
+| R2 uploads | `aws4fetch` | SigV4 signing over `fetch` for single PUTs, instead of the much larger AWS SDK. |
+| Server bundle | esbuild | The image runs one bundled file; see [deployment.md](deployment.md#build-and-release). |
 | Server backups | Litestream to Cloudflare R2 | Continuous replication with point-in-time restore, at a different provider than the VPS. |
 | Object storage | Cloudflare R2 | Litestream replica and daily DB copies, in separate buckets. |
 | CLI | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
@@ -96,8 +99,8 @@ apps/
               Capacitor config and plugin dependencies
   android/    Gradle project of the Android app: the Capacitor shell and
               the RestTimer plugin (Kotlin)
-  server/     Hono server: serves the web build and /api/status; later
-              auth, sync, quotas, snapshot job
+  server/     Hono server: the web build, /api/status, Android updates,
+              auth, sync, DB copies to R2, the server CLI; later quotas
   cli/        `wl` command
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
@@ -113,7 +116,8 @@ db/          Driver interface, better-sqlite3 and sqlite-wasm drivers
 schema/      table types, SCHEMA_VERSION, synced column registry
 migrations/  version steps, runner, row upgrade chain
 store/       Store: write API, undo, change events, deterministic writes
-sync/        HLC, ids, protocol types, client push/pull/apply
+sync/        HLC, ids, protocol types, client push/pull/apply, the sync run
+             (syncOnce) and its HTTP transport, account binding, clock repair
 sync/server/ server push/pull/snapshot, shared with apps/server
 domain/      pure functions: e1RM, markers, prefill, next day, session end, units
 queries/     read queries for the UI, each tagged with the tables it reads
@@ -131,13 +135,29 @@ db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind
 features/    screens by area: session, exercises, routines, settings
 lib/         formatting, the rest timer and its web and Android alarms,
-             storage persistence, PWA install, and the Android-only parts:
-             snapshot files, the update check
+             storage persistence, PWA install, the account and sign-in, the
+             sync scheduler, and the Android-only parts: snapshot files, the
+             update check, the token store
 routes/      TanStack Router file routes; thin, they render feature components
 ```
 
 Entry points: `@workout-logger/core` (browser-safe), `/node` (better-sqlite3
 driver), `/wasm` (sqlite-wasm driver), `/sync-server`, `/testing`.
+
+`apps/server/src`:
+
+```
+app.ts           routes: static files, /api/status, /api/auth, /api/me,
+                 /api/native-auth, /api/sync/v1, /api/android
+auth/            Better Auth setup, the session middleware, the Android sign-in
+db/              database (pragmas) and migrations (own, then Better Auth's)
+backup/          DB copies (VACUUM INTO, check, gzip), R2, Litestream status
+sync-routes.ts   /api/sync/v1 over the shared sync module
+jobs.ts          scheduled jobs with catch-up
+status.ts        /api/status, the owner's backup view
+startup.ts       open, pre-migration copy, migrate
+main.ts, cli.ts  the server, and the `server` command (create-owner, new-epoch)
+```
 
 ## Data model (client)
 
@@ -262,7 +282,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 - **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode: a new version shows "reload to update" and is never activated automatically during a running session.
 - **APK:** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. The APK carries its own web build and registers no service worker. See [deployment.md](deployment.md#android-releases).
-- **Server:** every request sends the app version. Below `MIN_CLIENT_VERSION` the server returns 426, and the app shows "update the app". Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
+- **Server:** the Android app sends its version in `X-Client-Version` on `/api/sync/*` and `/api/me`. Below `MIN_CLIENT_VERSION` the server returns 426, and Settings shows "update the app". Local builds (`0.0.0`) pass. The web app sends no version: the server it talks to serves it, and a stale PWA gets the "reload to update" prompt. Sync additionally guards schema versions per change ([sync.md](sync.md#schema-evolution)).
 
 ## Testing
 
@@ -270,7 +290,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 | --- | --- | --- |
 | Unit (Vitest, Node) | `pnpm test` | Everything in `core`: domain functions, queries, commands, migrations, snapshots, and the sync fuzz test. Pure web helpers. |
 | Stories (Storybook + `@storybook/addon-vitest`, Chromium) | `pnpm test`, `pnpm storybook` to browse | Every screen at phone and PC widths, light and dark, with interaction checks in `play` functions and axe accessibility checks that fail the test. |
-| End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, and offline use through the service worker. Runs against the production build, served by `apps/server` with its production caching headers. |
+| End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, offline use through the service worker, and two devices syncing through the server. Runs against the production build, served by `apps/server` with its production caching headers. The sync test creates its user and session straight in the server's database and sends the token as a bearer header, so it needs no GitHub. |
 
 Screen stories don't mock data. They render the real router at a URL over
 `openMemoryDb()`: the real `core` store on an in-memory SQLite in the page,
@@ -315,7 +335,8 @@ The native app exists for the rest timer and health data. The web cannot reliabl
 
 - **Capacitor lives in `apps/web`:** `capacitor.config.ts` and the plugin packages are there, because the CLI finds native plugins through the dependencies of the package that holds the config. `android.path` points at `../android`.
 - **`pnpm android:sync`** builds the web app and runs `cap sync`: it copies `dist` into the Gradle project and writes the plugin wiring (`capacitor.settings.gradle`, `app/capacitor.build.gradle`). Those files hold pnpm store paths with version numbers, so they are generated, not committed, and Gradle needs a sync first.
-- **Plugins:** `@capacitor/app` (the installed version), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, and the app's own `RestTimer`.
+- **Plugins:** `@capacitor/app` (the installed version, deep links), `@capacitor/browser` (the GitHub sign-in in a Custom Tab), `@aparajita/capacitor-secure-storage` (the session token in Keystore-backed storage), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, and the app's own `RestTimer`.
+- **Deep link:** `MainActivity` handles `<application id>://auth`, where the sign-in returns ([accounts.md](accounts.md#login)). The scheme is the application id, so the debug build has its own.
 - **Versions:** `minSdk` 30 (Android 11), where writing to the shared Documents folder needs no storage permission; target and compile SDK 36. `versionName` is the release tag and `versionCode` is `major * 1 000 000 + minor * 1 000 + patch`.
 - **Build types:** debug builds have the id `fi.eerolehtinen.lift.debug` and the name "Workouts (debug)", so they install next to the release app with their own database. Release builds are signed in CI ([deployment.md](deployment.md#android-releases)); without the keystore they come out unsigned. A release build never falls back to the debug key: replacing an install signed with another key needs an uninstall, which deletes the database.
 - **No backups:** `allowBackup="false"`, `fullBackupContent="false"`, and data extraction rules that exclude everything from cloud backup and device-to-device transfer (Android 12+ ignores `allowBackup` for transfers). A restored database would carry another install's device id and sync state ([sync.md](sync.md#client-side)).

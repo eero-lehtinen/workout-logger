@@ -4,12 +4,11 @@ The server runs on the owner's VPS under Dokploy, at
 <https://lift.eerolehtinen.fi>. Backups go to Cloudflare R2, a different
 provider, so losing either the VPS or the bucket loses no data.
 
-**Current state (since phase 5):** the `app` container serves the static web build,
-`GET /api/status`, and the Android app's update endpoints
-([Android releases](#android-releases)). There is no database, auth, sync, Litestream, or
-scheduled job yet; phase 6 adds them to the same image, compose service, and
-CI pipeline. Sections below describe the full design and say where something
-is not built yet.
+**Current state (phase 6):** the `app` container serves the static web build,
+`GET /api/status`, the Android app's update endpoints
+([Android releases](#android-releases)), GitHub sign-in, and sync, with its
+database on the `data` volume. Litestream replicates the database to R2, and a
+daily job copies it there too. The restore rehearsal and quotas are phase 11.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
@@ -32,14 +31,14 @@ Cloudflare: DNS (*.eerolehtinen.fi, proxied), TLS, Tunnel
 
 VPS (Dokploy, Traefik)
 └── project "Workout Logger" / compose service "workout-logger"
-    ├── litestream-init  one-shot: restore app.db from R2 if missing   (phase 6)
-    ├── litestream       sidecar: streams app.db to R2 (wl-litestream) (phase 6)
+    ├── litestream-init  one-shot: restore app.db from R2 if missing
+    ├── litestream       sidecar: streams app.db to R2 (wl-litestream)
     ├── app              Node + Hono: static web build + PWA, /api/status,
-    │                    /api/android; later /api (auth, sync, admin),
-    │                    scheduled jobs
-    └── volume "data":   app.db (SQLite, WAL)                          (phase 6)
+    │                    /api/android, /api/auth, /api/sync; scheduled jobs
+    ├── volume "data":   app.db (SQLite, WAL)
+    └── volume "litestream-run": Litestream's control socket
 
-Cloudflare R2                                                          (phase 6)
+Cloudflare R2
 ├── wl-litestream/   continuous replica (Litestream token)
 └── wl-backups/      daily/, monthly/, pre-migration/ DB copies (app token)
 ```
@@ -47,19 +46,24 @@ Cloudflare R2                                                          (phase 6)
 - **TLS ends at Cloudflare.** The VPS takes no inbound HTTP: a Cloudflare Tunnel, run by the `cloudflared` app in Dokploy, carries every `*.eerolehtinen.fi` request to Traefik over plain HTTP. A wildcard DNS record and a wildcard tunnel route already exist, so a new hostname needs only a Dokploy domain, with HTTPS and certificates off. Traefik sees cloudflared as the client; the visitor's IP is in `CF-Connecting-IP`.
 - **One container serves both the API and the web app**, so they share an origin. The web uses httpOnly cookie sessions. Android uses bearer tokens (see [accounts.md](accounts.md#login)).
 - **Single instance by design.** SQLite has one writer, and the sync protocol relies on it ([sync.md](sync.md#server-side)).
-- **Containers** run as the same non-root UID. Both the app and Litestream must be able to write `app.db`, `-wal`, `-shm`, and Litestream's metadata.
-- **Server SQLite driver:** better-sqlite3 (*candidate*), used through Kysely, which Better Auth also supports.
+- **Containers** run as the same non-root UID, 1000 (`node` in the app image). Both the app and Litestream must be able to write `app.db`, `-wal`, `-shm`, and Litestream's metadata. `litestream-init` runs as root once, and hands both volumes to uid 1000 after its restore.
+- **Server SQLite driver:** better-sqlite3, used through Kysely, which Better Auth also uses. Every query runs on one connection, one at a time.
 - **Startup order:** `litestream-init` → `litestream` → `app`.
 
 ## Litestream
 
-Settings to pin and verify against the Litestream 0.5 docs at implementation time:
+Litestream 0.5.18 (`litestream/litestream:0.5.18`, the Debian image). The
+config is inline in [`deploy/compose.yaml`](../deploy/compose.yaml) as a
+compose `configs` entry; `$${VAR}` there leaves the variables for Litestream
+to expand at runtime, so the secrets never land in the file.
 
-- **App pragmas:** `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`. Follow Litestream's checkpoint guidance (it may recommend disabling auto-checkpoint in the app).
-- **Sync interval:** about 10 s, to keep R2 write operations low. The R2 free tier allows 1M Class A operations/month.
-- **Snapshot retention:** 14 days, set explicitly. The default (about 24 h) limits how far back a point-in-time restore can go.
-- **Metrics endpoint:** enabled, so that `/api/status` can report the last sync time.
-- **Init step:** `litestream restore -if-db-not-exists -if-replica-exists`. On a fresh VPS this restores automatically; on an existing one it does nothing.
+- **App pragmas:** `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`. Auto-checkpoint stays on: Litestream recommends turning it off only for very high write loads, and without it a stopped Litestream would let the WAL grow without bound.
+- **Sync interval:** 10 s, to keep R2 write operations low. The R2 free tier allows 1M Class A operations/month.
+- **Snapshots:** every 24 h, kept for 336 h (14 days; durations take no days unit). Retention is global in 0.5 (`snapshot.retention`). The default (24 h) limits how far back a point-in-time restore can go.
+- **R2 lifecycle rule on `wl-litestream`:** delete objects older than 16 days. R2 may report `DeleteObjects` as done without deleting, so Litestream's own retention can leave files behind.
+- **Freshness:** Litestream's Prometheus metrics have no "last upload" timestamp, but its control socket's `GET /list` reports `last_sync_at` per database: the last successful upload, recorded on every sync tick even when nothing changed. The socket is on the shared `litestream-run` volume; the app reads it for `/api/status` (`LITESTREAM_SOCKET`).
+- **Init step:** `litestream restore -if-db-not-exists -if-replica-exists /data/app.db`. On a fresh VPS this restores automatically; on an existing one it does nothing.
+- **Point-in-time restore:** `litestream restore -config /etc/litestream.yml -timestamp <RFC 3339, exclusive> -o <file> /data/app.db`, e.g. from a one-off container of the same image with the same environment.
 - **Never run two Litestream instances against the same replica path.** Rehearsal restores only read from it.
 
 ## Static files
@@ -89,24 +93,31 @@ one), so CI uses the API. Its key belongs to a Dokploy member user that can
 reach only this service, because Dokploy API keys can't be scoped themselves.
 
 The image is two stages on `node:24-slim`. The build stage installs the
-workspace from the lockfile, builds the web app, and `pnpm deploy`s the
-server with production dependencies only. The runtime stage holds the server
-and `web/dist`, runs as the `node` user, and has a health check on
-`/api/status`. Node runs `server/src/main.ts` directly by stripping types.
-Node doesn't strip types under `node_modules`, so once the server imports
-workspace packages (copied there by `pnpm deploy`), the server needs a bundle
-step.
+workspace from the lockfile, builds the web app, bundles the server, and
+`pnpm deploy`s the server package with production dependencies only. The
+runtime stage holds the server and `web/dist`, runs as the `node` user, and
+has a health check on `/api/status`.
+
+The server is bundled with esbuild (`apps/server/build.ts`) into
+`dist/main.js` and `dist/cli.js`: Node doesn't strip types under
+`node_modules`, where `pnpm deploy` would put the workspace packages. Every
+dependency is bundled except better-sqlite3, a native module, which is the
+server package's only production dependency; everything else is a dev
+dependency. In development, `pnpm start` runs `src/main.ts` directly.
 
 Dokploy pulls the private image with a GHCR registry entry (Settings →
 Registry) that uses a classic GitHub token with only `read:packages`.
 
-Planned for phase 6:
+Server startup, before accepting requests:
 
-1. Server startup, before accepting requests:
-   1. Take the pre-migration DB copy to R2 (see [backups.md](backups.md#layers)).
-   2. Run migrations: Better Auth tables, `change`, `head`, usage, invites. The single instance has an exclusive DB lock while migrating.
+1. If a migration is pending and the database already has tables, copy it to `pre-migration/<time>-<first migration>.db.gz` in `wl-backups` ([backups.md](backups.md#layers)). If the copy fails, startup fails and nothing is migrated.
+2. Run the server's own migrations (Kysely's migrator), then Better Auth's.
 
-   The health check has a long enough start period that a slow migration doesn't cause a restart loop.
+The health check's start period is 2 minutes, so a slow copy or migration
+doesn't cause a restart loop.
+
+A deploy fails until every required variable below is set in Dokploy: the
+compose file marks them `${VAR:?}`.
 
 Images are built in CI, not on the VPS, so that builds don't compete with the running server for CPU and RAM.
 
@@ -167,58 +178,81 @@ Set in the image:
 | `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
 
 Set as Dokploy environment variables, never committed. `deploy/compose.yaml`
-passes each one to the container by name. Only `GITHUB_RELEASES_TOKEN` exists
-so far; the rest are phase 6.
+passes each one to its container by name; the required ones are marked
+`${VAR:?}`, so a deploy without them fails instead of starting without
+backups or sign-in.
 
 | Variable | Purpose |
 | --- | --- |
-| `GITHUB_RELEASES_TOKEN` | Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
-| `PUBLIC_URL` | Base URL, used for auth and links |
-| `AUTH_SECRET` | Better Auth secret. Rotating it probably invalidates all sessions (to verify). |
-| `DATABASE_PATH` | `/data/app.db` |
-| `BACKUP_R2_*` | Endpoint, bucket, and token for `wl-backups` (app only) |
-| `LITESTREAM_R2_*` | Endpoint, bucket, and token for `wl-litestream` (Litestream only) |
-| `MIN_CLIENT_VERSION` | Older apps get HTTP 426 "update the app" |
+| `AUTH_SECRET` | Better Auth's secret, e.g. `openssl rand -base64 32`. It signs the session cookies: rotating it signs every browser out. Android tokens keep working. |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | The GitHub OAuth app ([below](#github-oauth-app)) |
+| `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
+| `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
+| `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
+| `GITHUB_RELEASES_TOKEN` | Optional. Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
+
+Set by the compose file: `PUBLIC_URL` (`https://lift.eerolehtinen.fi`, for
+auth callbacks) and `LITESTREAM_SOCKET`. The image sets `DATABASE_PATH`
+(`/data/app.db`). Without `NODE_ENV=production`, as in development, the server
+falls back to a fixed development `AUTH_SECRET`, `data/app.db`, and
+`http://localhost:<port>`.
 
 The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
 The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
 with the workflow's own `GITHUB_TOKEN`.
 
-The owner account is created once with `server create-owner --email <email>`,
-run via Dokploy's container terminal. The command refuses to run if an owner
-already exists. No env var grants the owner role, so nobody can claim it by
-signing up first.
+### GitHub OAuth app
+
+GitHub → Settings → Developer settings → OAuth Apps, owned by the owner's
+account:
+
+- Homepage URL: `https://lift.eerolehtinen.fi`
+- Authorization callback URL: `https://lift.eerolehtinen.fi/api/auth/callback/github`
+
+Its client id and a client secret go into the variables above. For local
+development, a second OAuth app with `http://localhost:5173` and
+`http://localhost:5173/api/auth/callback/github`, used with `PUBLIC_URL=http://localhost:5173`
+for `pnpm start` and `pnpm dev` (whose proxy forwards `/api`).
+
+### The `server` command
+
+`dist/cli.js` in the image, run from Dokploy's terminal of the `app`
+container (`node server/dist/cli.js <command>`), or `node apps/server/src/cli.ts`
+in the repo. It opens the same database as the server, migrating it first if
+needed.
+
+- `create-owner --email <email> [--name <name>]` creates the owner account once, with the email marked verified. The owner then signs in with the GitHub account whose email it is: the public profile email, or the primary email when the profile shows none, verified on GitHub. The command refuses to run if an owner exists. No env var grants the owner role, so nobody can claim it by signing in first.
+- `new-epoch` ends a whole-database restore ([sync.md](sync.md#server-restore-and-epoch)).
 
 ## Scheduled jobs
 
-Phase 6. These run in-process with a scheduler library (candidate: `croner`). On
-startup, each job checks its last-run time and catches up on a run missed
-during downtime.
+These run in-process with `croner`, in UTC. Each run is recorded in the
+`job_run` table. On startup, a job whose last good run is older than its
+period runs right away, which catches up on a run missed during downtime.
 
-| Job | Schedule |
-| --- | --- |
-| Daily DB copy | daily |
-| Restore rehearsal | monthly |
-| Prune old `usage` rows | daily |
+| Job | Schedule | Status |
+| --- | --- | --- |
+| Daily DB copy (`daily-db-copy`) | 03:00 | Runs when `BACKUP_R2_*` is set |
+| Restore rehearsal | monthly | Phase 11 |
+| Prune old `usage` rows | daily | Phase 11, with quotas |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code.
-
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
-- `GET /api/status`: app version and commit now. Phase 6 adds server epoch, DB size, free disk, backup freshness, and the last rehearsal result (see [backups.md](backups.md#visibility)).
-- An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or reports stale backups.
-- If Litestream can't upload, the WAL keeps growing. Free disk and Litestream lag on `/api/status` catch this early.
+- `GET /api/status`: `{ version, commit, backupsOk }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, and each layer's last success and last error ([backups.md](backups.md#visibility)).
+- An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or doesn't contain `"backupsOk":true`.
+- If Litestream can't upload, the WAL keeps growing. Free disk and the replica's age on `/api/status` catch this early.
 
 ## Recovery procedures
 
 | Situation | Procedure |
 | --- | --- |
 | Bad deploy without a migration | In GitHub Actions, re-run the `deploy` job of the last good commit's run; it uploads that commit's compose file and SHA. Without GitHub: edit the image tag in the Dokploy compose file and deploy. The next push to `main` deploys again. |
-| Bad deploy with a migration | Stop `app`. Restore the `pre-migration/<version>` copy into the volume, or restore Litestream to before the deploy. Run `server new-epoch`. Redeploy the previous SHA. |
+| Bad deploy with a migration | Stop `app`. Restore the deploy's `pre-migration/` copy (gunzip it to `/data/app.db`) into the volume, or restore Litestream to before the deploy. Run `new-epoch` with the previous SHA's image ([the server command](#the-server-command)). Redeploy the previous SHA. |
 | Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` ([backups.md](backups.md#restore-procedures)). |
-| Server DB corrupted | Stop `app`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy. Run `server new-epoch`, then start `app`. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). |
-| VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start. Run `server new-epoch`. |
+| Server DB corrupted | Stop `app`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy. Run `new-epoch`, then start `app`. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). |
+| VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start. Run `new-epoch`. |
 | Bad Android release | Delete the GitHub release (or its APK); within 5 minutes the server offers the previous release again. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
 | Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
 | R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy covers the gap. |

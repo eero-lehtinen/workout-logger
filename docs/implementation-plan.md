@@ -156,12 +156,13 @@ app's service worker in the phone's browser.
 The rest timer matrix for silent mode, DND, music, and swipe-away was not
 repeated in the app; it passed in the phase 1 spike with the same service
 and alert code ([architecture.md](architecture.md#device-test-results)).
+
 ## Phase 6: Server, sync, deployment (L)
 
 Owner-only at first; multi-user hardening is phase 11.
 
 - `apps/server`: Hono on Node, better-sqlite3 + Kysely, server migrations with the pre-migration R2 copy.
-- **Auth:** Better Auth with email + password, web cookies, the Android bearer token in secure storage, `server create-owner`.
+- **Auth:** Better Auth with GitHub sign-in only (no passwords), web cookies, the Android bearer token in secure storage, `server create-owner`.
 - **Sync:**
   - `v1` push/pull/snapshot using the shared module from phase 2;
   - head table, epoch, `server new-epoch`, schema-version guard, `MIN_CLIENT_VERSION`.
@@ -180,6 +181,13 @@ Owner-only at first; multi-user hardening is phase 11.
   - owner warning badges.
 
 **Exit:** phone and web stay in sync. You've rehearsed the "VPS lost" procedure once.
+
+Status: built and tested; the rollout and the exit checks are in
+[plans/phase-6.md](plans/phase-6.md). Sign-in is GitHub only, instead of email
+and password: the Android app signs in through a Custom Tab and a deep link
+([accounts.md](accounts.md#login)). The Playwright suite syncs two browser
+devices through the real server. The restore rehearsal job and the warning
+for old on-device snapshots moved to phase 11.
 
 ## Phase 7: History, records, calendar (M)
 
@@ -211,11 +219,12 @@ Owner-only at first; multi-user hardening is phase 11.
 
 ## Phase 11: Multi-user hardening (M)
 
-- Invites (entropy, expiry, transactional redemption), signup.
+- Invites (entropy, expiry, transactional redemption), signup. Sign-in is GitHub only so far: decide whether invited users without GitHub get another method (email + password, magic links).
 - Rate limits (per-IP before auth, tight on auth endpoints), body limits, trusted proxy configuration.
-- Quotas and their exemptions, the usage table and pruning, the owner admin page (users, usage, quotas, disable, reset links).
+- Quotas and their exemptions, the usage table and pruning, the owner admin page (users, usage, quotas, disable).
 - Account deletion with stated retention; data export.
 - Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
+- Warning dot for an on-device snapshot older than 7 days.
 - Signup screen privacy notice.
 
 **Exit:** **M2.** The first invited user onboarded.

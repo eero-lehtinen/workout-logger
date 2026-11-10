@@ -25,7 +25,7 @@ data. The layers below add history and copies outside the sync system.
    - Keys: `daily/<date>.db.gz` and, on the 1st of each month, `monthly/<date>.db.gz`.
    - Retention by R2 lifecycle rules: 30 days daily, 12 months monthly.
    - The format doesn't depend on Litestream, so it survives a Litestream bug or format change.
-   - The same job runs before every server migration (`pre-migration/<version>.db.gz`).
+   - The same copy is taken before a server migration (`pre-migration/<time>-<first migration>.db.gz`); a failed copy stops the migration.
 4. **Owner's PC copy.** A scheduled task runs `wl backup --all <staging dir>` and then `restic backup <staging dir>`.
    - `wl backup --all` uses the owner key to download each user's live `/snapshot` as SQLite, plus the latest daily DB copy.
    - restic encrypts and dedups. Its repository can live in a cloud-drive folder, because the files contain other users' health data.
@@ -76,20 +76,23 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 
 ## Visibility
 
-`GET /api/status` (owner detail; users see a summary) reports:
+`GET /api/status` (owner detail; others see only `backupsOk`) reports:
 
-- the time of the last Litestream sync
-- the age of the last daily DB copy
-- the result of the last restore rehearsal
-- free disk space
+- the time of the last Litestream upload, from its control socket
+- the time of the last good daily DB copy, and the last error
+- free disk space and the database size
+- the result of the last restore rehearsal (phase 11)
 
-Settings shows the user's own last sync time (phase 6) and, on Android, the time of the last snapshot file.
+Settings shows the user's own last sync time and unsynced changes, the owner's
+server backup layers, and on Android, the time of the last snapshot file.
 
-The home screen shows a warning badge when:
+The Settings tab shows a warning dot when:
 
 - the last sync is older than 3 days and there are unsynced local changes
-- the last on-device snapshot is older than 7 days
-- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days), or the last rehearsal failed
+- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days)
+
+Not built yet: a dot for an on-device snapshot older than 7 days, and for a
+failed rehearsal.
 
 An external dead-man check is **required**: an uptime monitor polls
 `/api/status` and alerts when it reports stale backups or doesn't respond.
