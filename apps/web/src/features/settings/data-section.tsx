@@ -12,6 +12,7 @@ import { formatDateTime } from "../../lib/format.ts";
 import { useInstall } from "../../lib/install.ts";
 import { isNative } from "../../lib/platform.ts";
 import { requestPersistence, usePersistence } from "../../lib/storage.ts";
+import { AndroidAppRow } from "./android-app-row.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
 export function DataSection() {
@@ -115,6 +116,7 @@ export function DataSection() {
         <AutoSnapshotRow />
       ) : (
         <>
+          <AndroidAppRow />
           <InstallRow />
           <StorageRow />
         </>

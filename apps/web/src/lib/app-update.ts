@@ -1,9 +1,17 @@
 import { App } from "@capacitor/app";
 import { compareVersions, validate } from "compare-versions";
+import { isNative } from "./platform.ts";
 
-/** The server the Android app talks to; the web app is served by it. */
-const SERVER_URL: string =
-  import.meta.env.VITE_SERVER_URL ?? "https://lift.eerolehtinen.fi";
+/** The Android app names the server; the web app is served by it. */
+const SERVER_URL: string = isNative
+  ? (import.meta.env.VITE_SERVER_URL ?? "https://lift.eerolehtinen.fi")
+  : "";
+
+/**
+ * The latest APK, for a link in a browser. The Android app itself uses
+ * downloadUpdate.
+ */
+export const APK_URL = `${SERVER_URL}/api/android/apk`;
 
 export interface AppUpdate {
   version: string;
@@ -30,13 +38,20 @@ export function isUpdate(installed: string, latest: string): boolean {
  * be reached.
  */
 export async function checkForUpdate(): Promise<AppUpdate | null> {
-  const installed = await appVersion();
+  const [installed, version] = await Promise.all([
+    appVersion(),
+    latestRelease(),
+  ]);
+  return version && isUpdate(installed, version) ? { version } : null;
+}
+
+/** The version of the latest released APK, or null if there is none. */
+export async function latestRelease(): Promise<string | null> {
   const res = await fetch(`${SERVER_URL}/api/android/latest`);
   // 404: no release has been published yet.
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`The server answered ${res.status}`);
-  const { version } = (await res.json()) as { version: string };
-  return isUpdate(installed, version) ? { version } : null;
+  return ((await res.json()) as { version: string }).version;
 }
 
 /**

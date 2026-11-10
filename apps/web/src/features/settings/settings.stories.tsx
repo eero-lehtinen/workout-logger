@@ -83,3 +83,38 @@ export const KeepScreenOn = pageStory({
     await waitFor(() => expect(keepOn).toBeChecked());
   },
 });
+
+const realFetch = globalThis.fetch;
+const realUserAgent = navigator.userAgent;
+
+/** In a browser on Android, when the server has a release. */
+export const AndroidAppOffered = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const link = await canvas.findByRole("link", { name: "Download" });
+      await expect(link).toHaveAttribute("href", "/api/android/apk");
+      await expect(canvas.getByText(/^Version 1\.2\.3\./)).toBeVisible();
+    },
+  }),
+  beforeEach: () => {
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      get: () => "Mozilla/5.0 (Linux; Android 16) Chrome/157.0 Mobile",
+    });
+    globalThis.fetch = fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith("/api/android/latest")
+        ? Response.json({ version: "1.2.3" })
+        : new Response(null, { status: 404 }),
+    );
+    return () => {
+      globalThis.fetch = realFetch;
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        get: () => realUserAgent,
+      });
+    };
+  },
+};

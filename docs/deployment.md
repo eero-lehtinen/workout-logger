@@ -143,7 +143,7 @@ A new version must be higher than the installed one: Android refuses to install 
 - The app never sends the browser to this site for the download. The browser may have the web app installed, and its service worker answers navigations on this origin with the app shell. The service worker also leaves `/api/*` navigations alone, so the `/apk` link works in such a browser once its service worker has updated.
 - The server caches the latest release for 5 minutes, so the public endpoints can't spend the token's rate limit.
 - `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it both endpoints answer 503, and the app shows no update prompt.
-- The first install is the same download: open `https://lift.eerolehtinen.fi/api/android/apk` in the phone's browser and allow the browser to install apps.
+- The first install is the same download: in a browser on Android, the web app's Settings show an "Android app" row with a link to `/api/android/apk` when the server has a release. The browser must be allowed to install apps.
 
 **Building locally.** Needs JDK 21 and the Android SDK (`platforms;android-36`, `build-tools;35.0.0`), with `ANDROID_HOME` set or `sdk.dir` in `apps/android/local.properties`.
 
