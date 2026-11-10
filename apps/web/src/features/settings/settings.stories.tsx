@@ -68,3 +68,18 @@ export const TimersOff = pageStory({
     await expect(canvas.getByLabelText("Rest time")).toBeVisible();
   },
 });
+
+/** The toggle shows where the browser has the Screen Wake Lock API. */
+export const KeepScreenOn = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const keepOn = await canvas.findByRole("switch", {
+      name: "Keep screen on",
+    });
+    await expect(keepOn).not.toBeChecked();
+    await userEvent.click(keepOn);
+    await waitFor(() => expect(keepOn).toBeChecked());
+  },
+});

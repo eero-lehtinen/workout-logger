@@ -1,8 +1,12 @@
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { Dumbbell, House, ListOrdered, Settings } from "lucide-react";
 import { Suspense } from "react";
+import { KeepScreenAwake } from "../features/session/keep-screen-awake.tsx";
 import { RestBar } from "../features/session/rest-bar.tsx";
 import { useRunningSession } from "../features/session/running.ts";
+import { AutoSnapshot } from "../features/settings/auto-snapshot.tsx";
+import { isNative } from "../lib/platform.ts";
+import { AppUpdatePrompt } from "./app-update-prompt.tsx";
 import { ToastLayer } from "./toasts.tsx";
 import { UpdatePrompt } from "./update-prompt.tsx";
 
@@ -38,7 +42,13 @@ export function AppShell() {
       </div>
       {!logging && <RestBar />}
       <ToastLayer />
-      <UpdatePrompt />
+      {/* The APK carries its own web build, so it has no service worker to
+          update; it is replaced as a whole. */}
+      {isNative ? <AppUpdatePrompt /> : <UpdatePrompt />}
+      <Suspense fallback={null}>
+        <KeepScreenAwake />
+        {isNative && <AutoSnapshot />}
+      </Suspense>
     </div>
   );
 }

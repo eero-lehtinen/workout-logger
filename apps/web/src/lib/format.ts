@@ -89,6 +89,16 @@ export function formatTime(at: number, tz: string): string {
   }).format(at);
 }
 
+/** `5 Jan, 14:05` in the device's zone. */
+export function formatDateTime(at: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
+}
+
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   weight_reps: "Weight and reps",
   bodyweight_reps: "Bodyweight reps, optional added weight",

@@ -1,3 +1,5 @@
+import { clsx } from "clsx";
+
 export function Section(props: { title: string; children: React.ReactNode }) {
   return (
     <section className="pt-4">
@@ -12,10 +14,19 @@ export function Section(props: { title: string; children: React.ReactNode }) {
 export function Row(props: {
   label: string;
   hint?: string;
+  /** For a control too wide to sit beside the text on a phone: it goes below. */
+  stacked?: boolean;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
+    <div
+      className={clsx(
+        "flex gap-x-4 gap-y-2 px-4 py-3",
+        props.stacked
+          ? "flex-col items-start lg:flex-row lg:items-center"
+          : "items-center",
+      )}
+    >
       <div className="min-w-0 flex-1">
         <p className="font-medium">{props.label}</p>
         {props.hint && <p className="text-sm text-ink-muted">{props.hint}</p>}

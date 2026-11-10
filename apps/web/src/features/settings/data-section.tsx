@@ -3,7 +3,14 @@ import { Button } from "../../components/button.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useDb } from "../../db/react.tsx";
+import {
+  SNAPSHOT_FOLDER,
+  useLastSnapshotAt,
+  writeDeviceSnapshot,
+} from "../../lib/device-snapshots.ts";
+import { formatDateTime } from "../../lib/format.ts";
 import { useInstall } from "../../lib/install.ts";
+import { isNative } from "../../lib/platform.ts";
 import { requestPersistence, usePersistence } from "../../lib/storage.ts";
 import { Row, Section } from "./settings-rows.tsx";
 
@@ -17,6 +24,12 @@ export function DataSection() {
     setBusy(true);
     try {
       const bytes = await db.exportSnapshot();
+      if (isNative) {
+        // A WebView can't download; the file goes next to the automatic ones.
+        const path = await writeDeviceSnapshot(bytes);
+        toasts.add({ title: "Snapshot saved", description: path });
+        return;
+      }
       const date = new Date().toISOString().slice(0, 10);
       const url = URL.createObjectURL(
         new Blob([bytes as BlobPart], { type: "application/vnd.sqlite3" }),
@@ -72,7 +85,11 @@ export function DataSection() {
     <Section title="Data">
       <Row
         label="Export snapshot"
-        hint="Downloads all your data as one file. Keep it somewhere safe."
+        hint={
+          isNative
+            ? `Saves all your data as one file in Documents/${SNAPSHOT_FOLDER}.`
+            : "Downloads all your data as one file. Keep it somewhere safe."
+        }
       >
         <Button disabled={busy} onClick={exportSnapshot}>
           Export
@@ -94,8 +111,14 @@ export function DataSection() {
           }}
         />
       </Row>
-      <InstallRow />
-      <StorageRow />
+      {isNative ? (
+        <AutoSnapshotRow />
+      ) : (
+        <>
+          <InstallRow />
+          <StorageRow />
+        </>
+      )}
       <Confirm
         open={importBytes !== null}
         onOpenChange={(open) => !open && setImportBytes(null)}
@@ -111,6 +134,18 @@ export function DataSection() {
         ]}
       />
     </Section>
+  );
+}
+
+function AutoSnapshotRow() {
+  const last = useLastSnapshotAt();
+  return (
+    <Row
+      label="Automatic snapshots"
+      hint={`Saved to Documents/${SNAPSHOT_FOLDER} after each session; the newest 10 are kept. ${
+        last === null ? "None saved yet." : `Last: ${formatDateTime(last)}.`
+      }`}
+    />
   );
 }
 

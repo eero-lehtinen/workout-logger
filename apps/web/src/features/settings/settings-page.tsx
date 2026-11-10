@@ -7,7 +7,11 @@ import { Switch } from "../../components/switch.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { formatDuration } from "../../lib/format.ts";
+import { keepAwakeSupported } from "../../lib/keep-awake.ts";
+import { isNative } from "../../lib/platform.ts";
+import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
+import { AboutSection } from "./about-section.tsx";
 import { DataSection } from "./data-section.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
@@ -85,6 +89,31 @@ export function SettingsPage() {
               />
             </Row>
           )}
+          {settings.rest_timer_enabled && (
+            <Row
+              stacked
+              label="Alert volume"
+              hint={
+                isNative
+                  ? "Relative to the phone's alarm volume."
+                  : "The sound at the end of a rest."
+              }
+            >
+              <Segmented
+                label="Alert volume"
+                value={settings.rest_alert_volume}
+                options={[
+                  { value: "low", label: "Quiet" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "Loud" },
+                ]}
+                onChange={(value) => {
+                  restTimer.previewAlert(ALERT_VOLUMES[value]);
+                  void set({ key: "rest_alert_volume", value });
+                }}
+              />
+            </Row>
+          )}
           <Row
             label="Session timer"
             hint="Shows how long the running session has lasted."
@@ -100,6 +129,17 @@ export function SettingsPage() {
         </Section>
 
         <Section title="Sessions">
+          {keepAwakeSupported && (
+            <Row label="Keep screen on" hint="While a session is running.">
+              <Switch
+                label="Keep screen on"
+                checked={settings.keep_screen_awake}
+                onChange={(value) =>
+                  void set({ key: "keep_screen_awake", value })
+                }
+              />
+            </Row>
+          )}
           <Row
             label="Idle end (minutes)"
             hint="With no new set for this long, a session ends at its last set."
@@ -133,6 +173,7 @@ export function SettingsPage() {
         </Section>
 
         <DataSection />
+        {isNative && <AboutSection />}
       </div>
     </Screen>
   );
