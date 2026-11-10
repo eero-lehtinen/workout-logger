@@ -1,0 +1,13 @@
+# The Dokploy compose service "workout-logger". CI fills in IMAGE_TAG with the
+# commit SHA and uploads this file on every deploy, so edits in the
+# Dokploy UI are overwritten. Dokploy adds the Traefik labels and
+# dokploy-network for the domain. See docs/deployment.md.
+services:
+  app:
+    image: ghcr.io/eero-lehtinen/workout-logger:${IMAGE_TAG}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
