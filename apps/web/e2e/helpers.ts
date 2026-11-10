@@ -18,7 +18,7 @@ export async function startWithExercise(
 export async function logSet(page: Page, weight: string, reps: string) {
   const next = page.getByRole("button", { name: /^Log set \d+$/ });
   const label = (await next.textContent()) ?? "";
-  await page.getByLabel("Weight", { exact: true }).fill(weight);
+  await page.getByLabel("Weight in kg", { exact: true }).fill(weight);
   await page.getByLabel("Reps", { exact: true }).fill(reps);
   await next.click();
   const n = label.replace("Log set ", "");

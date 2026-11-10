@@ -35,12 +35,15 @@ export function Stepper(props: StepperProps) {
     <div className="flex items-center gap-2">
       <label
         htmlFor={id}
-        className={clsx(
-          "shrink-0 text-ink-muted",
-          large ? "w-14 text-sm" : "w-auto min-w-24 text-[0.9375rem]",
-        )}
+        className="flex w-16 shrink-0 flex-col text-sm leading-tight text-ink-muted"
       >
         {props.label}
+        {props.unit && (
+          <span className="text-xs">
+            <span className="sr-only"> in </span>
+            {props.unit}
+          </span>
+        )}
       </label>
       <StepButton
         label={`Less ${props.label.toLowerCase()}`}
@@ -49,7 +52,7 @@ export function Stepper(props: StepperProps) {
       >
         <Minus size={large ? 22 : 18} />
       </StepButton>
-      <div className="relative min-w-0 flex-1">
+      <div className="min-w-0 flex-1">
         <input
           id={id}
           type="text"
@@ -71,14 +74,8 @@ export function Stepper(props: StepperProps) {
             large
               ? "numerals h-14 text-[1.75rem]"
               : "tabular h-11 text-lg font-semibold",
-            props.unit && "pr-9",
           )}
         />
-        {props.unit && (
-          <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-ink-muted">
-            {props.unit}
-          </span>
-        )}
       </div>
       <StepButton
         label={`More ${props.label.toLowerCase()}`}

@@ -42,7 +42,12 @@ const preview: Preview = {
   decorators: [
     (Story, context) => {
       document.documentElement.dataset.theme = context.globals.theme as string;
-      return <Story />;
+      // The app's root is isolated the same way (styles.css, #app).
+      return (
+        <div className="isolate">
+          <Story />
+        </div>
+      );
     },
   ],
 };

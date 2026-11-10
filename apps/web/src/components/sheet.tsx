@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { Button } from "./button.tsx";
 
 const backdropClass =
-  "fixed inset-0 min-h-dvh bg-scrim/45 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute";
+  "fixed inset-0 z-40 min-h-dvh bg-scrim/45 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute";
 
 /** A bottom sheet on phones, a centered panel on wide screens. */
 const popupClass =
-  "fixed inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-2xl bg-raised pb-[env(safe-area-inset-bottom)] text-ink shadow-xl outline-none transition-[translate,opacity] duration-200 ease-out data-ending-style:translate-y-8 data-ending-style:opacity-0 data-starting-style:translate-y-8 data-starting-style:opacity-0 lg:inset-x-auto lg:top-[8vh] lg:bottom-auto lg:left-1/2 lg:max-h-[84vh] lg:w-[34rem] lg:-translate-x-1/2 lg:rounded-2xl lg:pb-0";
+  "fixed inset-x-0 bottom-0 z-40 flex max-h-[92dvh] flex-col rounded-t-2xl bg-raised pb-[env(safe-area-inset-bottom)] text-ink shadow-xl outline-none transition-[translate,opacity] duration-200 ease-out data-ending-style:translate-y-8 data-ending-style:opacity-0 data-starting-style:translate-y-8 data-starting-style:opacity-0 lg:inset-x-auto lg:top-[8vh] lg:bottom-auto lg:left-1/2 lg:max-h-[84vh] lg:w-[34rem] lg:-translate-x-1/2 lg:rounded-2xl lg:pb-0 lg:data-ending-style:translate-y-2 lg:data-starting-style:translate-y-2";
 
 export function Sheet(props: {
   open: boolean;
@@ -59,7 +59,7 @@ export function Confirm(props: {
     <AlertDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={backdropClass} />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-[22rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-raised p-5 text-ink shadow-xl transition-[scale,opacity] duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-40 flex w-[22rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl bg-raised p-5 text-ink shadow-xl transition-[scale,opacity] duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
           <div className="flex flex-col gap-1.5">
             <AlertDialog.Title className="text-lg font-semibold">
               {props.title}
