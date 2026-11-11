@@ -73,7 +73,7 @@ export function AdminPage() {
                 maxAccounts={users.data.maxAccounts}
                 defaultMaxAccounts={users.data.defaultMaxAccounts}
               />
-              <div className="relative mx-2 mt-3 mb-1 lg:mx-0">
+              <div className="relative mx-2 mt-3 mb-2 lg:mx-0">
                 <Search
                   size={18}
                   className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
