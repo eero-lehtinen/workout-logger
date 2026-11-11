@@ -128,12 +128,11 @@ unsynced changes, and why sync is stuck, if it is.
 
 *(phase 11)*
 
-The owner has none. Every other account gets the defaults, unless the owner
-sets an override for it. Both the defaults and the overrides are edited on the
-[admin page](#admin-page), so changing a limit needs no deploy. The table
-gives the built-in values, which apply until the owner changes them.
+The owner has none. Every other account gets the defaults below, constants in
+the server code, unless the owner sets an override for it on the
+[admin page](#admin-page).
 
-| Quota | Built-in default | Reason |
+| Quota | Default | Reason |
 | --- | --- | --- |
 | Bytes written per day | 5 MB of `data` | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 200 KB. |
 | Stored data size | 10 MB of `data` | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). Check the ratio of database size to stored `data` on the live server before fixing the number. |
@@ -164,7 +163,7 @@ client or a misused account.
 `/admin` in the web app, linked from Settings for the owner, over
 `/api/admin/*` (403 for anyone else).
 
-- **Limits:** the account cap and the default [quotas](#quotas), with the number of accounts and the database size next to them. A field left empty uses the built-in value. Lowering the cap below the number of accounts only stops new sign-ups.
+- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
 - **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user: edit quota overrides (empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect).
 - **Delete** is the same as the user's own [account deletion](#privacy).
@@ -194,13 +193,12 @@ usage   (user_id, day, bytes_written, snapshots,
          PRIMARY KEY (user_id, day))                        -- phase 11
 quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
          snapshots_per_day?, exempt_until?)                 -- phase 11; NULL = the default
-limits  (id PK CHECK (id = 1), max_accounts?, bytes_per_day?, max_bytes?,
-         requests_per_minute?, snapshots_per_day?)          -- phase 11; one row; NULL = built-in
+limits  (id PK CHECK (id = 1), max_accounts?)              -- phase 11; one row; NULL = 100
 ```
 
-A limit for an account resolves as its `quota` override, else `limits`, else
-the built-in value. The per-minute request limiter reads it from memory, and
-the admin endpoints refresh that copy when they write.
+A quota for an account is its `quota` override, else the default from the
+code. The per-minute request limiter reads the overrides from memory, and the
+admin endpoints refresh that copy when they write.
 
 `role` and `disabled` live on the auth user record. The sync tables (`head`,
 `server_meta`, `user_sync`) are in [sync.md](sync.md#server-side).

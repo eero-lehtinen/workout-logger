@@ -21,8 +21,8 @@ on its own.
 0. **Head-only server sync.** The server keeps only `head`, `WITHOUT ROWID`, with a `seq` counter; migration `0003_sync_head_only` drops `change` ([sync.md](../sync.md#server-side)). Done, and the 5,000-run fuzz test passes. After the deploy, compare the size of the next `daily/` copy with the last one: dropping `change` frees pages but doesn't shrink `app.db` itself until a `VACUUM`, while the daily copy is made with `VACUUM INTO`.
 1. **Google sign-in.** `SIGN_IN_PROVIDERS`, the Google provider, `signIn` in `/api/status` and the buttons, the `provider` parameter of native auth, `set-email`. Sign-up stays off. After the branch deploys, switch the owner on the live server ([deployment.md](../deployment.md#google-oauth-client)).
 2. **Request limits.** Per-IP and per-user limits, body limits.
-3. **Quotas.** The tables (`usage`, `quota`, `limits`) and the lookup override → `limits` → built-in, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Run the long fuzz test.
-4. **Admin page.** Limits (the account cap and default quotas), users, usage, quota overrides, exemption windows, disable, the 700 MB database warning.
+3. **Quotas.** The tables (`usage`, `quota`, `limits`), the default quotas as code constants with per-user overrides, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Run the long fuzz test.
+4. **Admin page.** The account cap, users, usage, quota overrides, exemption windows, disable, the 700 MB database warning.
 5. **Account deletion.**
 6. **Sign-up.** The account cap from `limits`, the user-create hook, the sign-in row's notice, `/privacy`. Last, so nobody can sign up before quotas, the admin page, and deletion exist.
 7. **Onboard the first other user**, which is the exit: sign-up in their browser or the Android app, a logged session that syncs.
