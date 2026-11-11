@@ -69,9 +69,13 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     c.header("Cache-Control", "no-store");
   });
 
-  // The Android app calls with a bearer token, never with cookies.
+  // The Android app calls with a bearer token, never with cookies. Its custom
+  // headers need a preflight; without a max age Chromium keeps the answer
+  // for only 5 s, so every minute's sync would cost an extra round trip.
+  // Chromium caps it at 2 h.
   const androidCors = cors({
     origin: ANDROID_ORIGIN,
+    maxAge: 7200,
     allowMethods: ["GET", "POST"],
     allowHeaders: [
       "Authorization",

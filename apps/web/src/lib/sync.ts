@@ -76,8 +76,9 @@ let currentRun: symbol | null = null;
 
 /**
  * Starts syncing `client` while the user is signed in: now, on resume, 3 s
- * after a local write, every minute, and on "sync now". Returns a stop
- * function, for when the database closes (e.g. another tab takes it).
+ * after a local write, every minute while the page is visible, and on "sync
+ * now". Returns a stop function, for when the database closes (e.g. another
+ * tab takes it).
  */
 export function startSync(client: DbClient): () => void {
   db = client;
@@ -88,7 +89,11 @@ export function startSync(client: DbClient): () => void {
       syncSoon();
     }
   });
-  const interval = setInterval(() => void syncNow(), INTERVAL_MS);
+  // A hidden page syncs when it becomes visible again, so polling it only
+  // spends requests, e.g. for a forgotten tab.
+  const interval = setInterval(() => {
+    if (document.visibilityState === "visible") void syncNow();
+  }, INTERVAL_MS);
   const onVisible = () => {
     if (document.visibilityState === "visible") void syncNow();
   };

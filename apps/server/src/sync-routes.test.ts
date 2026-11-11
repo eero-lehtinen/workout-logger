@@ -155,6 +155,7 @@ describe("/api/sync/v1", () => {
       "https://localhost",
     );
     expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("access-control-max-age")).toBe("7200");
   });
 });
 

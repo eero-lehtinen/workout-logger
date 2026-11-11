@@ -152,7 +152,7 @@ not applied at all.
 
 - On app start, on resume (the page becoming visible, or Capacitor's `resume`), and when the browser comes back online.
 - 3 s after the last local write, while signed in and no run is in progress. A write during a run waits for the next trigger.
-- Every 60 s while the app is open.
+- Every 60 s while the app is open and visible. A hidden page or a backgrounded app syncs when it comes back.
 - Right after signing in, and on manual "sync now".
 
 Each run pushes first, then pulls (`syncOnce` in `core`). An epoch reset
