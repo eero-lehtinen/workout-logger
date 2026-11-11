@@ -151,7 +151,7 @@ not applied at all.
 ### When it runs
 
 - On app start, on resume (the page becoming visible, or Capacitor's `resume`), and when the browser comes back online.
-- 3 s after the last local write, while signed in and no run is in progress. A write during a run waits for the next trigger.
+- 3 s after the last local write, while signed in. A write during a run can't be told apart from the run's own writes, so after a run the app compares the outbox with what the server refused, and runs again 3 s later if more is queued. A run stopped by `quota` doesn't, and waits for the next poll.
 - Every 60 s while the app is open and visible. A hidden page or a backgrounded app syncs when it comes back.
 - Right after signing in, and on manual "sync now".
 

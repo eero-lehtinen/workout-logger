@@ -165,6 +165,7 @@ export async function syncNow(): Promise<void> {
     if (currentRun !== run) return;
     if (outcome.ok) {
       finished(outcome.report);
+      if (await leftUnsent(client, outcome.report)) queued = true;
     } else if (outcome.failure === "interrupted") {
       queued = true;
     } else {
@@ -191,6 +192,25 @@ export async function syncNow(): Promise<void> {
       }
     }
   }
+}
+
+/**
+ * Whether the outbox holds more than the run left behind as refused: writes
+ * made during the run, which the after-write trigger skips because sync's
+ * own writes look the same, or rows edited while their push was in flight.
+ * A quota stop leaves entries it never tried; they wait for the next poll.
+ */
+async function leftUnsent(
+  client: DbClient,
+  report: SyncReport,
+): Promise<boolean> {
+  if (report.status !== "ok" || report.rejected.quota) return false;
+  const held = Object.values(report.rejected).reduce(
+    (sum, n) => sum + (n ?? 0),
+    0,
+  );
+  const { unsynced } = await client.query("syncStatus", undefined);
+  return unsynced > held;
 }
 
 function finished(report: SyncReport) {
