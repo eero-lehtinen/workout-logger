@@ -63,7 +63,7 @@ to expand at runtime, so the secrets never land in the file.
 - **App pragmas:** `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_keys=ON`. Only Better Auth's tables declare foreign keys: deleting a user deletes their sessions and accounts. The sync tables have none. With `NORMAL` a restart of the app, the container, or a cleanly rebooted VPS loses nothing. A host power loss, kernel panic, or hard reset can roll back roughly the last 30 s of commits (Linux's default writeback delay). A push lost that way isn't re-sent, because the device already dropped it from its outbox, and the rolled-back `seq` values get reused, so devices that pulled past them skip later changes. This is accepted as rare; after such a crash, run `new-epoch` so every device re-uploads and pulls again. Auto-checkpoint stays on: Litestream recommends turning it off only for very high write loads, and without it a stopped Litestream would let the WAL grow without bound.
 - **Sync interval:** 10 s, to keep R2 write operations low. The R2 free tier allows 1M Class A operations/month.
 - **Snapshots:** every 24 h, kept for 72 h (3 days; durations take no days unit). Retention is global in 0.5 (`snapshot.retention`) and limits how far back a point-in-time restore can go. It is short on purpose: every day kept costs a copy of the database in R2 ([accounts.md](accounts.md#account-cap)), and the change log keeps every row's history anyway.
-- **R2 lifecycle rule on `wl-litestream`:** delete objects older than 5 days. If Litestream stops uploading for that long, the rule deletes the whole replica; the stale-backup alert fires after an hour. R2 may report `DeleteObjects` as done without deleting, so Litestream's own retention can leave files behind.
+- **R2 lifecycle rule on `wl-litestream`** ([R2 buckets](#r2-buckets)): delete objects older than 5 days. If Litestream stops uploading for that long, the rule deletes the whole replica; the stale-backup alert fires after an hour. R2 may report `DeleteObjects` as done without deleting, so Litestream's own retention can leave files behind.
 - **Freshness:** Litestream's Prometheus metrics have no "last upload" timestamp, but its control socket's `GET /list` reports `last_sync_at` per database: the last successful upload, recorded on every sync tick even when nothing changed. The socket is on the shared `litestream-run` volume; the app reads it for `/api/status` (`LITESTREAM_SOCKET`).
 - **Init step:** when `/data/app.db` is missing, `litestream restore -if-replica-exists /data/app.db`, and if that restored anything, an empty `/data/app.db.restored`. On a fresh VPS this restores automatically; on an existing one it does nothing. At startup the app sees the marker, starts a new epoch, and deletes the marker, so a restore never serves the old epoch. Any manual restore into the volume can create the same marker instead of running `new-epoch`.
 - **Point-in-time restore:** `litestream restore -config /etc/litestream.yml -timestamp <RFC 3339, exclusive> -o <file> /data/app.db`, e.g. from a one-off container of the same image with the same environment.
@@ -276,6 +276,29 @@ development, a second OAuth app with `http://localhost:5173` and
 `http://localhost:5173/api/auth/callback/github`, used with `PUBLIC_URL=http://localhost:5173`
 for `pnpm start` and `pnpm dev` (whose proxy forwards `/api`).
 
+### R2 buckets
+
+Two buckets in the owner's Cloudflare account, in the default (automatic)
+location and Standard storage, which is what the free tier covers:
+
+- `wl-litestream`, with an R2 API token that has Object Read & Write on that bucket only, for the `LITESTREAM_R2_*` variables.
+- `wl-backups`, with another such token on that bucket only, for the `BACKUP_R2_*` variables.
+
+Their lifecycle rules are in [`deploy/r2/`](../deploy/r2/), one file per
+bucket. CI doesn't apply them. After creating a bucket, or after changing a
+file, apply it with a Wrangler signed in to the owner's account:
+
+```
+npx wrangler r2 bucket lifecycle set wl-litestream --file deploy/r2/wl-litestream.lifecycle.json
+npx wrangler r2 bucket lifecycle set wl-backups --file deploy/r2/wl-backups.lifecycle.json
+npx wrangler r2 bucket lifecycle list wl-backups
+```
+
+`set` replaces the bucket's whole configuration. Without the rules, R2 keeps
+every copy and the free tier runs out ([accounts.md](accounts.md#account-cap)).
+The `wl-litestream` expiry must stay longer than Litestream's
+`snapshot.retention` plus a day, or restores lose the newest snapshot.
+
 ### The `server` command
 
 `dist/cli.js` in the image, run from Dokploy's terminal of the `app`
@@ -299,7 +322,9 @@ period runs right away, which catches up on a run missed during downtime.
 | Restore rehearsal | monthly | Phase 11b |
 | Prune `usage` rows older than 90 days | daily | Phase 11, with quotas |
 
-Retention of R2 objects is done with R2 lifecycle rules, not app code.
+Retention of R2 objects is done with R2 lifecycle rules, not app code
+([R2 buckets](#r2-buckets)).
+
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
@@ -322,4 +347,4 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 | Bad Android release | Delete the GitHub release; within 5 minutes the server offers the previous release again. Deleting only its APK stops all update offers instead. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
 | Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
 | Live-update signing key lost or leaked | Create a key pair (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072`, `openssl pkey -pubout`). Put the public key in `apps/web/capacitor.config.ts` and the private key in `LIVE_UPDATE_PRIVATE_KEY`, raise `MIN_NATIVE` to the next version, and release an APK. Older apps stay on their web build until they install it. A leaked key is only useful to someone who also controls the server or the connection to it. |
-| R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy (phase 10) covers the gap; until then, devices hold every account's full state. |
+| R2 lost | Data on the VPS is unaffected. Create new buckets and tokens, apply the lifecycle rules ([R2 buckets](#r2-buckets)), and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy (phase 10) covers the gap; until then, devices hold every account's full state. |

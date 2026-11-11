@@ -1,0 +1,36 @@
+{
+  "rules": [
+    {
+      "id": "abort-multipart-7d",
+      "enabled": true,
+      "conditions": { "prefix": "" },
+      "abortMultipartUploadsTransition": {
+        "condition": { "type": "Age", "maxAge": 604800 }
+      }
+    },
+    {
+      "id": "daily-7d",
+      "enabled": true,
+      "conditions": { "prefix": "daily/" },
+      "deleteObjectsTransition": {
+        "condition": { "type": "Age", "maxAge": 604800 }
+      }
+    },
+    {
+      "id": "monthly-90d",
+      "enabled": true,
+      "conditions": { "prefix": "monthly/" },
+      "deleteObjectsTransition": {
+        "condition": { "type": "Age", "maxAge": 7776000 }
+      }
+    },
+    {
+      "id": "pre-migration-14d",
+      "enabled": true,
+      "conditions": { "prefix": "pre-migration/" },
+      "deleteObjectsTransition": {
+        "condition": { "type": "Age", "maxAge": 1209600 }
+      }
+    }
+  ]
+}
