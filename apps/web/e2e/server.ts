@@ -1,7 +1,46 @@
+import { cp, mkdtemp, rm } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { serve } from "@hono/node-server";
 import { type Browser, devices, test } from "@playwright/test";
+import { createApp } from "../../server/src/app.ts";
 import { readConfig } from "../../server/src/config.ts";
 import type { ServerKysely } from "../../server/src/db/database.ts";
 import { openServer } from "../../server/src/startup.ts";
+
+/**
+ * A server of its own, on its own port and database, serving a copy of the
+ * web build that the test may change, e.g. to stage a deploy.
+ */
+export async function ownServer() {
+  const dir = await mkdtemp(join(tmpdir(), "workout-logger-e2e-"));
+  const webRoot = join(dir, "web");
+  const config = readConfig({ DATABASE_PATH: join(dir, "app.db") });
+  await cp(config.webRoot, webRoot, { recursive: true });
+  const { database, auth, limitCache } = await openServer(config);
+  const app = createApp({
+    webRoot,
+    bundleRoot: config.bundleRoot,
+    db: database.db,
+    auth,
+    limitCache,
+    databasePath: config.databasePath,
+    backupsConfigured: false,
+  });
+  const server = serve({ fetch: app.fetch, port: 0 });
+  await new Promise((resolve) => server.once("listening", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://localhost:${port}`,
+    webRoot,
+    async close() {
+      await new Promise((resolve) => server.close(resolve));
+      await database.close();
+      await rm(dir, { recursive: true, force: true });
+    },
+  };
+}
 
 /** Runs `fn` on the e2e server's database, which the running server shares. */
 export async function withServerDb<T>(

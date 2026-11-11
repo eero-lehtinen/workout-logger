@@ -45,6 +45,7 @@
     "@babel/core": "^8.1.0",
     "@capacitor/android": "8.6.0",
     "@capacitor/cli": "8.6.0",
+    "@hono/node-server": "^2.1.6",
     "@playwright/test": "^1.65.0",
     "@rolldown/plugin-babel": "^0.3.0",
     "@storybook/addon-a11y": "^10.6.6",
