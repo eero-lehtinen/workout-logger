@@ -67,7 +67,7 @@ the total, because every account's data is copied many times into R2.
 other projects on the account share; about 8 GB is left for this server.
 Once retention fills, R2 holds about 3–6× the server database: Litestream
 keeps ~4 daily snapshots and 3 days of incremental files, compressed with LZ4,
-and the daily job keeps 7 daily and 3 monthly gzipped copies
+and the daily job keeps 7 daily and 3 monthly Brotli-compressed copies
 ([backups.md](backups.md#layers)). A model with synthetic data gives 3×;
 the owner's real data compresses worse. Even at 6×, the database can grow to
 about 1.3 GB. The owner's 2.5 years of FitNotes history was a 2.8 MB

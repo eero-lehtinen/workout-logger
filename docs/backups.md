@@ -25,11 +25,12 @@ The server keeps only the newest version of each row, not their history
 copies of past states.
 
 1. **Litestream replica.** Continuous replication of `app.db` to R2, with point-in-time restore. Retention is 3 days. This is the disaster recovery for the VPS. See [deployment.md](deployment.md#litestream).
-2. **Daily DB copy.** The server runs a daily job: `VACUUM INTO` a temp file, check it with `PRAGMA integrity_check`, gzip it, and upload it to R2.
-   - Keys: `daily/<date>.db.gz` and, on the 1st of each month, `monthly/<date>.db.gz`.
+2. **Daily DB copy.** The server runs a daily job: `VACUUM INTO` a temp file, check it with `PRAGMA integrity_check`, compress it with Brotli (quality 9, about 40% smaller than gzip), and upload it to R2.
+   - Keys: `daily/<date>.db.br` and, on the 1st of each month, `monthly/<date>.db.br`.
+   - `server unpack-copy` turns a copy back into a checked database file ([deployment.md](deployment.md#the-server-command)).
    - Retention by R2 lifecycle rules, kept in `deploy/r2/` ([deployment.md](deployment.md#r2-buckets)): 7 days daily, 3 months monthly, 14 days pre-migration.
    - The format doesn't depend on Litestream, so it survives a Litestream bug or format change.
-   - The same copy is taken before a server migration (`pre-migration/<time>-<first migration>.db.gz`); a failed copy stops the migration.
+   - The same copy is taken before a server migration (`pre-migration/<time>-<first migration>.db.br`); a failed copy stops the migration.
 3. **Owner's PC copy** (phase 10). A scheduled task runs `wl backup --all <staging dir>` and then `restic backup <staging dir>`.
    - `wl backup --all` uses the owner key to download each user's live `/snapshot` as SQLite, plus the latest daily DB copy.
    - restic encrypts and dedups. Its repository can live in a cloud-drive folder, because the files contain other users' health data.

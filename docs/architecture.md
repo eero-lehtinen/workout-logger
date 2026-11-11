@@ -166,7 +166,7 @@ app.ts             routes: static files, /api/status, /api/auth, /api/me,
                    /api/native-auth, /api/sync/v1, /api/android
 auth/              Better Auth setup, the session middleware, the Android sign-in
 db/                database (pragmas) and migrations (own, then Better Auth's)
-backup/            DB copies (VACUUM INTO, check, gzip), R2, Litestream status
+backup/            DB copies (VACUUM INTO, check, Brotli), R2, Litestream status
 sync-routes.ts     /api/sync/v1 over the shared sync module
 android-release.ts /api/android: the APK release from GitHub
 android-bundle.ts  /api/android/bundle: the live-update bundle

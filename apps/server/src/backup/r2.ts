@@ -27,7 +27,7 @@ export function r2Store(config: R2Config): BackupStore {
         method: "PUT",
         // A copy on its own ArrayBuffer, which every BodyInit typing accepts.
         body: new Uint8Array(body),
-        headers: { "Content-Type": "application/gzip" },
+        headers: { "Content-Type": "application/octet-stream" },
       });
       if (!res.ok) {
         throw new Error(

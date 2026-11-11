@@ -1,11 +1,12 @@
 import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
+import { gzipSync } from "node:zlib";
 import { readEpoch } from "@workout-logger/core/sync-server";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { authOptions } from "../auth/auth.ts";
+import { unpackCopyFile } from "../cli.ts";
 import { openDatabase, syncDb } from "../db/database.ts";
 import { readJob, runJob } from "../jobs.ts";
 import {
@@ -16,7 +17,7 @@ import {
 } from "../startup.ts";
 import { DAILY_COPY_JOB } from "../status.ts";
 import { openTestApp } from "../testing.ts";
-import { dailyKeys } from "./db-copy.ts";
+import { compressCopy, dailyKeys, unpackCopy } from "./db-copy.ts";
 import type { BackupStore } from "./r2.ts";
 
 function memoryStore() {
@@ -29,8 +30,8 @@ function memoryStore() {
   return { files, store };
 }
 
-function tablesIn(gz: Uint8Array): string[] {
-  const db = new Database(Buffer.from(gunzipSync(gz)));
+function tablesIn(copy: Uint8Array): string[] {
+  const db = new Database(unpackCopy("copy.db.br", Buffer.from(copy)));
   const names = db
     .prepare("select name from sqlite_master where type = 'table'")
     .pluck()
@@ -40,7 +41,7 @@ function tablesIn(gz: Uint8Array): string[] {
 }
 
 describe("daily DB copy", () => {
-  it("uploads a gzipped, checked copy and records the run", async () => {
+  it("uploads a compressed, checked copy and records the run", async () => {
     const { db } = await openTestApp();
     const { files, store } = memoryStore();
     expect(await runJob(db, dailyCopyJob(db, store), () => 1000)).toBe(true);
@@ -72,9 +73,45 @@ describe("daily DB copy", () => {
 
   it("adds a monthly copy on the 1st", () => {
     expect(dailyKeys(new Date("2026-12-01T03:00:00Z"))).toEqual([
-      "daily/2026-12-01.db.gz",
-      "monthly/2026-12-01.db.gz",
+      "daily/2026-12-01.db.br",
+      "monthly/2026-12-01.db.br",
     ]);
+  });
+});
+
+describe("unpack-copy", () => {
+  function databaseBytes() {
+    const db = new Database(":memory:");
+    db.exec("create table t (x); insert into t values (1)");
+    const bytes = db.serialize();
+    db.close();
+    return bytes;
+  }
+
+  it("restores a Brotli copy and an older gzip one", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "wl-unpack-"));
+    const bytes = databaseBytes();
+    writeFileSync(join(dir, "copy.db.br"), await compressCopy(bytes));
+    writeFileSync(join(dir, "old.db.gz"), gzipSync(bytes));
+    for (const name of ["copy.db.br", "old.db.gz"]) {
+      const out = join(dir, `${name}.db`);
+      await unpackCopyFile(join(dir, name), out);
+      const db = new Database(out, { readonly: true });
+      expect(db.prepare("select x from t").pluck().get()).toBe(1);
+      db.close();
+    }
+  });
+
+  it("refuses to overwrite and leaves no file from a broken copy", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "wl-unpack-"));
+    const copy = join(dir, "copy.db.br");
+    writeFileSync(copy, await compressCopy(Buffer.from("not a database")));
+    const out = join(dir, "app.db");
+    await expect(unpackCopyFile(copy, out)).rejects.toThrow("integrity");
+    expect(existsSync(out)).toBe(false);
+
+    writeFileSync(out, "");
+    await expect(unpackCopyFile(copy, out)).rejects.toThrow("exists");
   });
 });
 
@@ -100,7 +137,7 @@ describe("pre-migration copy", () => {
     const { files, store } = memoryStore();
     await prepareDatabase(db, settings(db), store);
     const [key, body] = [...files][0] ?? [];
-    expect(key).toMatch(/^pre-migration\/.+0001_sync\.db\.gz$/);
+    expect(key).toMatch(/^pre-migration\/.+0001_sync\.db\.br$/);
     expect(tablesIn(body ?? new Uint8Array())).toEqual(["legacy"]);
   });
 
