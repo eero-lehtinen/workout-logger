@@ -119,7 +119,7 @@ An external dead-man check is **required**: an uptime monitor polls
 | Situation | Procedure |
 | --- | --- |
 | New or wiped device | Log in. The app bootstraps from the server snapshot. |
-| Restore a snapshot file into the app | Settings → Import snapshot. Rows are applied with the normal LWW merge, so importing never destroys newer data. "Replace everything" instead writes the snapshot rows with fresh HLCs plus tombstones for rows not in the snapshot, so it wins and syncs out. |
+| Restore a snapshot file into the app | Settings → Import snapshot. Rows are applied with the normal LWW merge, so importing never destroys newer data. "Replace everything" first saves the device's current data as a snapshot file (and replaces nothing if that fails), then writes the snapshot rows with fresh HLCs plus tombstones for rows not in the snapshot, so it wins and syncs out. Its Undo lasts as long as the toast; after that, importing the saved file with Replace goes back. |
 | Undo a bad change everywhere | Import an earlier snapshot file (an Android session snapshot or an export) with "Replace everything" on one device; it syncs out. For an older state, the owner can open a daily or monthly DB copy, export that user's `head` rows as a snapshot, and send it to them. There is no tool for that yet. |
 | VPS lost, server DB corrupted | [deployment.md](deployment.md#recovery-procedures): restore from Litestream (or the newest daily copy) and start a new epoch; a lost VPS's automatic restore starts it itself. Devices re-upload what the server is missing. |
 | Account deleted | No restore; see [accounts.md](accounts.md#privacy) for how long copies persist. |

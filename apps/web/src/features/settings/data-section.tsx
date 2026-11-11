@@ -41,6 +41,9 @@ export function DataSection() {
     if (!importBytes) return;
     setBusy(true);
     try {
+      // The toast's Undo lasts seconds; the file keeps the old data for good.
+      // No file, no replace.
+      if (mode === "replace" && !(await saveBeforeReplace())) return;
       const result = await db.importSnapshot(importBytes, mode);
       const { undoTx } = result;
       toasts.add({
@@ -52,7 +55,17 @@ export function DataSection() {
         ...(undoTx !== null && {
           actionProps: {
             children: "Undo",
-            onClick: () => void db.undo(undoTx),
+            onClick: async () => {
+              if (!(await db.undo(undoTx))) {
+                toasts.add({
+                  title: "Can't undo: something else changed since",
+                  ...(mode === "replace" && {
+                    description:
+                      "Import the snapshot saved before the replace to go back.",
+                  }),
+                });
+              }
+            },
           },
         }),
       });
@@ -65,6 +78,24 @@ export function DataSection() {
     } finally {
       setBusy(false);
       setImportBytes(null);
+    }
+  }
+
+  async function saveBeforeReplace(): Promise<boolean> {
+    try {
+      const where = await saveSnapshot(await db.exportSnapshot());
+      toasts.add({
+        title: "Saved your current data first",
+        description: where,
+      });
+      return true;
+    } catch (error) {
+      toasts.add({
+        title: "Nothing was replaced",
+        description: `Saving your current data first failed: ${error instanceof Error ? error.message : String(error)}`,
+        type: "error",
+      });
+      return false;
     }
   }
 
@@ -117,7 +148,7 @@ export function DataSection() {
         open={importBytes !== null}
         onOpenChange={(open) => !open && setImportBytes(null)}
         title="Import snapshot"
-        description="Merge keeps the newer version of anything in both. Replace makes your data match the file exactly; you can undo it right after."
+        description="Merge keeps the newer version of anything in both. Replace first saves your current data as a snapshot file, then makes your data match the imported file exactly."
         actions={[
           { label: "Merge", onClick: () => runImport("merge") },
           {
