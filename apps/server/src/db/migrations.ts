@@ -11,7 +11,7 @@ import type { ServerKysely } from "./database.ts";
 
 // Released migrations are never edited; a change is a new entry. Names sort
 // in the order they run.
-const MIGRATIONS: Record<string, Migration> = {
+const STEPS: Record<string, Migration> = {
   "0001_sync": {
     up: (db: Kysely<unknown>) =>
       serverSyncMigration.up(db as unknown as UntypedKysely),
@@ -32,6 +32,17 @@ const MIGRATIONS: Record<string, Migration> = {
       serverHeadOnlyMigration.up(db as unknown as UntypedKysely),
   },
 };
+
+// Kysely runs SQLite migrations without a transaction (its SQLite adapter
+// reports no transactional DDL, though SQLite has it). A step stopped halfway
+// would leave part of itself behind, and its rerun at the next start would
+// fail on it; in a transaction it leaves nothing and simply runs again.
+const MIGRATIONS: Record<string, Migration> = Object.fromEntries(
+  Object.entries(STEPS).map(([name, step]) => [
+    name,
+    { up: (db) => db.transaction().execute((trx) => step.up(trx)) },
+  ]),
+);
 
 function migrator(db: ServerKysely) {
   return new Migrator({

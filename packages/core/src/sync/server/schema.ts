@@ -113,14 +113,9 @@ export const serverSyncMigration = {
  * primary key isn't stored twice (docs/sync.md#server-side). The counter
  * starts at the log's last `seq`, so cursors devices already hold stay valid
  * and no new number repeats an old one.
- *
- * One transaction: Kysely runs SQLite migrations without one, and a step
- * stopped halfway would leave `head_new` behind and fail every restart.
  */
 export const serverHeadOnlyMigration = {
-  up(db: UntypedKysely): Promise<void> {
-    return db.transaction().execute(headOnly);
-  },
+  up: headOnly,
 };
 
 async function headOnly(db: UntypedKysely): Promise<void> {

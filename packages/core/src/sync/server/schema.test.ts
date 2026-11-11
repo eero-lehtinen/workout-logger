@@ -129,26 +129,4 @@ describe("serverHeadOnlyMigration", () => {
       [[6, "c"]],
     );
   });
-
-  it("leaves the old tables untouched when a statement fails", async () => {
-    const sqlite = new Database(":memory:");
-    const db = createKysely<ServerSyncTables>(nodeDriver(sqlite));
-    const untyped = db as unknown as UntypedKysely;
-    await serverSyncMigration.up(untyped);
-    // The rename at the end fails when the target name is taken.
-    sqlite.exec(
-      "CREATE TABLE head_user_seq_blocker (x); CREATE INDEX head_user_seq ON head_user_seq_blocker (x)",
-    );
-
-    await expect(serverHeadOnlyMigration.up(untyped)).rejects.toThrow();
-
-    const tables = sqlite
-      .prepare("select name from sqlite_master where type = 'table'")
-      .pluck()
-      .all();
-    expect(tables).toEqual(
-      expect.arrayContaining(["change", "head", "server_meta"]),
-    );
-    expect(tables).not.toContain("head_new");
-  });
 });

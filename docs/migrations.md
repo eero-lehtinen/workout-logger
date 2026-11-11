@@ -141,7 +141,7 @@ same configuration the server runs with.
 
 - **When:** on startup, before the server accepts requests ([deployment.md](deployment.md#build-and-release)), and when the `server` command opens the database.
 - **Order:** take the pre-migration DB copy to R2 (only for a database that has tables), then Kysely's steps, then Better Auth's.
-- **Not transactional.** Kysely runs SQLite migrations without a transaction (its SQLite adapter reports no transactional DDL), so a step that fails halfway leaves its earlier statements applied. Recover with the pre-migration copy.
+- **One transaction per step.** Kysely runs SQLite migrations without a transaction (its SQLite adapter reports no transactional DDL, though SQLite has it), so `migrations.ts` wraps every step in one. A step that fails leaves nothing behind, and the next start runs it again. Better Auth's migrations run outside these.
 - **Forward only.** To roll back: restore the pre-migration copy, run `server new-epoch`, and redeploy the previous SHA ([deployment.md](deployment.md#recovery-procedures)).
 - No expand/contract dance: there is one instance and a few seconds of downtime, and clients are offline-tolerant.
 - Server migrations never touch `data` in `head`. Domain data changes go through data fixes.
