@@ -25,7 +25,7 @@ on its own.
 4. **Admin page.** The account cap, users, usage, quota overrides, exemption windows, disable, the 700 MB database warning. Done.
 5. **Account deletion.** Done.
 6. **Sign-up.** The account cap from `limits`, the user-create hook, the sign-in row's notice, `/privacy`. Last, so nobody can sign up before quotas, the admin page, and deletion exist. Done.
-7. **Onboard the first other user**, which is the exit: sign-up in their browser or the Android app, a logged session that syncs.
+7. **Google sign-in on the live server**, which is the exit: the owner signs in with Google on the web and in the Android app, and it links to the existing account.
 
 ## Risks to check first
 

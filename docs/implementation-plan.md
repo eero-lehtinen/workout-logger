@@ -257,7 +257,7 @@ Detailed plan: [plans/multi-user.md](plans/multi-user.md).
 - Quotas and their exemptions, the usage table and pruning, usage shown to the user, the owner admin page (users, usage, quotas, disable).
 - Account deletion with stated retention. Data export already exists (Settings → Export snapshot).
 
-**Exit:** **M2.** The first other user onboarded.
+**Exit:** **M2.** Google sign-in works on the live server, on the web and in the Android app.
 
 ## Phase 11b: Backup checks (S)
 
