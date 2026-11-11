@@ -96,6 +96,10 @@ export function openDatabase(path: string): ServerDatabase {
   // Better Auth's session and account tables cascade from user; SQLite
   // ignores that without this. The sync tables declare no foreign keys.
   sqlite.pragma("foreign_keys = ON");
+  // Account deletion promises a hard delete. Without this a deleted user's
+  // rows stay readable in free pages, and Litestream copies the file with
+  // its free pages into every new snapshot until SQLite reuses them.
+  sqlite.pragma("secure_delete = ON");
   const db = createKysely<ServerTables>(nodeDriver(sqlite));
   return { db, sqlite, close: () => db.destroy() };
 }

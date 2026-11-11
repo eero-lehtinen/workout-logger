@@ -23,7 +23,7 @@ on its own.
 2. **Request limits.** Per-IP and per-user limits, body limits. Done.
 3. **Quotas.** The tables (`usage`, `quota`, `limits`), the default quotas as code constants with per-user overrides, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Done.
 4. **Admin page.** The account cap, users, usage, quota overrides, exemption windows, disable, the 700 MB database warning. Done.
-5. **Account deletion.**
+5. **Account deletion.** Done.
 6. **Sign-up.** The account cap from `limits`, the user-create hook, the sign-in row's notice, `/privacy`. Last, so nobody can sign up before quotas, the admin page, and deletion exist.
 7. **Onboard the first other user**, which is the exit: sign-up in their browser or the Android app, a logged session that syncs.
 

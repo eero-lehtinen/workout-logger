@@ -76,6 +76,11 @@ export async function exemptUser(userId: string): Promise<void> {
   await call(`/users/${encodeURIComponent(userId)}/exempt`, { method: "POST" });
 }
 
+/** The same as the user's own account deletion. */
+export async function deleteUser(userId: string): Promise<void> {
+  await call(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
 export async function setDisabled(
   userId: string,
   disabled: boolean,

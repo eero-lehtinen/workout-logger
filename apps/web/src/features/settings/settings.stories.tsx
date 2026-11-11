@@ -337,6 +337,78 @@ export const QuotaStorage = {
   },
 };
 
+const deleteRequests = fn();
+
+/**
+ * Deletion states what goes and what backups keep, and needs the email typed
+ * in. The device signs out and keeps its data.
+ */
+export const DeleteAccount = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await userEvent.click(canvas.getByRole("button", { name: "Delete" }));
+      const page = within(canvasElement.ownerDocument.body);
+      const dialog = within(
+        await page.findByRole("dialog", { name: "Delete account" }),
+      );
+      await expect(dialog.getByText("Daily copies: 7 days")).toBeVisible();
+      await expect(
+        dialog.getByRole("button", { name: "Export snapshot" }),
+      ).toBeVisible();
+      const confirm = dialog.getByRole("button", { name: "Delete account" });
+      await expect(confirm).toBeDisabled();
+      await userEvent.type(
+        dialog.getByLabelText("Type alice@example.com to confirm"),
+        "Alice@example.com",
+      );
+      await userEvent.click(confirm);
+      await waitFor(() =>
+        expect(deleteRequests).toHaveBeenCalledWith(
+          "/api/me",
+          JSON.stringify({ email: "Alice@example.com" }),
+        ),
+      );
+      await expect(
+        await canvas.findByRole("button", { name: "Sign in with Google" }),
+      ).toBeVisible();
+    },
+  }),
+  beforeEach: () => {
+    deleteRequests.mockClear();
+    const cleanup = signedIn(alice)();
+    globalThis.fetch = fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "DELETE") {
+          deleteRequests(String(input), init.body);
+          return new Response(null, { status: 204 });
+        }
+        return new Response(null, { status: 404 });
+      },
+    );
+    return () => {
+      globalThis.fetch = realFetch;
+      cleanup();
+    };
+  },
+};
+
+/** The owner's account can't be deleted; the owner gets the admin page instead. */
+export const OwnerHasNoDelete = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(canvas.getByRole("link", { name: "Open" })).toBeVisible();
+      await expect(canvas.queryByText("Delete account")).toBeNull();
+    },
+  }),
+  beforeEach: signedIn({ ...alice, role: "owner" }),
+};
+
 /** The owner sees the server's backup layers; a stale one is called out. */
 export const OwnerBackupsStale = {
   ...pageStory({

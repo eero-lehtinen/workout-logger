@@ -4,6 +4,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
+import { deleteAccount } from "./account-deletion.ts";
 import { adminRoutes } from "./admin.ts";
 import { bundleRoutes } from "./android-bundle.ts";
 import {
@@ -140,6 +141,20 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   app.get("/api/me/usage", async (c) =>
     c.json(await usageReport(options.db, c.get("user").id, now())),
   );
+  // The body repeats the account's email, as the dialog asks for it, so a
+  // stray request can't delete an account.
+  app.delete("/api/me", async (c) => {
+    const user = c.get("user");
+    if (user.role === "owner") return c.json({ error: "owner" }, 403);
+    const body = await c.req.json().catch(() => null);
+    const email = typeof body?.email === "string" ? body.email : "";
+    if (email.trim().toLowerCase() !== user.email.toLowerCase()) {
+      return c.json({ error: "email_mismatch" }, 400);
+    }
+    await deleteAccount(options.db, user.id);
+    await options.limitCache.refresh();
+    return c.body(null, 204);
+  });
   app.route("/api/sync/v1", syncRoutes(options.db, now));
   app.route("/api/admin", adminRoutes(options.db, options.limitCache, now));
 

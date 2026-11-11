@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { sql } from "kysely";
+import { deleteAccount } from "./account-deletion.ts";
 import { type AuthEnv, requireOwner } from "./auth/middleware.ts";
 import type { ServerKysely } from "./db/database.ts";
 import { DEFAULT_MAX_ACCOUNTS, type LimitCache } from "./limit-cache.ts";
@@ -220,6 +221,12 @@ export function adminRoutes(
         .execute();
       await sql`DELETE FROM session WHERE userId = ${id}`.execute(trx);
     });
+    return c.body(null, 204);
+  });
+
+  app.delete("/users/:id", async (c) => {
+    await deleteAccount(db, c.req.param("id"));
+    await limitCache.refresh();
     return c.body(null, 204);
   });
 

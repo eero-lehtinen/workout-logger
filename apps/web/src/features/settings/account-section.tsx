@@ -13,6 +13,7 @@ import {
 } from "../../lib/sign-in-providers.ts";
 import { chooseAccount, repairClock, useSyncState } from "../../lib/sync.ts";
 import { useNow } from "../../lib/use-now.ts";
+import { DeleteAccountRow } from "./delete-account.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 import { SyncRows } from "./sync-rows.tsx";
 
@@ -62,12 +63,14 @@ export function AccountSection() {
         </Row>
       )}
       {account.user.role === "owner" && <ServerBackupsRow />}
-      {account.user.role === "owner" && (
+      {account.user.role === "owner" ? (
         <Row label="Users" hint="Accounts, their usage, and quotas.">
           <Link to="/admin" className={buttonClass("secondary")}>
             Open
           </Link>
         </Row>
+      ) : (
+        !account.offline && <DeleteAccountRow user={account.user} />
       )}
     </Section>
   );

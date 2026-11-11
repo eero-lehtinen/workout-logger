@@ -6,6 +6,7 @@ import { toasts } from "../../components/toasts.tsx";
 import {
   type AdminUser,
   type AdminUsers,
+  deleteUser,
   exemptUser,
   type QuotaOverrides,
   saveOverrides,
@@ -57,6 +58,7 @@ export function UserSheet(props: {
       ) as Record<Field, string>,
   );
   const [confirmDisable, setConfirmDisable] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   function parsed(): QuotaOverrides | null {
     const result = {} as QuotaOverrides;
@@ -161,7 +163,33 @@ export function UserSheet(props: {
             </Button>
           )}
         </Row>
+        <Row
+          stacked
+          label="Delete"
+          hint="Deletes the account and all its data from the server, as the user's own deletion does. Backups keep it until they expire."
+        >
+          <Button
+            variant="danger"
+            disabled={action.isPending}
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete account
+          </Button>
+        </Row>
       </div>
+      <Confirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete ${user.name}?`}
+        description={`Everything the server holds for ${user.email} is deleted now. This can't be undone; their devices keep their own data.`}
+        actions={[
+          {
+            label: "Delete account",
+            variant: "danger",
+            onClick: () => action.mutate(() => deleteUser(user.id)),
+          },
+        ]}
+      />
       <Confirm
         open={confirmDisable}
         onOpenChange={setConfirmDisable}

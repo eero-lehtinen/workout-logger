@@ -143,6 +143,22 @@ export async function signOut(): Promise<void> {
   }
 }
 
+/**
+ * Deletes the account on the server and signs this device out. The device
+ * keeps its data, still bound to the deleted account, so a later sign-in
+ * asks to merge or discard (docs/accounts.md#privacy).
+ */
+export async function deleteAccount(email: string): Promise<void> {
+  const res = await fetch(`${SERVER_URL}/api/me`, {
+    method: "DELETE",
+    headers: { ...(await apiHeaders()), "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  await clearToken();
+  set({ status: "signed-out", expired: false });
+}
+
 // Kept in memory only: if Android kills the app while the Custom Tab is
 // open, the code can't be redeemed and the user signs in again.
 let pendingVerifier: string | null = null;

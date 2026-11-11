@@ -162,8 +162,8 @@ client or a misused account.
 size, with a warning over 700 MB.
 
 - **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups *(phase 11; sign-up is off until then)*.
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete *(phase 11)*. None of these apply to the owner's own account.
-- `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
+- `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`; `DELETE /api/admin/users/:id`.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
 - **Delete** is the same as the user's own [account deletion](#privacy).
 
@@ -173,8 +173,9 @@ size, with a warning over 700 MB.
 - There is no end-to-end encryption. It would complicate the CLI and server-side restores, and a lost key would mean lost data.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.
-- **Account deletion** *(phase 11)*: a user can delete their account in Settings. The dialog states what is deleted and the retention periods below, offers Export snapshot first, and asks for the account's email typed in.
-  - `DELETE /api/me` hard-deletes, in one transaction, the user's `head`, `user_sync`, `usage`, and `quota` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days.
+- **Account deletion**: a user can delete their account in Settings (Delete account, shown while the server can be reached). The dialog states what is deleted and the retention periods below, offers Export snapshot first, and asks for the account's email typed in.
+  - `DELETE /api/me` with `{ email }`, which must match the account's (400 otherwise), hard-deletes, in one transaction, the user's `head`, `user_sync`, `usage`, and `quota` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days. The owner's admin page deletes another account the same way (`DELETE /api/admin/users/:id`).
+  - The server database runs with `secure_delete`, so the deleted rows don't stay readable in free pages of `app.db`, which Litestream would otherwise copy into each new snapshot until SQLite reuses them ([deployment.md](deployment.md#litestream)).
   - The owner can't delete their own account.
   - The device keeps its local data and signs out. Signing in with another account later asks to merge or discard, as for any account change.
   - Copies made before the deletion persist until they expire:
