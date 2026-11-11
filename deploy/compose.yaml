@@ -100,7 +100,7 @@ configs:
         path: /run/litestream/litestream.sock
       snapshot:
         interval: 24h
-        retention: 336h
+        retention: 72h
       dbs:
         - path: /data/app.db
           replica:
