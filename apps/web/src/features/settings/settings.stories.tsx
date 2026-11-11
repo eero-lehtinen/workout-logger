@@ -98,6 +98,25 @@ export const KeepScreenOn = pageStory({
   },
 });
 
+/** The week start is a synced setting, saved on press. */
+export const WeekStart = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("button", { name: "Mon" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(canvas.getByRole("button", { name: "Sun" }));
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Sun" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+  },
+});
+
 /** Forcing a theme overrides the system one and is remembered. */
 export const ThemeChoice = pageStory({
   fixture: empty,

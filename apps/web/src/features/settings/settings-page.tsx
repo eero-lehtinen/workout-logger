@@ -174,6 +174,20 @@ export function SettingsPage() {
               onSave={(value) => set({ key: "e1rm_rep_cap", value })}
             />
           </Row>
+          <Row
+            label="Week starts on"
+            hint="The calendar's first column and where weekly counts split."
+          >
+            <Segmented
+              label="Week starts on"
+              value={settings.week_start}
+              options={[
+                { value: "monday", label: "Mon" },
+                { value: "sunday", label: "Sun" },
+              ]}
+              onChange={(value) => set({ key: "week_start", value })}
+            />
+          </Row>
         </Section>
 
         <Section title="Appearance">

@@ -179,7 +179,7 @@ A page for tracking body data and other quantities next to training data.
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a synced setting, `week_start`, with no control in Settings yet). Several sessions per day are possible. Each mark is labeled and colored by the routine day (by its index in the cycle; six colors repeat), or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. Sessions from today open editable, since an idle end may only be a long rest. |
+| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday or Sunday (a synced setting under Settings → Sessions). Several sessions per day are possible. Each mark is labeled and colored by the routine day (by its index in the cycle; six colors repeat), or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. Sessions from today open editable, since an idle end may only be a long rest. |
 | Year heatmap of training days | P2 | |
 | Sessions per week over time, with average | P1 | Over the history period (3 months, 6 months, a year, or all); a period starts no earlier than the first session, so averages aren't diluted. |
 | Days between sessions: average and distribution | P1 | Between training days: several sessions on one date count once. Gaps of 14 days or more share one bucket. |
