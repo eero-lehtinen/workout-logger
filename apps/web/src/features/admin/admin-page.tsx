@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
+import { Search } from "lucide-react";
 import { useState } from "react";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useAccount } from "../../lib/account.ts";
 import { type AdminUser, fetchUsers } from "../../lib/admin-api.ts";
 import { formatAgo, formatBytes } from "../../lib/format.ts";
+import { matchesSearch } from "../../lib/search.ts";
 import {
   DATABASE_WARNING_BYTES,
   useOwnerStatus,
@@ -28,9 +30,14 @@ export function AdminPage() {
     staleTime: 0,
   });
   const [openId, setOpenId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const status = useOwnerStatus();
   const now = useNow(60_000);
   const open = users.data?.users.find((user) => user.id === openId) ?? null;
+  const shown =
+    users.data?.users.filter((user) =>
+      matchesSearch(`${user.name} ${user.email}`, query),
+    ) ?? [];
 
   return (
     <Screen
@@ -43,7 +50,26 @@ export function AdminPage() {
               : undefined
           }
           back={{ to: "/settings", label: "Settings" }}
-        />
+        >
+          {isOwner && (
+            <div className="px-2 pb-3 lg:px-0">
+              <div className="relative">
+                <Search
+                  size={18}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name or email"
+                  aria-label="Search accounts"
+                  className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+                />
+              </div>
+            </div>
+          )}
+        </PageHeader>
       }
       scrollId="admin"
       width="narrow"
@@ -70,8 +96,9 @@ export function AdminPage() {
           <h2 className="px-4 pt-5 pb-1 text-lg font-semibold lg:px-0">
             Accounts
           </h2>
+          {shown.length === 0 && <Empty>No account matches.</Empty>}
           <ul className={listClass}>
-            {users.data.users.map((user) => (
+            {shown.map((user) => (
               <li key={user.id}>
                 <button
                   type="button"

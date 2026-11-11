@@ -158,7 +158,7 @@ client or a misused account.
 size, with a warning over 700 MB.
 
 - **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
 - `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`; `DELETE /api/admin/users/:id`.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
 - **Delete** is the same as the user's own [account deletion](#privacy).

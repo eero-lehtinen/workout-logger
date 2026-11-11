@@ -224,6 +224,32 @@ export const AccountCap = {
   beforeEach: asOwner(),
 };
 
+/** Search matches every word against name and email, in any order. */
+export const Search = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/admin",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const search = await canvas.findByRole("searchbox", {
+        name: "Search accounts",
+      });
+      await canvas.findByText("Alice Example");
+      await userEvent.type(search, "example.com bob");
+      await waitFor(() =>
+        expect(canvas.queryByText("Alice Example")).toBeNull(),
+      );
+      await expect(canvas.getByText("Bob Example")).toBeVisible();
+      await userEvent.clear(search);
+      await userEvent.type(search, "nobody");
+      await expect(
+        await canvas.findByText("No account matches."),
+      ).toBeVisible();
+    },
+  }),
+  beforeEach: asOwner(),
+};
+
 /** Disabling asks first. */
 export const Disable = {
   ...pageStory({

@@ -3,10 +3,10 @@ import { Search } from "lucide-react";
 import { Suspense, useState } from "react";
 import { Sheet } from "../../components/sheet.tsx";
 import { useDbQuery } from "../../db/react.tsx";
+import { matchesSearch } from "../../lib/search.ts";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
 import {
   inMuscleGroup,
-  matchesSearch,
   primaryMuscles,
   sharesPrimaryMuscle,
   useMuscleMap,

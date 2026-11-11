@@ -6,13 +6,9 @@ import { Button, buttonClass } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
+import { matchesSearch } from "../../lib/search.ts";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
-import {
-  inMuscleGroup,
-  matchesSearch,
-  primaryMuscles,
-  useMuscleMap,
-} from "./muscles.ts";
+import { inMuscleGroup, primaryMuscles, useMuscleMap } from "./muscles.ts";
 import { sortExercises, useExerciseSort } from "./sort.ts";
 import { ExerciseSortSelect } from "./sort-select.tsx";
 

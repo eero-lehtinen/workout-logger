@@ -18,16 +18,6 @@ export function primaryMuscles(
     .join(", ");
 }
 
-/** Every word of the query appears in the name, in any order. */
-export function matchesSearch(name: string, query: string): boolean {
-  const haystack = name.toLocaleLowerCase();
-  return query
-    .toLocaleLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((word) => haystack.includes(word));
-}
-
 /** Whether the two exercises have a primary muscle in common. */
 export function sharesPrimaryMuscle(
   a: Pick<ExerciseItem, "muscles">,
