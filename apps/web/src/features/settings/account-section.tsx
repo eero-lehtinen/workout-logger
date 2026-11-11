@@ -10,15 +10,10 @@ import {
   PROVIDER_NAMES,
   useSignInProviders,
 } from "../../lib/sign-in-providers.ts";
-import {
-  chooseAccount,
-  repairClock,
-  type SyncState,
-  syncNow,
-  useSyncState,
-} from "../../lib/sync.ts";
+import { chooseAccount, repairClock, useSyncState } from "../../lib/sync.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { Row, Section } from "./settings-rows.tsx";
+import { SyncRows } from "./sync-rows.tsx";
 
 /** Sign-in, sync status, and for the owner, the server's backups. */
 export function AccountSection() {
@@ -55,7 +50,7 @@ export function AccountSection() {
       >
         <SignOutButton />
       </Row>
-      <SyncRow sync={sync} />
+      <SyncRows sync={sync} />
       {(sync.rejected.future_clock ?? 0) > 0 && (
         <Row
           stacked
@@ -122,46 +117,6 @@ function SignOutButton() {
       />
     </>
   );
-}
-
-function SyncRow(props: { sync: SyncState }) {
-  const { unsynced, lastSyncAt } = useDbQuery("syncStatus");
-  const now = useNow(30_000);
-  const { sync } = props;
-  const last =
-    lastSyncAt === null
-      ? "Not synced yet."
-      : `Synced ${formatAgo(lastSyncAt, now)}.`;
-  const pending =
-    unsynced === 0
-      ? ""
-      : ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} not synced yet.`;
-  return (
-    <Row label="Sync" hint={`${problem(sync) ?? last}${pending}`}>
-      <Button disabled={sync.running} onClick={() => void syncNow()}>
-        {sync.running ? "Syncing…" : "Sync now"}
-      </Button>
-    </Row>
-  );
-}
-
-function problem(sync: SyncState): string | null {
-  if (sync.updateRequired) return "Update the app to keep syncing.";
-  if (sync.failure === "offline")
-    return "Offline; syncs when the server can be reached.";
-  if (sync.failure === "server")
-    return "The last sync failed; it is retried every minute.";
-  if (sync.failure === "rate_limited")
-    return "Too many requests to the server; sync tries again in a minute.";
-  if (sync.rejected.quota) return "Sync paused: the daily limit is reached.";
-  if (
-    sync.rejected.conflict ||
-    sync.rejected.invalid ||
-    sync.rejected.too_large
-  ) {
-    return "The server refused some changes. They stay on this device.";
-  }
-  return null;
 }
 
 function ServerBackupsRow() {

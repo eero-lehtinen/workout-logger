@@ -132,10 +132,10 @@ current revision are skipped.
 
 ## Server migrations
 
-Server tables (`head`, `server_meta`, `user_sync`, `job_run`, and in phase 11
-`usage` and `quota`) use Kysely's migrator, with the steps in
+Server tables (`head`, `server_meta`, `user_sync`, `job_run`, `usage`,
+`quota`, and `limits`) use Kysely's migrator, with the steps in
 `apps/server/src/db/migrations.ts` (`0001_sync`, `0002_job_run`,
-`0003_sync_head_only`, ...). Better
+`0003_sync_head_only`, `0004_quotas`, ...). Better
 Auth's tables are migrated by its `getMigrations` API right after, from the
 same configuration the server runs with.
 

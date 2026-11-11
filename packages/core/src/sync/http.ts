@@ -33,6 +33,8 @@ export type SyncFailure =
   | "account_changed"
   /** Too many requests (HTTP 429); the next run tries again. */
   | "rate_limited"
+  /** Today's snapshot downloads are used up (HTTP 429 `quota`). */
+  | "quota"
   /**
    * Another run, or an account choice, changed the sync state first. Nothing
    * was written; run again.
@@ -48,9 +50,21 @@ export type SyncOutcome =
 
 class HttpError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
-    super(message);
+  /** The `error` of a JSON body, e.g. `quota` on a 429. */
+  readonly code: string | null;
+  constructor(status: number, code: string | null) {
+    super(`The server answered ${status}${code ? ` (${code})` : ""}`);
     this.status = status;
+    this.code = code;
+  }
+}
+
+async function errorCode(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    return typeof body.error === "string" ? body.error : null;
+  } catch {
+    return null;
   }
 }
 
@@ -70,9 +84,7 @@ export function httpTransport(
       ...init,
       headers: { ...headers, ...init.headers },
     });
-    if (!res.ok) {
-      throw new HttpError(res.status, `The server answered ${res.status}`);
-    }
+    if (!res.ok) throw new HttpError(res.status, await errorCode(res));
     return (await res.json()) as T;
   }
 
@@ -117,7 +129,8 @@ export async function syncOverHttp(
         return { ok: false, failure: "update_required", message };
       }
       if (error.status === 429) {
-        return { ok: false, failure: "rate_limited", message };
+        const failure = error.code === "quota" ? "quota" : "rate_limited";
+        return { ok: false, failure, message };
       }
       return { ok: false, failure: "server", message };
     }

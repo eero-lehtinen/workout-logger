@@ -18,8 +18,10 @@ import {
   requireUser,
 } from "./auth/middleware.ts";
 import { nativeAuthRoutes } from "./auth/native-auth.ts";
-import { type ServerKysely, syncDb } from "./db/database.ts";
+import type { ServerKysely } from "./db/database.ts";
+import type { LimitCache } from "./limit-cache.ts";
 import { ipLimit, requestBodyLimit, userLimit } from "./limits.ts";
+import { usageReport } from "./quota.ts";
 import { ownerStatus, publicStatus, type StatusSource } from "./status.ts";
 import { PUSH_PATH, syncRoutes } from "./sync-routes.ts";
 
@@ -34,6 +36,7 @@ export interface AppOptions {
   releases?: ReleaseSource | undefined;
   db: ServerKysely;
   auth: Auth;
+  limitCache: LimitCache;
   databasePath: string;
   backupsConfigured: boolean;
   litestreamSocket?: string | undefined;
@@ -55,6 +58,12 @@ const cacheControl =
     await next();
     if (c.res.ok) c.header("Cache-Control", value);
   };
+
+/**
+ * Behind `requireUser` and the per-user limit. `/api/me/*` matches `/api/me`
+ * too; listing both would count each request twice.
+ */
+const USER_PATHS = ["/api/me/*", "/api/sync/*"];
 
 export function createApp(options: AppOptions): Hono<AuthEnv> {
   const { webRoot, auth } = options;
@@ -85,12 +94,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
       EXPECTED_USER_HEADER,
     ],
   });
-  for (const path of [
-    "/api/status",
-    "/api/sync/*",
-    "/api/me",
-    "/api/native-auth/*",
-  ]) {
+  for (const path of ["/api/status", "/api/native-auth/*", ...USER_PATHS]) {
     app.use(path, androidCors);
   }
 
@@ -123,14 +127,19 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   app.route("/api/native-auth", nativeAuthRoutes(auth, now));
 
-  const perUser = userLimit();
-  for (const path of ["/api/me", "/api/sync/*"]) {
+  const perUser = userLimit((userId) =>
+    options.limitCache.requestsPerMinute(userId),
+  );
+  for (const path of USER_PATHS) {
     app.use(path, requireClientVersion(options.minClientVersion));
     app.use(path, requireUser(auth));
     app.use(path, perUser);
   }
   app.get("/api/me", (c) => c.json(c.get("user")));
-  app.route("/api/sync/v1", syncRoutes(syncDb(options.db), now));
+  app.get("/api/me/usage", async (c) =>
+    c.json(await usageReport(options.db, c.get("user").id, now())),
+  );
+  app.route("/api/sync/v1", syncRoutes(options.db, now));
 
   // Before the APK routes, which answer everything under /api/android with
   // 503 when no release token is configured.

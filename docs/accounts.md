@@ -126,11 +126,9 @@ unsynced changes, and why sync is stuck, if it is.
 
 ## Quotas
 
-*(phase 11)*
-
 The owner has none. Every other account gets the defaults below, constants in
 the server code, unless the owner sets an override for it on the
-[admin page](#admin-page).
+[admin page](#admin-page) *(phase 11)*.
 
 | Quota | Default | Reason |
 | --- | --- | --- |
@@ -141,16 +139,17 @@ the server code, unless the owner sets an override for it on the
 
 Enforcement:
 
-- Both limits count bytes of `data`, not rows: what costs disk and R2 is size, and a row count would treat a setting and a long note alike.
+- Both limits count UTF-8 bytes of `data`, not rows: what costs disk and R2 is size, and a row count would treat a setting and a long note alike. MB here is 1024².
 - Only versions the server **stores** count toward bytes written: ones newer than the stored row. Duplicates from retries and versions that already lost are free.
-- The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are `sum(length(data))` of the user's `head` rows, read at the start of the push. Once either limit is reached, the remaining changes are rejected individually as `quota`. Local logging keeps working.
+- The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are `sum(length(CAST(data AS BLOB)))` of the user's `head` rows, read at the start of the push; a replaced row counts its new size, not both. Once a change doesn't fit either limit, it and the rest of the push's new versions are rejected as `quota`. Only growth counts against storage, so a user over a lowered limit can still sync changes that shrink their data. Local logging keeps working.
+- Days are UTC: the daily limits reset at 00:00 UTC (`usage.day`).
 - **Exempt from the daily limit**, never from the storage limit:
   - the first 24 h after the account is created, for the upload of data logged before sign-up;
   - the first 24 h after a server epoch change, for the re-upload;
   - until `quota.exempt_until`, which the owner sets for 24 h from the admin page, e.g. before a user imports a snapshot of years of history.
-- A snapshot over the daily limit gets 429 `quota`.
+- A snapshot over the daily limit gets 429 `quota`, and Settings says sync resumes tomorrow. The exemptions don't apply to it.
 - The request limit is counted in memory only.
-- `GET /api/me/usage` returns today's bytes written and the stored bytes with their limits. Settings shows them under Sync, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner).
+- `GET /api/me/usage` returns `{ day, bytesWritten, bytesPerDay, exemptUntil, storedBytes, maxBytes, snapshots, snapshotsPerDay }`, limits null when unlimited. Settings shows the stored and uploaded bytes under Sync ("Server storage"), refreshed after each sync run, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner). The server doesn't say which limit refused a change, so the app names the one with less room left.
 - `usage` rows older than 90 days are pruned daily.
 
 Quotas exist to protect the shared VPS and the backup buckets from a runaway
@@ -190,10 +189,10 @@ client or a misused account.
 ```
 job_run (name PK, last_run_at, last_ok_at?, last_error?)   -- scheduled jobs, see deployment.md
 usage   (user_id, day, bytes_written, snapshots,
-         PRIMARY KEY (user_id, day))                        -- phase 11
+         PRIMARY KEY (user_id, day)) WITHOUT ROWID          -- day: YYYY-MM-DD, UTC
 quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
-         snapshots_per_day?, exempt_until?)                 -- phase 11; NULL = the default
-limits  (id PK CHECK (id = 1), max_accounts?)              -- phase 11; one row; NULL = 100
+         snapshots_per_day?, exempt_until?)                 -- NULL = the default
+limits  (id PK CHECK (id = 1), max_accounts?)              -- one row; NULL = 100
 ```
 
 A quota for an account is its `quota` override, else the default from the

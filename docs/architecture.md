@@ -58,7 +58,7 @@ Principles:
 
 - **Local-first.** Every read and write goes to the on-device SQLite database. The network is used for login and sync only. The app is fully usable without an account; an account adds sync and server backups.
 - **One UI codebase.** The web build is the product. Android is the same build inside a Capacitor shell, plus a few native plugins.
-- **Server stores data, not domain logic.** The server handles accounts, quotas (phase 11), and the newest version of each user's rows as opaque JSON. It never interprets workout data, so app schema changes never need server migrations.
+- **Server stores data, not domain logic.** The server handles accounts, quotas, and the newest version of each user's rows as opaque JSON. It never interprets workout data, so app schema changes never need server migrations.
 - **Small data.** Years of training for one user are on the order of 10^4-10^5 sets. Analytics run on-device with plain SQL. No server-side aggregation.
 - **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few users the owner knows", not the public internet. See [accounts.md](accounts.md).
 
@@ -111,7 +111,7 @@ apps/
   android/    Gradle project of the Android app: the Capacitor shell and
               the RestTimer plugin (Kotlin)
   server/     Hono server: the web build, /api/status, Android updates,
-              auth, sync, DB copies to R2, the server CLI; quotas in phase 11
+              auth, sync, quotas, DB copies to R2, the server CLI
   cli/        `wl` command (phase 10, not built yet)
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,

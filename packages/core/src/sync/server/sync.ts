@@ -16,7 +16,7 @@ import type { HeadTable, ServerSyncTables } from "./schema.ts";
 // id and every query filters by it.
 
 export type ServerDb = Kysely<ServerSyncTables>;
-type ServerTrx = Transaction<ServerSyncTables>;
+export type ServerTrx = Transaction<ServerSyncTables>;
 
 export { FUTURE_CLOCK_LIMIT_MS };
 export const MAX_PULL_LIMIT = 1000;
@@ -24,22 +24,57 @@ export const MAX_PULL_LIMIT = 1000;
 const TABLE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 const ID_PATTERN = /^[0-9A-Za-z_.:-]{1,128}$/;
 
+/** Room left for one push, in UTF-8 bytes of `data`. */
+export interface QuotaAllowance {
+  /** Size of the versions it may store; infinite without a daily limit. */
+  written: number;
+  /**
+   * How much the user's stored `data` may grow. A replaced row counts its
+   * new size less its old one.
+   */
+  stored: number;
+}
+
+/**
+ * The server's quota for one user, read before the first change and recorded
+ * after the last, inside the push transaction, so two devices of one user
+ * can't overrun it together (docs/accounts.md#quotas).
+ */
+export interface PushQuota {
+  allowance(trx: ServerTrx): Promise<QuotaAllowance>;
+  /** Called once with the bytes the push stored, if any. */
+  record(trx: ServerTrx, written: number): Promise<void>;
+}
+
 export interface PushOptions {
   /** Server time, epoch ms. */
   now: number;
-  /**
-   * Newer versions this push may store. Duplicates and older versions don't
-   * count. Once used up, the remaining newer versions are rejected as `quota`.
-   */
-  quotaRemaining?: number;
+  /** Without one there is no limit. */
+  quota?: PushQuota;
 }
 
 interface PushState {
   maxV: number;
   inserted: number;
-  quotaRemaining: number;
+  allowance: QuotaAllowance;
+  written: number;
+  grown: number;
+  /** Once a version doesn't fit, the rest of the push is refused too. */
+  quotaReached: boolean;
   /** The last `seq` handed out, read from `server_meta`. */
   seq: number;
+}
+
+const UNLIMITED: QuotaAllowance = {
+  written: Number.POSITIVE_INFINITY,
+  stored: Number.POSITIVE_INFINITY,
+};
+
+const utf8 = new TextEncoder();
+
+/** What a quota counts: the UTF-8 size of a stored `data` string. */
+export function dataBytes(data: string): number {
+  return utf8.encode(data).length;
 }
 
 /** Stores a batch of changes in one transaction. Results are in request order. */
@@ -59,7 +94,10 @@ export async function push(
     const state: PushState = {
       maxV: userSync?.max_v ?? 0,
       inserted: 0,
-      quotaRemaining: options.quotaRemaining ?? Number.POSITIVE_INFINITY,
+      allowance: (await options.quota?.allowance(trx)) ?? UNLIMITED,
+      written: 0,
+      grown: 0,
+      quotaReached: false,
       seq: Number(lastSeq),
     };
     const results: PushResult[] = [];
@@ -91,6 +129,7 @@ export async function push(
         .where("key", "=", "seq")
         .execute();
     }
+    if (state.written > 0) await options.quota?.record(trx, state.written);
     return { epoch: await readEpoch(trx), results, inserted: state.inserted };
   });
 }
@@ -128,7 +167,19 @@ async function pushOne(
   if (head && change.hlc < head.hlc) return { status: "ok" };
   // An older app would reset columns it doesn't know about.
   if (change.v < state.maxV) return reject("schema_outdated");
-  if (state.inserted >= state.quotaRemaining) return reject("quota");
+  const size = dataBytes(data);
+  const growth = size - (head ? dataBytes(head.data) : 0);
+  if (
+    state.quotaReached ||
+    state.written + size > state.allowance.written ||
+    // Only growth counts: a user over a lowered limit can still shrink.
+    (growth > 0 && state.grown + growth > state.allowance.stored)
+  ) {
+    state.quotaReached = true;
+    return reject("quota");
+  }
+  state.written += size;
+  state.grown += growth;
 
   const row = {
     hlc: change.hlc,
@@ -291,12 +342,35 @@ async function readMeta(
  * Ends a whole-database restore. Clients that see the new epoch re-upload
  * everything and pull from the start. See docs/sync.md#server-restore-and-epoch.
  */
-export async function newEpoch(db: ServerDb): Promise<string> {
+export async function newEpoch(
+  db: ServerDb,
+  now: number = Date.now(),
+): Promise<string> {
   const value = crypto.randomUUID();
-  await db
-    .updateTable("server_meta")
-    .set({ value })
-    .where("key", "=", "epoch")
-    .execute();
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable("server_meta")
+      .set({ value })
+      .where("key", "=", "epoch")
+      .execute();
+    // The re-upload that follows is exempt from the daily write quota.
+    await trx
+      .insertInto("server_meta")
+      .values({ key: "epoch_started_at", value: String(now) })
+      .onConflict((oc) => oc.column("key").doUpdateSet({ value: String(now) }))
+      .execute();
+  });
   return value;
+}
+
+/** When the current epoch began, if it began with `newEpoch`. */
+export async function readEpochStartedAt(
+  db: ServerDb | ServerTrx,
+): Promise<number | null> {
+  const row = await db
+    .selectFrom("server_meta")
+    .select("value")
+    .where("key", "=", "epoch_started_at")
+    .executeTakeFirst();
+  return row ? Number(row.value) : null;
 }

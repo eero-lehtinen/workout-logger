@@ -17,9 +17,50 @@ export interface JobRunTable {
   last_error: string | null;
 }
 
+/** What a user stored on one UTC day (docs/accounts.md#quotas). */
+export interface UsageTable {
+  user_id: string;
+  /** `YYYY-MM-DD`, UTC. */
+  day: string;
+  /** UTF-8 bytes of the `data` of versions stored. */
+  bytes_written: number;
+  snapshots: number;
+}
+
+/** The owner's overrides of a user's quotas. NULL is the default. */
+export interface QuotaTable {
+  user_id: string;
+  bytes_per_day: number | null;
+  max_bytes: number | null;
+  requests_per_minute: number | null;
+  snapshots_per_day: number | null;
+  /** Epoch ms until which the daily write limit is lifted. */
+  exempt_until: number | null;
+}
+
+/** Server-wide limits the owner sets; one row, id 1. NULL is the built-in value. */
+export interface LimitsTable {
+  id: number;
+  max_accounts: number | null;
+}
+
+/** The columns of Better Auth's `user` table that the server reads itself. */
+export interface UserTable {
+  id: string;
+  name: string;
+  email: string;
+  role: string | null;
+  /** As Better Auth writes it on SQLite: ISO text, or epoch ms. */
+  createdAt: string | number;
+}
+
 /** Server tables besides Better Auth's, which it types itself. */
 export interface ServerTables extends ServerSyncTables {
   job_run: JobRunTable;
+  usage: UsageTable;
+  quota: QuotaTable;
+  limits: LimitsTable;
+  user: UserTable;
 }
 
 export type ServerKysely = Kysely<ServerTables>;

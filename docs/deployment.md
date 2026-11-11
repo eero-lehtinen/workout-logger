@@ -9,8 +9,8 @@ provider, so losing either the VPS or the bucket loses no data.
 ([Android releases](#android-releases), [live updates](#live-updates)),
 sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. Sign-up and quotas are phase 11
-([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
+daily job copies it there too. Sign-up, the admin page, and account deletion
+are phase 11 ([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
@@ -321,7 +321,7 @@ period runs right away, which catches up on a run missed during downtime.
 | --- | --- | --- |
 | Daily DB copy (`daily-db-copy`) | 03:00 | Runs when `BACKUP_R2_*` is set |
 | Restore rehearsal | monthly | Phase 11b |
-| Prune `usage` rows older than 90 days | daily | Phase 11, with quotas |
+| Prune `usage` rows older than 90 days (`prune-usage`) | 03:30 | Always |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code
 ([R2 buckets](#r2-buckets)).

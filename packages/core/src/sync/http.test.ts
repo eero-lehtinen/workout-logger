@@ -8,14 +8,19 @@ const T0 = 1_700_000_000_000;
 
 describe("syncOverHttp", () => {
   it.each([
-    [401, "unauthorized"],
-    [409, "account_changed"],
-    [426, "update_required"],
-    [429, "rate_limited"],
-    [500, "server"],
-  ])("reports HTTP %i as %s", async (status, failure) => {
+    [401, null, "unauthorized"],
+    [409, null, "account_changed"],
+    [426, null, "update_required"],
+    [429, "rate_limited", "rate_limited"],
+    [429, "quota", "quota"],
+    [500, null, "server"],
+  ])("reports HTTP %i %s as %s", async (status, code, failure) => {
     const store = await openTestStore({ now: () => T0 });
-    const fetch = vi.fn(async () => new Response(null, { status }));
+    const fetch = vi.fn(async () =>
+      code
+        ? Response.json({ error: code }, { status })
+        : new Response(null, { status }),
+    );
     const outcome = await syncOverHttp(
       store,
       { baseUrl: "", token: null, clientVersion: null, userId: "u1" },

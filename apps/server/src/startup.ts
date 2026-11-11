@@ -7,6 +7,8 @@ import type { ServerConfig } from "./config.ts";
 import { openDatabase, type ServerKysely, syncDb } from "./db/database.ts";
 import { migrateServer, pendingMigrations } from "./db/migrations.ts";
 import type { Job } from "./jobs.ts";
+import { LimitCache } from "./limit-cache.ts";
+import { PRUNE_USAGE_JOB, pruneUsage } from "./quota.ts";
 import { DAILY_COPY_JOB } from "./status.ts";
 
 /** The database, auth, and backup store, migrated and ready to serve. */
@@ -21,11 +23,12 @@ export async function openServer(config: ServerConfig) {
   const backups = config.backups ? r2Store(config.backups) : undefined;
   await prepareDatabase(database.db, toAuthOptions(authSettings), backups);
   await finishRestore(database.db, config.databasePath);
+  const limitCache = await LimitCache.load(database.db);
   const auth = createAuth(authSettings);
   // Better Auth initializes lazily and checks the schema; finish that before
   // a caller such as the CLI closes the database.
   await auth.$context;
-  return { database, auth, backups };
+  return { database, auth, backups, limitCache };
 }
 
 /**
@@ -72,6 +75,15 @@ export async function finishRestore(
   if (!existsSync(marker)) return;
   console.log(`Restored database: new epoch ${await newEpoch(syncDb(db))}`);
   rmSync(marker);
+}
+
+export function pruneUsageJob(db: ServerKysely): Job {
+  return {
+    name: PRUNE_USAGE_JOB,
+    schedule: "30 3 * * *",
+    maxAgeMs: 24 * 60 * 60 * 1000,
+    run: () => pruneUsage(db, Date.now()),
+  };
 }
 
 export function dailyCopyJob(db: ServerKysely, backups: BackupStore): Job {

@@ -3,11 +3,15 @@ import { openTestServer } from "../../testing.ts";
 import { formatHlc } from "../hlc.ts";
 import type { Change } from "../protocol.ts";
 import {
+  canonicalJson,
+  dataBytes,
   FUTURE_CLOCK_LIMIT_MS,
   newEpoch,
+  type PushQuota,
   pull,
   push,
   readEpoch,
+  readEpochStartedAt,
   snapshot,
 } from "./sync.ts";
 
@@ -31,15 +35,31 @@ async function pushAs(
   db: Awaited<ReturnType<typeof openTestServer>>["db"],
   user: string,
   changes: Change[],
-  quotaRemaining?: number,
+  quota?: PushQuota,
 ) {
   return push(
     db,
     user,
     { device_id: "dev", client_version: "1.0.0", changes },
-    quotaRemaining === undefined ? { now: NOW } : { now: NOW, quotaRemaining },
+    quota ? { now: NOW, quota } : { now: NOW },
   );
 }
+
+/** A quota with a fixed allowance that remembers what was recorded. */
+function fixedQuota(written: number, stored = Number.POSITIVE_INFINITY) {
+  const recorded: number[] = [];
+  const quota: PushQuota = {
+    allowance: async () => ({ written, stored }),
+    record: async (_, bytes) => {
+      recorded.push(bytes);
+    },
+  };
+  return { quota, recorded };
+}
+
+/** The bytes a change of `change()` costs. */
+const size = (overrides: Partial<Change> = {}) =>
+  dataBytes(canonicalJson(change(overrides).data));
 
 async function lastSeq(db: Awaited<ReturnType<typeof openTestServer>>["db"]) {
   const row = await db
@@ -87,7 +107,7 @@ describe("push", () => {
       db,
       "u1",
       [change({ hlc: hlc(NOW + 1), data: { value_json: '"lb"' } })],
-      0,
+      fixedQuota(0, 0).quota,
     );
     expect(older).toMatchObject({ results: [{ status: "ok" }], inserted: 0 });
     expect(
@@ -200,14 +220,15 @@ describe("push", () => {
     expect(other.results).toEqual([{ status: "ok" }]);
   });
 
-  it("stops inserting at the quota but still acknowledges duplicates", async () => {
+  it("stops storing at the daily bytes but still acknowledges duplicates", async () => {
     const { db } = await openTestServer();
     await pushAs(db, "u1", [change({ id: "a" })]);
+    const { quota, recorded } = fixedQuota(size() + 1);
     const result = await pushAs(
       db,
       "u1",
       [change({ id: "b" }), change({ id: "c" }), change({ id: "a" })],
-      1,
+      quota,
     );
     expect(result).toMatchObject({
       results: [
@@ -217,6 +238,95 @@ describe("push", () => {
       ],
       inserted: 1,
     });
+    expect(recorded).toEqual([size()]);
+  });
+
+  it("refuses the rest of a push once one version doesn't fit", async () => {
+    const { db } = await openTestServer();
+    const big = { data: { value_json: "x".repeat(100) } };
+    const result = await pushAs(
+      db,
+      "u1",
+      [change({ id: "a", ...big }), change({ id: "b" })],
+      fixedQuota(size() * 2).quota,
+    );
+    expect(result.results).toEqual([
+      { status: "rejected", reason: "quota" },
+      { status: "rejected", reason: "quota" },
+    ]);
+  });
+
+  it("counts a replaced row's new size against storage, not both versions", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ data: { value_json: "x".repeat(50) } })]);
+    // The same size again grows nothing.
+    const same = await pushAs(
+      db,
+      "u1",
+      [change({ hlc: hlc(NOW + 1), data: { value_json: "y".repeat(50) } })],
+      fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
+    );
+    expect(same.results).toEqual([{ status: "ok" }]);
+    // A shrink makes room for the next row of the same push.
+    const shrink = await pushAs(
+      db,
+      "u1",
+      [
+        change({ hlc: hlc(NOW + 2), data: { value_json: "" } }),
+        // 17 bytes of JSON around the value: 50 in all, what the shrink freed.
+        change({ id: "other", data: { value_json: "z".repeat(33) } }),
+      ],
+      fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
+    );
+    expect(shrink.results).toEqual([{ status: "ok" }, { status: "ok" }]);
+    const grow = await pushAs(
+      db,
+      "u1",
+      [
+        change({
+          id: "other",
+          hlc: hlc(NOW + 3),
+          data: { value_json: "z".repeat(34) },
+        }),
+      ],
+      fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
+    );
+    expect(grow.results).toEqual([{ status: "rejected", reason: "quota" }]);
+  });
+
+  it("lets a user over a lowered storage limit shrink, not grow", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ data: { value_json: "x".repeat(50) } })]);
+    const over = fixedQuota(Number.POSITIVE_INFINITY, -40).quota;
+    const results = await pushAs(
+      db,
+      "u1",
+      [
+        change({ hlc: hlc(NOW + 1), data: { value_json: "x".repeat(20) } }),
+        change({ id: "new", data: { value_json: "" } }),
+      ],
+      over,
+    );
+    expect(results.results).toEqual([
+      { status: "ok" },
+      { status: "rejected", reason: "quota" },
+    ]);
+  });
+
+  it("counts UTF-8 bytes", () => {
+    expect(dataBytes('{"n":"ä"}')).toBe(10);
+  });
+});
+
+describe("newEpoch", () => {
+  it("records when the epoch started", async () => {
+    const { db } = await openTestServer();
+    expect(await readEpochStartedAt(db)).toBeNull();
+    const epoch = await newEpoch(db, NOW);
+    expect(await readEpoch(db)).toBe(epoch);
+    expect(await readEpochStartedAt(db)).toBe(NOW);
+    await newEpoch(db, NOW + 1);
+    expect(await readEpochStartedAt(db)).toBe(NOW + 1);
   });
 });
 

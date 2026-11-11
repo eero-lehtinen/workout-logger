@@ -5,6 +5,7 @@ import { watchInstall } from "../../lib/install.ts";
 import { setOwnerStatusForStory } from "../../lib/server-status.ts";
 import { setSignInProvidersForStory } from "../../lib/sign-in-providers.ts";
 import { type SyncState, setSyncStateForStory } from "../../lib/sync.ts";
+import { setUsageForStory, type Usage } from "../../lib/usage.ts";
 import { empty, inPounds, timersOff } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
@@ -264,6 +265,76 @@ export const ClockAhead = {
     },
   }),
   beforeEach: signedIn(alice, { rejected: { future_clock: 3 } }),
+};
+
+const usage: Usage = {
+  day: "2026-11-11",
+  bytesWritten: 180 * 1024,
+  bytesPerDay: 5 * 1024 * 1024,
+  exemptUntil: null,
+  storedBytes: 2.4 * 1024 * 1024,
+  maxBytes: 10 * 1024 * 1024,
+  snapshots: 1,
+  snapshotsPerDay: 10,
+};
+
+/** Signed in with the server's usage and limits under Sync. */
+export const ServerUsage = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(
+        canvas.getByText(
+          "2.4 MB of 10 MB stored. Uploaded today: 180 kB of 5 MB.",
+        ),
+      ).toBeVisible();
+    },
+  }),
+  beforeEach: () => {
+    const cleanup = signedIn(alice)();
+    setUsageForStory(usage);
+    return cleanup;
+  },
+};
+
+/** The daily upload limit refused changes; sync resumes tomorrow. */
+export const QuotaDaily = {
+  ...pageStory({
+    fixture: inPounds,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(
+        canvas.getByText(/^Sync paused: today's upload limit is reached\./),
+      ).toBeVisible();
+    },
+  }),
+  beforeEach: () => {
+    const cleanup = signedIn(alice, { rejected: { quota: 12 } })();
+    setUsageForStory({ ...usage, bytesWritten: usage.bytesPerDay ?? 0 });
+    return cleanup;
+  },
+};
+
+/** Storage is the limit with less room: only the owner can raise it. */
+export const QuotaStorage = {
+  ...pageStory({
+    fixture: inPounds,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(
+        canvas.getByText(/^Sync paused: your server storage is full\./),
+      ).toBeVisible();
+    },
+  }),
+  beforeEach: () => {
+    const cleanup = signedIn(alice, { rejected: { quota: 3 } })();
+    setUsageForStory({ ...usage, storedBytes: (usage.maxBytes ?? 0) - 100 });
+    return cleanup;
+  },
 };
 
 /** The owner sees the server's backup layers; a stale one is called out. */

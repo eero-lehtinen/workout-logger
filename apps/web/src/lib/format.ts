@@ -116,6 +116,25 @@ export function formatAgo(at: number, now: number): string {
   return format.format(-Math.floor(hours / 24), "day");
 }
 
+const KB = 1024;
+const MB = 1024 * KB;
+
+/** `850 B`, `12 kB`, `4.2 MB`; binary multiples, as the server's quotas. */
+export function formatBytes(bytes: number): string {
+  const [value, unit] =
+    bytes >= MB
+      ? [bytes / MB, "megabyte"]
+      : bytes >= KB
+        ? [bytes / KB, "kilobyte"]
+        : [bytes, "byte"];
+  return new Intl.NumberFormat("en", {
+    style: "unit",
+    unit,
+    unitDisplay: "short",
+    maximumFractionDigits: value < 10 ? 1 : 0,
+  }).format(value);
+}
+
 export const EXERCISE_TYPE_LABELS: Record<ExerciseType, string> = {
   weight_reps: "Weight and reps",
   bodyweight_reps: "Bodyweight reps, optional added weight",

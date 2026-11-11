@@ -3,14 +3,14 @@ import { githubReleases } from "./android-release.ts";
 import { createApp } from "./app.ts";
 import { readConfig } from "./config.ts";
 import { startJobs } from "./jobs.ts";
-import { dailyCopyJob, openServer } from "./startup.ts";
+import { dailyCopyJob, openServer, pruneUsageJob } from "./startup.ts";
 
 const config = readConfig();
-const { database, auth, backups } = await openServer(config);
-const stopJobs = await startJobs(
-  database.db,
-  backups ? [dailyCopyJob(database.db, backups)] : [],
-);
+const { database, auth, backups, limitCache } = await openServer(config);
+const stopJobs = await startJobs(database.db, [
+  pruneUsageJob(database.db),
+  ...(backups ? [dailyCopyJob(database.db, backups)] : []),
+]);
 
 const app = createApp({
   webRoot: config.webRoot,
@@ -19,6 +19,7 @@ const app = createApp({
   releases: config.releases ? githubReleases(config.releases) : undefined,
   db: database.db,
   auth,
+  limitCache,
   databasePath: config.databasePath,
   backupsConfigured: backups !== undefined,
   litestreamSocket: config.litestreamSocket,

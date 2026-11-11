@@ -4,7 +4,7 @@ import {
   serverSyncMigration,
 } from "@workout-logger/core/sync-server";
 import { getMigrations } from "better-auth/db/migration";
-import type { Kysely } from "kysely";
+import { type Kysely, sql } from "kysely";
 import { type Migration, Migrator } from "kysely/migration";
 import type { AuthOptions } from "../auth/auth.ts";
 import type { ServerKysely } from "./database.ts";
@@ -30,6 +30,31 @@ const STEPS: Record<string, Migration> = {
   "0003_sync_head_only": {
     up: (db: Kysely<unknown>) =>
       serverHeadOnlyMigration.up(db as unknown as UntypedKysely),
+  },
+  "0004_quotas": {
+    async up(db: Kysely<unknown>) {
+      await sql`CREATE TABLE usage (
+        user_id       TEXT NOT NULL,
+        day           TEXT NOT NULL,
+        bytes_written INTEGER NOT NULL DEFAULT 0,
+        snapshots     INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+      ) WITHOUT ROWID`.execute(db);
+      await db.schema
+        .createTable("quota")
+        .addColumn("user_id", "text", (c) => c.primaryKey().notNull())
+        .addColumn("bytes_per_day", "integer")
+        .addColumn("max_bytes", "integer")
+        .addColumn("requests_per_minute", "integer")
+        .addColumn("snapshots_per_day", "integer")
+        .addColumn("exempt_until", "integer")
+        .execute();
+      await sql`CREATE TABLE limits (
+        id           INTEGER PRIMARY KEY CHECK (id = 1),
+        max_accounts INTEGER
+      )`.execute(db);
+      await sql`INSERT INTO limits (id) VALUES (1)`.execute(db);
+    },
   },
 };
 

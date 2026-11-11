@@ -164,7 +164,7 @@ no rows cross to the main thread. The main thread (`lib/sync.ts` in the web
 app) decides when to run and passes the credentials: nothing on the web, where
 the session cookie goes along, and the bearer token on Android. HTTP 401 means
 the session ended: the app asks to sign in again and keeps the outbox. HTTP 426
-means the Android app is below the server's minimum version. HTTP 429 is a rate limit, or *(phase 11)* the snapshot limit: the run fails and the next one tries again; a 429 `quota` on a snapshot shows as the quota pause. HTTP 403 `account_disabled` *(phase 11)* stops sync until the owner enables the account. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
+means the Android app is below the server's minimum version. HTTP 429 is a rate limit, or the snapshot limit: the run fails and the next one tries again; a 429 `quota` on a snapshot shows as the quota pause. HTTP 403 `account_disabled` *(phase 11)* stops sync until the owner enables the account. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
 
 Each write of a run checks that the device is still bound to the run's
 account, and each pull or snapshot page that the cursor is still the one it
@@ -249,7 +249,8 @@ head (
 ) WITHOUT ROWID
 INDEX head (user_id, seq)
 
-server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out
+server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out;
+                                       -- epoch_started_at
 user_sync (user_id PRIMARY KEY, max_v)
 ```
 
@@ -265,7 +266,7 @@ All endpoints act only on the authenticated `user_id`.
      - the same HLC otherwise: `conflict`, which means a node-id or determinism bug;
      - an older HLC: `ok`, and nothing is stored. The version has already lost: every device that pulls gets the newer one. Retries of a superseded push land here.
   3. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
-  4. If the quota is used up, reject it as `quota`. Duplicates and older versions don't count, so they are still `ok`. The server passes a quota hook that reads the user's allowance in bytes before the first change and records the bytes written after the last, inside the push transaction *(phase 11)*; without one, as in the fuzz test, there is no limit. The limits are in [accounts.md](accounts.md#quotas).
+  4. If it doesn't fit the quota, reject it and every newer version after it in the push as `quota`. Duplicates and older versions don't count, so they are still `ok`. The server passes a quota hook (`PushQuota`) that reads the user's allowance in bytes before the first change and records the bytes written after the last, inside the push transaction; without one, as in the fuzz test, there is no limit. A version costs the UTF-8 size of its `data` toward the daily allowance, and its size less the replaced version's toward the storage one. The limits are in [accounts.md](accounts.md#quotas).
   5. Store it in `head`, replacing the older version, with the next `seq` from the counter in `server_meta`, and raise `max_v` if needed.
 
   The response carries the current `epoch`.
@@ -306,7 +307,7 @@ handles this.
    - set the cursor to 0;
    - store the new epoch;
    - sync.
-3. The server acknowledges every version it still has, or has a newer one of, without storing it. Re-uploads within 24 h of an epoch change are exempt from the daily write quota; `server_meta` records when the epoch started *(phase 11)*.
+3. The server acknowledges every version it still has, or has a newer one of, without storing it. Re-uploads within 24 h of an epoch change are exempt from the daily write quota; `newEpoch` records when the epoch started as `epoch_started_at` in `server_meta`.
 
 A whole-database restore is for disasters only, such as VPS loss or
 corruption. It is not for undoing bad data: the re-upload would bring the bad

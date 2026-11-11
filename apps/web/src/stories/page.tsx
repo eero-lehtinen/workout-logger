@@ -6,6 +6,7 @@ import type { DbClient } from "../db/client.ts";
 import { type MemoryDb, openMemoryDb } from "../db/memory.ts";
 import { DbClientProvider } from "../db/react.tsx";
 import { setSignInProvidersForStory } from "../lib/sign-in-providers.ts";
+import { setUsageForStory } from "../lib/usage.ts";
 import { createAppRouter } from "../router.ts";
 import type { Fixture, FixtureIds } from "./fixtures.ts";
 
@@ -33,6 +34,7 @@ export function pageStory(options: {
         sessionStorage.clear();
         localStorage.clear();
         setSignInProvidersForStory(["google"]);
+        setUsageForStory(null);
         const db = await openMemoryDb();
         return { db, url: options.url(await options.fixture(db)) };
       },

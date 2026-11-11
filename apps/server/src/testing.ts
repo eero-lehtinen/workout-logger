@@ -7,6 +7,7 @@ import {
   type SignInClients,
 } from "./auth/auth.ts";
 import { openDatabase } from "./db/database.ts";
+import { LimitCache } from "./limit-cache.ts";
 import { prepareDatabase } from "./startup.ts";
 
 export const TEST_URL = "http://localhost:3000";
@@ -33,6 +34,7 @@ export async function openTestApp(
   };
   await prepareDatabase(database.db, authOptions(settings), undefined);
   const auth = createAuth(settings);
+  const limitCache = await LimitCache.load(database.db);
   const app = createApp({
     webRoot: "unused",
     bundleRoot: "unused",
@@ -41,6 +43,7 @@ export async function openTestApp(
     ...appOverrides,
     db: database.db,
     auth,
+    limitCache,
   });
 
   /** A user with a session, as after a sign-in with a provider. */
@@ -54,5 +57,12 @@ export async function openTestApp(
     return { userId: user.id, token: session.token };
   }
 
-  return { app, auth, db: database.db, signIn, close: database.close };
+  return {
+    app,
+    auth,
+    db: database.db,
+    limitCache,
+    signIn,
+    close: database.close,
+  };
 }

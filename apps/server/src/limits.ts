@@ -3,13 +3,14 @@ import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { rateLimiter } from "hono-rate-limiter";
 import type { AuthEnv } from "./auth/middleware.ts";
+import { DEFAULT_QUOTA } from "./quota.ts";
 
 // docs/accounts.md#rate-limits-and-request-hygiene. In memory, which is
 // enough for the single server instance.
 
 /** Enough for several devices behind one NAT. */
 export const IP_REQUESTS_PER_MINUTE = 300;
-export const USER_REQUESTS_PER_MINUTE = 60;
+export const USER_REQUESTS_PER_MINUTE = DEFAULT_QUOTA.requestsPerMinute;
 /** Every `/api` request body but a push, which has its own limit. */
 export const MAX_BODY_BYTES = 64 * 1024;
 
