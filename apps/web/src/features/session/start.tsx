@@ -73,6 +73,7 @@ export function StartPage() {
       }
       scrollId="start"
       width="narrow"
+      align="bottom"
     >
       {running && (
         <p className="mx-4 mb-3 rounded-xl bg-surface px-4 py-3 text-[0.9375rem] lg:mx-0">

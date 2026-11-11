@@ -8,7 +8,9 @@ next to the logging pane.
 
 The window never scrolls. Every screen is a `Screen`: a fixed header, a body
 that alone scrolls, and an optional fixed footer (the set entry while
-logging). Scrollbars therefore run only beside what scrolls, and sticky
+logging). On phones, a screen's main action goes in the footer or the body
+is aligned to the bottom, so it sits in thumb reach: the Today screen's
+Start session button or running session, the Start screen's days. Scrollbars therefore run only beside what scrolls, and sticky
 elements never overlap content. Header, body, and footer span the full width
 with their content centered, so on a wide window the scrollbar stays at the
 edge. The router restores each screen body's scroll position when returning

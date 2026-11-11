@@ -6,6 +6,7 @@ import { listClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { formatDuration, formatTime } from "../../lib/format.ts";
+import { useMediaQuery, WIDE } from "../../lib/use-media-query.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { RECENT_LIMIT } from "./running.ts";
 import { SessionRow } from "./session-row.tsx";
@@ -14,6 +15,7 @@ export function TodayPage() {
   const sessions = useDbQuery("recentSessions", { limit: RECENT_LIMIT });
   const settings = useDbQuery("settings");
   const now = useNow();
+  const wide = useMediaQuery(WIDE);
   const idleMs = settings.idle_threshold_s * 1000;
   const endOf = (s: SessionSummary) =>
     effectiveSessionEnd(
@@ -24,31 +26,27 @@ export function TodayPage() {
     );
   const running = sessions.find((s) => endOf(s).running);
   const past = sessions.filter((s) => s !== running);
+  const action = running ? (
+    <RunningCard
+      session={running}
+      now={now}
+      showElapsed={settings.session_timer_shown}
+    />
+  ) : (
+    <StartLink />
+  );
 
+  // On phones the action goes in the footer, in thumb reach.
   return (
-    <Screen header={<PageHeader title="Today" />} scrollId="today">
+    <Screen
+      header={<PageHeader title="Today" />}
+      footer={!wide && <div className="px-4 py-3">{action}</div>}
+      scrollId="today"
+    >
       <div className="pt-2 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
-        <section>
-          <div className="px-4 lg:px-0">
-            {running ? (
-              <RunningCard
-                session={running}
-                now={now}
-                showElapsed={settings.session_timer_shown}
-              />
-            ) : (
-              <Link
-                to="/start"
-                className={`${buttonClass("primary", "xl")} w-full`}
-              >
-                <Play size={22} fill="currentColor" />
-                Start session
-              </Link>
-            )}
-          </div>
-        </section>
+        {wide && <section>{action}</section>}
 
-        <section className="mt-8 lg:mt-0">
+        <section>
           <h2 className="px-4 pb-2 text-lg font-semibold lg:px-0">
             Past sessions
           </h2>
@@ -74,6 +72,15 @@ export function TodayPage() {
   );
 }
 
+function StartLink() {
+  return (
+    <Link to="/start" className={`${buttonClass("primary", "xl")} w-full`}>
+      <Play size={22} fill="currentColor" />
+      Start session
+    </Link>
+  );
+}
+
 function RunningCard(props: {
   session: SessionSummary;
   now: number;
@@ -84,7 +91,7 @@ function RunningCard(props: {
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: session.id }}
-      className="block rounded-2xl border border-rule bg-raised p-5 text-ink hover:bg-surface/60"
+      className="block rounded-2xl border border-rule bg-raised p-5 text-ink hover:bg-surface/60 active:bg-surface"
     >
       <p className="text-sm opacity-70">
         Running since {formatTime(session.startedAt, session.tz)}
@@ -101,10 +108,11 @@ function RunningCard(props: {
             {formatDuration((now - session.startedAt) / 1000)}
           </p>
         )}
-        <p className="ml-auto text-right text-sm">
-          {session.setCount} {session.setCount === 1 ? "set" : "sets"}
-          <br />
-          <span className="font-semibold">Continue</span>
+        <p className="ml-auto text-right">
+          <span className="block text-sm opacity-70">
+            {session.setCount} {session.setCount === 1 ? "set" : "sets"}
+          </span>
+          <span className="block text-lg font-semibold">Continue</span>
         </p>
       </div>
     </Link>

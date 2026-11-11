@@ -24,6 +24,8 @@ export function Screen(props: {
   /** Unique per screen: the router restores this body's scroll position. */
   scrollId: string;
   width?: keyof typeof WIDTHS;
+  /** `bottom` pushes a short body to the bottom on phones, in thumb reach. */
+  align?: "top" | "bottom";
 }) {
   const width = clsx(
     "mx-auto w-full",
@@ -39,7 +41,16 @@ export function Screen(props: {
         data-scroll-restoration-id={props.scrollId}
         className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scroll-timeline:--screen_y]"
       >
-        <div className={clsx(width, "pb-8 lg:pb-10")}>{props.children}</div>
+        <div
+          className={clsx(
+            width,
+            "pb-8 lg:pb-10",
+            props.align === "bottom" &&
+              "max-lg:flex max-lg:min-h-full max-lg:flex-col max-lg:justify-end",
+          )}
+        >
+          {props.children}
+        </div>
       </div>
       {props.footer && (
         <div className="shrink-0 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)]">
