@@ -16,7 +16,7 @@ export async function openServer(config: ServerConfig) {
     db: database.db as never,
     publicUrl: config.publicUrl,
     secret: config.authSecret,
-    github: config.github,
+    signIn: config.signIn,
   };
   const backups = config.backups ? r2Store(config.backups) : undefined;
   await prepareDatabase(database.db, toAuthOptions(authSettings), backups);

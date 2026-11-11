@@ -91,7 +91,7 @@ Principles:
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Android live updates | `@capawesome/capacitor-live-update` (pinned 8.8.1) | Downloads a zip of the web build from our own server and runs it from the same origin. See [live updates](#live-updates). |
 | Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
-| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub until phase 11, then behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI (phase 10). See [accounts.md](accounts.md#login). |
+| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI (phase 10). See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
 | Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely) | Same engine as the clients. No platform row limits. Kysely's migrator for the server's tables. |
 | Server jobs | `croner` | In-process cron with overrun protection; the daily DB copy. |

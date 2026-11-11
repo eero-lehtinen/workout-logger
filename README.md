@@ -1,12 +1,12 @@
 # Workout Logger
 
 Local-first strength training logger. A web app plus an Android build from the
-same codebase, sync between devices, invite-only accounts for a few users, and
-a CLI for exporting data to scripts and AI tools.
+same codebase, sync between devices, accounts for a few users, and a CLI for
+exporting data to scripts and AI tools.
 
 Status: the web app logs workouts locally and works offline, the Android app
 wraps it with a background rest timer, and both sync through the server after
-a GitHub sign-in. See
+a Google sign-in. See
 [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## Documentation

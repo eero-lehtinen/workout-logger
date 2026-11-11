@@ -1,6 +1,7 @@
 import { stat, statfs } from "node:fs/promises";
 import { dirname } from "node:path";
 import { readEpoch } from "@workout-logger/core/sync-server";
+import type { SignInProvider } from "./auth/auth.ts";
 import { litestreamLastSync } from "./backup/litestream.ts";
 import { type ServerKysely, syncDb } from "./db/database.ts";
 import { readJob } from "./jobs.ts";
@@ -26,6 +27,8 @@ export interface PublicStatus {
   commit: string | null;
   /** False when a configured backup layer is stale. */
   backupsOk: boolean;
+  /** The sign-in buttons the app shows. */
+  signIn: SignInProvider[];
 }
 
 /** What the owner sees in addition. */
@@ -43,6 +46,7 @@ export interface StatusSource {
   databasePath: string;
   backupsConfigured: boolean;
   litestreamSocket: string | undefined;
+  signIn: SignInProvider[];
   now?: () => number;
 }
 
@@ -106,6 +110,7 @@ function summary(
     version: source.version,
     commit: source.commit,
     backupsOk: !backups.litestream.stale && !backups.dailyCopy.stale,
+    signIn: source.signIn,
   };
 }
 

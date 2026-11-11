@@ -4,11 +4,21 @@ import type { Kysely } from "kysely";
 
 export type Role = "owner" | "user";
 
+export const SIGN_IN_PROVIDERS = ["google", "github"] as const;
+export type SignInProvider = (typeof SIGN_IN_PROVIDERS)[number];
+
+export interface OAuthClient {
+  clientId: string;
+  clientSecret: string;
+}
+
+export type SignInClients = Partial<Record<SignInProvider, OAuthClient>>;
+
 export interface AuthSettings {
   db: Kysely<never>;
   publicUrl: string;
   secret: string;
-  github: { clientId: string; clientSecret: string } | undefined;
+  signIn: SignInClients;
   /** Better Auth's limiter; off in tests, where every request has the same IP. */
   rateLimit?: boolean;
 }
@@ -17,6 +27,7 @@ const DAY_S = 24 * 60 * 60;
 
 /** Better Auth's configuration. See docs/accounts.md#login. */
 export function authOptions(settings: AuthSettings) {
+  const { google, github } = settings.signIn;
   return {
     appName: "Workout Logger",
     baseURL: settings.publicUrl,
@@ -25,18 +36,20 @@ export function authOptions(settings: AuthSettings) {
     database: { db: settings.db, type: "sqlite" },
     trustedOrigins: [settings.publicUrl],
     emailAndPassword: { enabled: false },
-    socialProviders: settings.github
-      ? {
-          github: {
-            clientId: settings.github.clientId,
-            clientSecret: settings.github.clientSecret,
-            // Accounts exist only through `server create-owner` (later,
-            // invites). A first GitHub sign-in links to the account whose
-            // email matches GitHub's (verified) profile or primary email.
-            disableSignUp: true,
-          },
-        }
-      : {},
+    // Accounts exist only through `server create-owner` for now. A first
+    // sign-in with a provider links to the account whose email matches the
+    // provider's verified one.
+    socialProviders: {
+      ...(google && {
+        google: {
+          ...google,
+          // A phone with several Google accounts asks which one.
+          prompt: "select_account",
+          disableSignUp: true,
+        },
+      }),
+      ...(github && { github: { ...github, disableSignUp: true } }),
+    },
     user: {
       additionalFields: {
         role: {
@@ -79,6 +92,12 @@ export function createAuth(settings: AuthSettings) {
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** The providers sign-in offers, in the order the app shows them. */
+export function signInProviders(auth: Auth): SignInProvider[] {
+  const enabled: Record<string, unknown> = auth.options.socialProviders;
+  return SIGN_IN_PROVIDERS.filter((provider) => enabled[provider]);
+}
 
 export interface SessionUser {
   id: string;

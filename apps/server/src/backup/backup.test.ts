@@ -121,7 +121,7 @@ describe("pre-migration copy", () => {
       db: db as never,
       publicUrl: "http://localhost:3000",
       secret: "test-secret-that-is-long-enough-for-better-auth",
-      github: undefined,
+      signIn: {},
     });
 
   it("is skipped for a new database", async () => {
@@ -205,6 +205,7 @@ describe("/api/status", () => {
       expect(Object.keys(body).sort()).toEqual([
         "backupsOk",
         "commit",
+        "signIn",
         "version",
       ]);
     }

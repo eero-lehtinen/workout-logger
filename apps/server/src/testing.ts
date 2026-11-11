@@ -4,22 +4,31 @@ import {
   authOptions,
   createAuth,
   type Role,
+  type SignInClients,
 } from "./auth/auth.ts";
 import { openDatabase } from "./db/database.ts";
 import { prepareDatabase } from "./startup.ts";
 
 export const TEST_URL = "http://localhost:3000";
 
-/** The app on a migrated in-memory database, with GitHub configured but never called. */
+const CLIENT = { clientId: "client-id", clientSecret: "client-secret" };
+
+/**
+ * The app on a migrated in-memory database, with Google and GitHub
+ * configured but never called.
+ */
 export async function openTestApp(
-  overrides: Partial<Omit<AppOptions, "db" | "auth">> = {},
+  overrides: Partial<Omit<AppOptions, "db" | "auth">> & {
+    signIn?: SignInClients;
+  } = {},
 ) {
+  const { signIn: clients, ...appOverrides } = overrides;
   const database = openDatabase(":memory:");
   const settings: AuthSettings = {
     db: database.db as never,
     publicUrl: TEST_URL,
     secret: "test-secret-that-is-long-enough-for-better-auth",
-    github: { clientId: "client-id", clientSecret: "client-secret" },
+    signIn: clients ?? { google: CLIENT, github: CLIENT },
     rateLimit: false,
   };
   await prepareDatabase(database.db, authOptions(settings), undefined);
@@ -29,12 +38,12 @@ export async function openTestApp(
     bundleRoot: "unused",
     databasePath: ":memory:",
     backupsConfigured: false,
-    ...overrides,
+    ...appOverrides,
     db: database.db,
     auth,
   });
 
-  /** A user with a session, as after a GitHub sign-in. */
+  /** A user with a session, as after a sign-in with a provider. */
   async function signIn(email: string, role: Role = "user") {
     const ctx = await auth.$context;
     const user = await ctx.internalAdapter.createUser(

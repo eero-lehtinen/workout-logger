@@ -1,4 +1,9 @@
 import { fileURLToPath } from "node:url";
+import {
+  SIGN_IN_PROVIDERS,
+  type SignInClients,
+  type SignInProvider,
+} from "./auth/auth.ts";
 import type { R2Config } from "./backup/r2.ts";
 
 /** Server settings from the environment. See docs/deployment.md#configuration. */
@@ -11,7 +16,9 @@ export interface ServerConfig {
   /** The origin users reach, e.g. `https://lift.eerolehtinen.fi`. */
   publicUrl: string;
   authSecret: string;
-  github: { clientId: string; clientSecret: string } | undefined;
+  signIn: SignInClients;
+  /** Listed in `SIGN_IN_PROVIDERS` without credentials; only outside production. */
+  signInMissing: SignInProvider[];
   /** Android apps below this version get 426. */
   minClientVersion: string | undefined;
   /** The `wl-backups` bucket; unset turns the DB copies off. */
@@ -29,13 +36,27 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const authSecret = env.AUTH_SECRET ?? (production ? undefined : DEV_SECRET);
   if (!authSecret) throw new Error("AUTH_SECRET is required in production");
 
-  const github =
-    env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
-      ? {
-          clientId: env.GITHUB_CLIENT_ID,
-          clientSecret: env.GITHUB_CLIENT_SECRET,
-        }
-      : undefined;
+  const signIn: SignInClients = {};
+  const signInMissing: SignInProvider[] = [];
+  for (const name of (env.SIGN_IN_PROVIDERS || "google").split(",")) {
+    const provider = name.trim();
+    if (!provider) continue;
+    if (!isSignInProvider(provider)) {
+      throw new Error(`SIGN_IN_PROVIDERS: unknown provider "${provider}"`);
+    }
+    const prefix = provider.toUpperCase();
+    const clientId = env[`${prefix}_CLIENT_ID`];
+    const clientSecret = env[`${prefix}_CLIENT_SECRET`];
+    if (clientId && clientSecret) {
+      signIn[provider] = { clientId, clientSecret };
+    } else if (production) {
+      throw new Error(
+        `${prefix}_CLIENT_ID and ${prefix}_CLIENT_SECRET are required for SIGN_IN_PROVIDERS=${provider}`,
+      );
+    } else {
+      signInMissing.push(provider);
+    }
+  }
 
   const backups =
     env.BACKUP_R2_ENDPOINT &&
@@ -61,7 +82,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     databasePath: env.DATABASE_PATH ?? "data/app.db",
     publicUrl: env.PUBLIC_URL ?? `http://localhost:${port}`,
     authSecret,
-    github,
+    signIn,
+    signInMissing,
     minClientVersion: env.MIN_CLIENT_VERSION || undefined,
     backups,
     litestreamSocket: env.LITESTREAM_SOCKET || undefined,
@@ -73,4 +95,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
         }
       : undefined,
   };
+}
+
+function isSignInProvider(name: string): name is SignInProvider {
+  return (SIGN_IN_PROVIDERS as readonly string[]).includes(name);
 }

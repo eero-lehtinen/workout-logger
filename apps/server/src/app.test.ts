@@ -87,6 +87,7 @@ describe("/api", () => {
       version: pkg.version,
       commit: "abc123",
       backupsOk: true,
+      signIn: ["google", "github"],
     });
   });
 

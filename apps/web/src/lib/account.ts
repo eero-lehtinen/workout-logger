@@ -6,6 +6,7 @@ import { toasts } from "../components/toasts.tsx";
 import { clearToken, readToken, storeToken } from "./auth-token.ts";
 import { isNative } from "./platform.ts";
 import { apiHeaders, SERVER_URL } from "./server.ts";
+import type { SignInProvider } from "./sign-in-providers.ts";
 
 export interface AccountUser {
   id: string;
@@ -97,13 +98,14 @@ export async function sessionEnded(): Promise<void> {
 const authClient = createAuthClient({ basePath: "/api/auth" });
 
 /**
- * Web: a redirect through GitHub and back to Settings. Android: GitHub in a
- * Custom Tab, which returns through the app's deep link (`appUrlOpen`).
+ * Web: a redirect through the provider and back to Settings. Android: the
+ * provider in a Custom Tab, which returns through the app's deep link
+ * (`appUrlOpen`).
  */
-export async function signIn(): Promise<void> {
+export async function signIn(provider: SignInProvider): Promise<void> {
   if (!isNative) {
     const { error } = await authClient.signIn.social({
-      provider: "github",
+      provider,
       callbackURL: "/settings",
       errorCallbackURL: "/settings",
     });
@@ -118,7 +120,7 @@ export async function signIn(): Promise<void> {
     ),
   );
   const { id } = await App.getInfo();
-  const query = new URLSearchParams({ app: id, challenge });
+  const query = new URLSearchParams({ app: id, challenge, provider });
   await Browser.open({
     url: `${SERVER_URL}/api/native-auth/start?${query}`,
   });
@@ -200,7 +202,7 @@ function signInFailed(reason: string) {
     title: "Sign-in failed",
     description:
       reason === "signup_disabled"
-        ? "This GitHub account has no account here. Accounts are by invitation."
+        ? "No account here uses this email. New accounts can't be created yet."
         : reason.replaceAll("_", " "),
     type: "error",
   });

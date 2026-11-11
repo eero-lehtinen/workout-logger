@@ -10,7 +10,7 @@ import {
   androidRoutes,
   type ReleaseSource,
 } from "./android-release.ts";
-import { type Auth, sessionUser } from "./auth/auth.ts";
+import { type Auth, sessionUser, signInProviders } from "./auth/auth.ts";
 import {
   type AuthEnv,
   CLIENT_VERSION_HEADER,
@@ -100,6 +100,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     databasePath: options.databasePath,
     backupsConfigured: options.backupsConfigured,
     litestreamSocket: options.litestreamSocket,
+    signIn: signInProviders(auth),
     now,
   };
   app.get("/api/status", async (c) => {

@@ -3,6 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { type AccountUser, setAccountForStory } from "../../lib/account.ts";
 import { watchInstall } from "../../lib/install.ts";
 import { setOwnerStatusForStory } from "../../lib/server-status.ts";
+import { setSignInProvidersForStory } from "../../lib/sign-in-providers.ts";
 import { type SyncState, setSyncStateForStory } from "../../lib/sync.ts";
 import { empty, inPounds, timersOff } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
@@ -200,10 +201,30 @@ export const SignedOut = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      canvas.getByRole("button", { name: "Sign in with GitHub" }),
+      canvas.getByRole("button", { name: "Sign in with Google" }),
     ).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Sign in with GitHub" }),
+    ).toBeNull();
   },
 });
+
+/** One button per provider the server has enabled. */
+export const SignedOutTwoProviders = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      for (const name of ["Google", "GitHub"]) {
+        await expect(
+          canvas.getByRole("button", { name: `Sign in with ${name}` }),
+        ).toBeVisible();
+      }
+    },
+  }),
+  beforeEach: () => setSignInProvidersForStory(["google", "github"]),
+};
 
 /** Seeded rows wait in the outbox until the first sync. */
 export const SignedIn = {

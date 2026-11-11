@@ -7,6 +7,10 @@ import { signIn, signOut, useAccount } from "../../lib/account.ts";
 import { formatAgo } from "../../lib/format.ts";
 import { type BackupLayer, useOwnerStatus } from "../../lib/server-status.ts";
 import {
+  PROVIDER_NAMES,
+  useSignInProviders,
+} from "../../lib/sign-in-providers.ts";
+import {
   chooseAccount,
   repairClock,
   type SyncState,
@@ -37,7 +41,7 @@ export function AccountSection() {
               : "Sign in to sync with your other devices and keep a copy on the server. Without an account, your data stays on this device."
           }
         >
-          <SignInButton />
+          <SignInButtons />
         </Row>
       </Section>
     );
@@ -66,29 +70,36 @@ export function AccountSection() {
   );
 }
 
-function SignInButton() {
+function SignInButtons() {
+  const providers = useSignInProviders();
   const [busy, setBusy] = useState(false);
   return (
-    <Button
-      variant="primary"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          await signIn();
-        } catch (error) {
-          toasts.add({
-            title: "Couldn't start sign-in",
-            description: error instanceof Error ? error.message : String(error),
-            type: "error",
-          });
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      Sign in with GitHub
-    </Button>
+    <div className="flex flex-wrap justify-end gap-2">
+      {providers.map((provider) => (
+        <Button
+          key={provider}
+          variant="primary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await signIn(provider);
+            } catch (error) {
+              toasts.add({
+                title: "Couldn't start sign-in",
+                description:
+                  error instanceof Error ? error.message : String(error),
+                type: "error",
+              });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Sign in with {PROVIDER_NAMES[provider]}
+        </Button>
+      ))}
+    </div>
   );
 }
 

@@ -5,6 +5,7 @@ import { within } from "storybook/test";
 import type { DbClient } from "../db/client.ts";
 import { type MemoryDb, openMemoryDb } from "../db/memory.ts";
 import { DbClientProvider } from "../db/react.tsx";
+import { setSignInProvidersForStory } from "../lib/sign-in-providers.ts";
 import { createAppRouter } from "../router.ts";
 import type { Fixture, FixtureIds } from "./fixtures.ts";
 
@@ -31,6 +32,7 @@ export function pageStory(options: {
         // scroll positions in one, view preferences live in the other.
         sessionStorage.clear();
         localStorage.clear();
+        setSignInProvidersForStory(["google"]);
         const db = await openMemoryDb();
         return { db, url: options.url(await options.fixture(db)) };
       },

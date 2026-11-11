@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
-import { createOwner } from "../cli.ts";
+import { createOwner, setEmail } from "../cli.ts";
 import { openTestApp } from "../testing.ts";
 import { challengeOf } from "./native-auth.ts";
 
@@ -9,8 +9,22 @@ const verifier = randomBytes(32).toString("base64url");
 const challenge = challengeOf(verifier);
 const APP = "fi.eerolehtinen.lift";
 
-describe("GitHub sign-in", () => {
-  it("is the only sign-in method", async () => {
+async function startSocial(
+  app: Awaited<ReturnType<typeof openTestApp>>["app"],
+  provider: string,
+) {
+  return app.request("/api/auth/sign-in/social", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "http://localhost:3000",
+    },
+    body: JSON.stringify({ provider, callbackURL: "/settings" }),
+  });
+}
+
+describe("sign-in", () => {
+  it("has no passwords", async () => {
     const { app } = await openTestApp();
     const res = await app.request("/api/auth/sign-in/email", {
       method: "POST",
@@ -21,19 +35,44 @@ describe("GitHub sign-in", () => {
     expect(res.headers.getSetCookie()).toEqual([]);
   });
 
-  it("starts at GitHub", async () => {
+  it("starts at Google with the account chooser", async () => {
     const { app } = await openTestApp();
-    const res = await app.request("/api/auth/sign-in/social", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: "http://localhost:3000",
-      },
-      body: JSON.stringify({ provider: "github", callbackURL: "/settings" }),
-    });
+    const res = await startSocial(app, "google");
+    expect(res.status).toBe(200);
+    const url = new URL(((await res.json()) as { url: string }).url);
+    expect(url.host).toBe("accounts.google.com");
+    expect(url.searchParams.get("prompt")).toBe("select_account");
+    expect(url.searchParams.get("scope")?.split(" ").sort()).toEqual([
+      "email",
+      "openid",
+      "profile",
+    ]);
+  });
+
+  it("starts at GitHub when it is enabled", async () => {
+    const { app } = await openTestApp();
+    const res = await startSocial(app, "github");
     expect(res.status).toBe(200);
     const { url } = (await res.json()) as { url: string };
     expect(new URL(url).host).toBe("github.com");
+  });
+
+  it("refuses a provider that isn't enabled", async () => {
+    const { app } = await openTestApp({
+      signIn: { google: { clientId: "id", clientSecret: "secret" } },
+    });
+    expect((await startSocial(app, "github")).ok).toBe(false);
+  });
+
+  it("lists the enabled providers in /api/status", async () => {
+    const both = await openTestApp();
+    expect(await (await both.app.request("/api/status")).json()).toMatchObject({
+      signIn: ["google", "github"],
+    });
+    const none = await openTestApp({ signIn: {} });
+    expect(await (await none.app.request("/api/status")).json()).toMatchObject({
+      signIn: [],
+    });
   });
 });
 
@@ -51,6 +90,37 @@ describe("create-owner", () => {
   });
 });
 
+describe("set-email", () => {
+  it("changes an account's email, marked verified", async () => {
+    const { auth, signIn } = await openTestApp();
+    const { userId } = await signIn("old@example.com");
+    expect(await setEmail(auth, "old@example.com", "New@Example.com")).toBe(
+      userId,
+    );
+    const ctx = await auth.$context;
+    expect(await ctx.internalAdapter.findUserById(userId)).toMatchObject({
+      email: "new@example.com",
+      emailVerified: true,
+    });
+    await setEmail(auth, userId, "newer@example.com");
+    expect(
+      (await ctx.internalAdapter.findUserByEmail("newer@example.com"))?.user.id,
+    ).toBe(userId);
+  });
+
+  it("refuses an email another account has", async () => {
+    const { auth, signIn } = await openTestApp();
+    await signIn("a@example.com");
+    await signIn("b@example.com");
+    await expect(
+      setEmail(auth, "a@example.com", "b@example.com"),
+    ).rejects.toThrow("another account already has b@example.com");
+    await expect(setEmail(auth, "nobody", "c@example.com")).rejects.toThrow(
+      "no account nobody",
+    );
+  });
+});
+
 describe("deleting a user", () => {
   it("deletes the user's sessions", async () => {
     const { db, signIn } = await openTestApp();
@@ -64,21 +134,40 @@ describe("deleting a user", () => {
 });
 
 describe("Android sign-in", () => {
-  it("sends the Custom Tab to GitHub", async () => {
+  it.each([
+    ["google", "accounts.google.com"],
+    ["github", "github.com"],
+  ])("sends the Custom Tab to %s", async (provider, host) => {
+    const { app } = await openTestApp();
+    const res = await app.request(
+      `/api/native-auth/start?app=${APP}&challenge=${challenge}&provider=${provider}`,
+    );
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location") ?? "").host).toBe(host);
+    expect(res.headers.getSetCookie().length).toBeGreaterThan(0);
+  });
+
+  it("uses the first enabled provider when none is named", async () => {
     const { app } = await openTestApp();
     const res = await app.request(
       `/api/native-auth/start?app=${APP}&challenge=${challenge}`,
     );
-    expect(res.status).toBe(302);
-    expect(new URL(res.headers.get("location") ?? "").host).toBe("github.com");
-    expect(res.headers.getSetCookie().length).toBeGreaterThan(0);
+    expect(new URL(res.headers.get("location") ?? "").host).toBe(
+      "accounts.google.com",
+    );
   });
 
   it.each([
     ["an unknown app", `app=com.evil&challenge=${challenge}`],
     ["a bad challenge", `app=${APP}&challenge=short`],
+    [
+      "a provider that isn't enabled",
+      `app=${APP}&challenge=${challenge}&provider=github`,
+    ],
   ])("refuses %s", async (_, query) => {
-    const { app } = await openTestApp();
+    const { app } = await openTestApp({
+      signIn: { google: { clientId: "id", clientSecret: "secret" } },
+    });
     const res = await app.request(`/api/native-auth/start?${query}`);
     expect(res.status).toBe(400);
   });

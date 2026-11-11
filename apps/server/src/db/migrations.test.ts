@@ -8,7 +8,7 @@ const settings = (db: unknown) =>
     db: db as never,
     publicUrl: "http://localhost:3000",
     secret: "test-secret-that-is-long-enough-for-better-auth",
-    github: undefined,
+    signIn: {},
   });
 
 describe("server migrations", () => {

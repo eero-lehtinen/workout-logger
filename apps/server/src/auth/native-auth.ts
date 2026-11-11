@@ -2,13 +2,13 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { html, raw } from "hono/html";
-import type { Auth } from "./auth.ts";
+import { type Auth, type SignInProvider, signInProviders } from "./auth.ts";
 
 /**
- * GitHub sign-in for the Android app (docs/accounts.md#login, Android sessions).
+ * Sign-in for the Android app (docs/accounts.md#login, Android sessions).
  *
- * The app's WebView can't host the OAuth flow: GitHub's callback would
- * leave the app's origin. The app opens `/start` in a Custom Tab instead.
+ * The app's WebView can't host the OAuth flow: the provider's callback would
+ * leave the app's origin, and Google refuses WebViews. The app opens `/start` in a Custom Tab instead.
  * Better Auth runs the usual flow there and lands on `/finish`, which
  * creates a separate session for the app, ends the tab's own session, and
  * hands the app a one-time code through its deep link. The app trades the
@@ -48,11 +48,12 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
 
   app.get("/start", async (c) => {
     const params = flowParams(c);
-    if (!params) return c.text("Bad request", 400);
+    const provider = startProvider(auth, c.req.query("provider"));
+    if (!params || !provider) return c.text("Bad request", 400);
     const query = new URLSearchParams(params).toString();
     const { headers, response } = await auth.api.signInSocial({
       body: {
-        provider: "github",
+        provider,
         callbackURL: `/api/native-auth/finish?${query}`,
         errorCallbackURL: `/api/native-auth/finish?${query}`,
         disableRedirect: true,
@@ -157,6 +158,16 @@ function flowParams(c: Context): { app: string; challenge: string } | null {
   return { app, challenge };
 }
 
+/** An enabled provider. Without one named, the first: older web builds send none. */
+function startProvider(
+  auth: Auth,
+  name: string | undefined,
+): SignInProvider | null {
+  const enabled = signInProviders(auth);
+  if (name === undefined) return enabled[0] ?? null;
+  return enabled.find((provider) => provider === name) ?? null;
+}
+
 function sameText(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
@@ -165,7 +176,7 @@ function sameText(a: string, b: string): boolean {
 
 /**
  * Chrome may refuse to open an app from a redirect that no tap started, e.g.
- * when GitHub skips its consent screen. The page tries on load and offers a
+ * when the provider skips its consent screen. The page tries on load and offers a
  * button that works either way.
  */
 function returnPage(c: Context, back: URL, headers: Headers | null) {

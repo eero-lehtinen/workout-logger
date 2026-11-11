@@ -27,7 +27,9 @@ const app = createApp({
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`Serving ${config.webRoot} on port ${info.port}`);
-  if (!config.github) console.warn("GITHUB_CLIENT_ID is unset: sign-in is off");
+  for (const provider of config.signInMissing) {
+    console.warn(`No ${provider} OAuth client configured: its sign-in is off`);
+  }
 });
 
 // Node as PID 1 ignores SIGTERM unless handled, so `docker stop` would wait

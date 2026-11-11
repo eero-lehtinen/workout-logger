@@ -9,8 +9,8 @@ provider, so losing either the VPS or the bucket loses no data.
 ([Android releases](#android-releases), [live updates](#live-updates)),
 sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. Google sign-in, sign-up, and quotas are phase
-11 ([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
+daily job copies it there too. Sign-up and quotas are phase 11
+([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
@@ -225,9 +225,9 @@ backups or sign-in.
 | Variable | Purpose |
 | --- | --- |
 | `AUTH_SECRET` | Better Auth's secret, e.g. `openssl rand -base64 32`. It signs the session cookies: rotating it signs every browser out. Android tokens keep working. |
-| `SIGN_IN_PROVIDERS` | Phase 11. The enabled sign-in providers, comma-separated: `google`, `github`. Defaults to `google`. Each one listed needs its client id and secret below; startup fails without them. |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Phase 11. The Google OAuth client ([below](#google-oauth-client)) |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | The GitHub OAuth app ([below](#github-oauth-app)). Required until phase 11; then only when `SIGN_IN_PROVIDERS` lists `github`. |
+| `SIGN_IN_PROVIDERS` | Optional. The enabled sign-in providers, comma-separated: `google`, `github`. Unset or empty is `google`. Each one listed needs its client id and secret below; startup fails without them. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | The Google OAuth client ([below](#google-oauth-client)) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Optional. The GitHub OAuth app ([below](#github-oauth-app)), needed only when `SIGN_IN_PROVIDERS` lists `github`. |
 | `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
 | `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
@@ -238,9 +238,9 @@ auth callbacks) and `LITESTREAM_SOCKET`. The image sets `DATABASE_PATH`
 (`/data/app.db`). Unset, `DATABASE_PATH` is `data/app.db` relative to the
 working directory, and `PUBLIC_URL` is `http://localhost:<port>`. A missing
 `AUTH_SECRET` fails startup with `NODE_ENV=production`, and falls back to a
-fixed development secret otherwise. Without the GitHub OAuth variables the
-server starts with sign-in off and logs a warning, which is enough for local
-runs without sign-in.
+fixed development secret otherwise. Outside production, a listed provider
+without its client is left out with a warning, so the server starts with
+sign-in off when none is set, which is enough for local runs without sign-in.
 
 The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
 The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
@@ -250,11 +250,12 @@ Android keystore's ([Android releases](#android-releases)) and
 
 ### Google OAuth client
 
-Phase 11. Google Cloud console → APIs & Services, in a project owned by the
-owner's Google account:
+Google Cloud console → APIs & Services, in a project owned by the owner's
+Google account:
 
 - OAuth consent screen: external, scopes `openid`, `email`, `profile` only, privacy policy `https://lift.eerolehtinen.fi/privacy`, published to production. Check at setup that these basic scopes still need no verification.
-- Credentials → OAuth client ID, type Web application. Authorized redirect URIs: `https://lift.eerolehtinen.fi/api/auth/callback/google`, and for local development `http://localhost:5173/api/auth/callback/google`.
+- Credentials → OAuth client ID, type Web application. Authorized redirect URIs: `https://lift.eerolehtinen.fi/api/auth/callback/google`, and for local development `http://localhost:5173/api/auth/callback/google`, used with `PUBLIC_URL=http://localhost:5173` as for GitHub below.
+- Its client id and secret go into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. The compose file requires them, so set them in Dokploy before the first deploy that needs them.
 
 **Switching the owner from GitHub:** deploy with `SIGN_IN_PROVIDERS=google,github`,
 sign in with Google on every device (it links to the owner account by email),
@@ -305,9 +306,9 @@ container (`node server/dist/cli.js <command>`), or `node apps/server/src/cli.ts
 in the repo. It opens the same database as the server, migrating it first if
 needed.
 
-- `create-owner --email <email> [--name <name>]` creates the owner account once, with the email marked verified. The owner then signs in with the GitHub account whose email it is: the public profile email, or the primary email when the profile shows none, verified on GitHub. The command refuses to run if an owner exists. No env var grants the owner role, so nobody can claim it by signing in first.
+- `create-owner --email <email> [--name <name>]` creates the owner account once, with the email marked verified. The owner then signs in with the Google account whose email it is (with GitHub: the public profile email, or the primary email when the profile shows none, verified on GitHub). The command refuses to run if an owner exists. No env var grants the owner role, so nobody can claim it by signing in first.
 - `new-epoch` ends a whole-database restore ([sync.md](sync.md#server-restore-and-epoch)).
-- `set-email --user <id or email> --email <email>` (phase 11) changes an account's email, marked verified, so the next sign-in with a provider reporting that email links to it.
+- `set-email --user <id or email> --email <email>` changes an account's email, marked verified, so the next sign-in with a provider reporting that email links to it. It refuses an email another account has.
 - `unpack-copy <copy.db.br> <out.db>` decompresses a DB copy downloaded from `wl-backups` (Brotli; `.gz` for copies made before) and runs `PRAGMA integrity_check` on the result. It refuses to overwrite `<out.db>`, deletes it again if the check fails, and doesn't open the server database. While `app` is stopped, run it in a one-off container of the same image with the `data` volume: `docker run --rm -v <volume>:/data -v <dir with the copy>:/copy <image> node server/dist/cli.js unpack-copy /copy/<file> /data/app.db`.
 
 ## Scheduled jobs
@@ -328,7 +329,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
-- `GET /api/status`: `{ version, commit, backupsOk }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the daily copy's last error ([backups.md](backups.md#visibility)).
+- `GET /api/status`: `{ version, commit, backupsOk, signIn }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the daily copy's last error ([backups.md](backups.md#visibility)).
 - An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or doesn't contain `"backupsOk":true`.
 - If Litestream can't upload, the WAL keeps growing. Free disk and the replica's age on `/api/status` catch this early.
 

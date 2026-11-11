@@ -70,8 +70,12 @@ services:
     environment:
       PUBLIC_URL: https://lift.eerolehtinen.fi
       AUTH_SECRET: ${AUTH_SECRET:?}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?}
+      # Empty is google. Each provider listed needs its client below.
+      SIGN_IN_PROVIDERS: ${SIGN_IN_PROVIDERS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       BACKUP_R2_ENDPOINT: ${BACKUP_R2_ENDPOINT:?}
       BACKUP_R2_BUCKET: ${BACKUP_R2_BUCKET:?}
       BACKUP_R2_ACCESS_KEY_ID: ${BACKUP_R2_ACCESS_KEY_ID:?}
