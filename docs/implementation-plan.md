@@ -246,9 +246,7 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 - API keys in the app settings, with read and write scopes.
 - Owner backup task: `wl backup --all` plus restic, scheduled on your PC.
 
-## Phase 11: Multi-user (M)
-
-Detailed plan: [plans/multi-user.md](plans/multi-user.md).
+## Phase 11: Multi-user (M) [done]
 
 - The server keeps only the newest version of each row, about a third of the database size; history comes from backups.
 - Google sign-in instead of GitHub, which stays behind a flag.
@@ -258,6 +256,14 @@ Detailed plan: [plans/multi-user.md](plans/multi-user.md).
 - Account deletion with stated retention. Data export already exists (Settings → Export snapshot).
 
 **Exit:** **M2.** Google sign-in works on the live server, on the web and in the Android app.
+
+Result ([accounts.md](accounts.md), [sync.md](sync.md#server-side),
+[deployment.md](deployment.md#configuration)): the server offers only
+Google sign-in, and the owner's account signs in with it on the web and in
+the Android app. Sign-up is open up to the account cap. Requests are rate
+limited, pushes and snapshots count against per-user quotas, the owner's
+admin page shows the server and every account, and users can delete their
+accounts. No one else has been invited.
 
 ## Phase 11b: Backup checks (S)
 

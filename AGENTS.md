@@ -5,10 +5,10 @@ Guidance for coding agents working in this repository.
 ## Project
 
 A local-first workout logger: React web app + Capacitor Android shell, a Hono
-server on a Dokploy-managed VPS (auth, sync, snapshots; backups to
-Cloudflare R2). A CLI and multi-user quotas are planned. Used by the owner,
-later by a few other users. Not a production service, but user data
-must never be lost or leaked between accounts.
+server on a Dokploy-managed VPS (auth, sync, snapshots, quotas; backups to
+Cloudflare R2). A CLI is planned. Used by the owner, open to a few other
+users up to an account cap. Not a production service, but user data must
+never be lost or leaked between accounts.
 
 What is built and what is next is in
 [docs/implementation-plan.md](docs/implementation-plan.md).
