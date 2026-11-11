@@ -50,6 +50,8 @@ export interface UserTable {
   name: string;
   email: string;
   role: string | null;
+  /** 0 or 1. */
+  disabled: number | null;
   /** As Better Auth writes it on SQLite: ISO text, or epoch ms. */
   createdAt: string | number;
 }

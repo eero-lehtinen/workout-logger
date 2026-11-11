@@ -35,6 +35,8 @@ export type SyncFailure =
   | "rate_limited"
   /** Today's snapshot downloads are used up (HTTP 429 `quota`). */
   | "quota"
+  /** The owner disabled the account (HTTP 403); sync waits until enabled. */
+  | "account_disabled"
   /**
    * Another run, or an account choice, changed the sync state first. Nothing
    * was written; run again.
@@ -121,6 +123,9 @@ export async function syncOverHttp(
     if (error instanceof HttpError) {
       if (error.status === 401) {
         return { ok: false, failure: "unauthorized", message };
+      }
+      if (error.status === 403 && error.code === "account_disabled") {
+        return { ok: false, failure: "account_disabled", message };
       }
       if (error.status === 409) {
         return { ok: false, failure: "account_changed", message };

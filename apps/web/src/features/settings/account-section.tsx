@@ -1,5 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { Button, buttonClass } from "../../components/button.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useDbQuery } from "../../db/react.tsx";
@@ -61,6 +62,13 @@ export function AccountSection() {
         </Row>
       )}
       {account.user.role === "owner" && <ServerBackupsRow />}
+      {account.user.role === "owner" && (
+        <Row label="Users" hint="Accounts, their usage, and quotas.">
+          <Link to="/admin" className={buttonClass("secondary")}>
+            Open
+          </Link>
+        </Row>
+      )}
     </Section>
   );
 }

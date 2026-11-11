@@ -95,7 +95,7 @@ The Settings tab shows a warning dot when:
 
 - signed in, with unsynced local changes, and no sync in the last 3 days (or ever)
 - for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days)
-- for the owner: the server database is over 700 MB, at most about 4 GB of R2 once retention fills (phase 11, [accounts.md](accounts.md#account-cap))
+- for the owner: the server database is over 700 MB, at most about 4 GB of R2 once retention fills ([accounts.md](accounts.md#account-cap)); also on the admin page
 
 Not built yet: a dot for an on-device snapshot older than 7 days, and for a
 failed rehearsal.

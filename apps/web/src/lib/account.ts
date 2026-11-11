@@ -197,13 +197,16 @@ function reportWebSignInError() {
   signInFailed(error);
 }
 
+const SIGN_IN_ERRORS: Record<string, string> = {
+  signup_disabled:
+    "No account here uses this email. New accounts can't be created yet.",
+  account_disabled: "This account is disabled.",
+};
+
 function signInFailed(reason: string) {
   toasts.add({
     title: "Sign-in failed",
-    description:
-      reason === "signup_disabled"
-        ? "No account here uses this email. New accounts can't be created yet."
-        : reason.replaceAll("_", " "),
+    description: SIGN_IN_ERRORS[reason] ?? reason.replaceAll("_", " "),
     type: "error",
   });
 }

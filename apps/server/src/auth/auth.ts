@@ -1,6 +1,11 @@
-import { type BetterAuthOptions, betterAuth } from "better-auth";
+import {
+  APIError,
+  type BetterAuthOptions,
+  betterAuth,
+  type GenericEndpointContext,
+} from "better-auth";
 import { bearer } from "better-auth/plugins/bearer";
-import type { Kysely } from "kysely";
+import { type Kysely, sql } from "kysely";
 
 export type Role = "owner" | "user";
 
@@ -58,6 +63,28 @@ export function authOptions(settings: AuthSettings) {
           defaultValue: "user",
           input: false,
         },
+        disabled: {
+          type: "boolean",
+          required: false,
+          defaultValue: false,
+          input: false,
+        },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // The admin page deletes a disabled user's sessions; this keeps
+          // them from signing in again.
+          async before(session, context) {
+            if (await isDisabled(settings.db, session.userId, context)) {
+              throw new APIError("FORBIDDEN", {
+                code: "account_disabled",
+                message: "This account is disabled",
+              });
+            }
+          },
+        },
       },
     },
     session: {
@@ -87,6 +114,28 @@ export function authOptions(settings: AuthSettings) {
 
 export type AuthOptions = ReturnType<typeof authOptions>;
 
+type HookContext = GenericEndpointContext | null;
+
+/**
+ * Within a Better Auth request its own adapter, which joins any transaction
+ * it has open; outside one (the native-auth routes, the CLI) the server's
+ * connection.
+ */
+async function isDisabled(
+  db: Kysely<never>,
+  userId: string,
+  context: HookContext,
+): Promise<boolean> {
+  if (context) {
+    const user = await context.context.internalAdapter.findUserById(userId);
+    return (user as { disabled?: boolean } | null)?.disabled === true;
+  }
+  const { rows } = await sql<{
+    disabled: number | null;
+  }>`SELECT disabled FROM user WHERE id = ${userId}`.execute(db);
+  return rows[0]?.disabled === 1;
+}
+
 export function createAuth(settings: AuthSettings) {
   return betterAuth(authOptions(settings));
 }
@@ -99,6 +148,7 @@ export function signInProviders(auth: Auth): SignInProvider[] {
   return SIGN_IN_PROVIDERS.filter((provider) => enabled[provider]);
 }
 
+/** What `GET /api/me` answers. */
 export interface SessionUser {
   id: string;
   name: string;
@@ -111,15 +161,16 @@ export interface SessionUser {
 export async function sessionUser(
   auth: Auth,
   headers: Headers,
-): Promise<SessionUser | null> {
+): Promise<(SessionUser & { disabled: boolean }) | null> {
   const session = await auth.api.getSession({ headers });
   if (!session) return null;
-  const { id, name, email, image, role } = session.user;
+  const { id, name, email, image, role, disabled } = session.user;
   return {
     id,
     name,
     email,
     image: image ?? null,
     role: role === "owner" ? "owner" : "user",
+    disabled: disabled === true,
   };
 }

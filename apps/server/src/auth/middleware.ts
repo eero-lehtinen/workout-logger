@@ -4,15 +4,28 @@ import { type Auth, type SessionUser, sessionUser } from "./auth.ts";
 
 export type AuthEnv = { Variables: { user: SessionUser } };
 
-/** 401 without a session cookie or bearer token; sets `user` otherwise. */
+/**
+ * 401 without a session cookie or bearer token, 403 for a disabled account;
+ * sets `user` otherwise.
+ */
 export function requireUser(auth: Auth): MiddlewareHandler<AuthEnv> {
   return async (c, next) => {
-    const user = await sessionUser(auth, c.req.raw.headers);
-    if (!user) return c.json({ error: "unauthorized" }, 401);
+    const session = await sessionUser(auth, c.req.raw.headers);
+    if (!session) return c.json({ error: "unauthorized" }, 401);
+    const { disabled, ...user } = session;
+    if (disabled) return c.json({ error: "account_disabled" }, 403);
     c.set("user", user);
     await next();
   };
 }
+
+/** 403 for anyone but the owner. After `requireUser`. */
+export const requireOwner: MiddlewareHandler<AuthEnv> = async (c, next) => {
+  if (c.get("user").role !== "owner") {
+    return c.json({ error: "forbidden" }, 403);
+  }
+  await next();
+};
 
 export const CLIENT_VERSION_HEADER = "X-Client-Version";
 

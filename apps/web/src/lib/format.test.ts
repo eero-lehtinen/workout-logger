@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { formatAgo, formatSessionLength } from "./format.ts";
+import { formatAgo, formatBytes, formatSessionLength } from "./format.ts";
+
+describe("formatBytes", () => {
+  it.each([
+    [0, "0 B"],
+    [1023, "1023 B"],
+    [1024, "1 kB"],
+    [180 * 1024, "180 kB"],
+    [2.4 * 1024 * 1024, "2.4 MB"],
+    [10 * 1024 * 1024, "10 MB"],
+  ])("formats %i as %s", (bytes, text) => {
+    expect(formatBytes(bytes)).toBe(text);
+  });
+});
 
 const min = 60_000;
 

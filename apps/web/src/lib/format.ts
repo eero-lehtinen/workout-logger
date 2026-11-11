@@ -121,12 +121,10 @@ const MB = 1024 * KB;
 
 /** `850 B`, `12 kB`, `4.2 MB`; binary multiples, as the server's quotas. */
 export function formatBytes(bytes: number): string {
+  // Intl's short byte unit reads "byte", not "B".
+  if (bytes < KB) return `${bytes} B`;
   const [value, unit] =
-    bytes >= MB
-      ? [bytes / MB, "megabyte"]
-      : bytes >= KB
-        ? [bytes / KB, "kilobyte"]
-        : [bytes, "byte"];
+    bytes >= MB ? [bytes / MB, "megabyte"] : [bytes / KB, "kilobyte"];
   return new Intl.NumberFormat("en", {
     style: "unit",
     unit,

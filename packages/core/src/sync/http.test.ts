@@ -9,6 +9,7 @@ const T0 = 1_700_000_000_000;
 describe("syncOverHttp", () => {
   it.each([
     [401, null, "unauthorized"],
+    [403, "account_disabled", "account_disabled"],
     [409, null, "account_changed"],
     [426, null, "update_required"],
     [429, "rate_limited", "rate_limited"],

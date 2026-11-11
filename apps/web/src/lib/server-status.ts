@@ -64,6 +64,8 @@ export async function refreshOwnerStatus(): Promise<void> {
 const DAY = 24 * 60 * 60 * 1000;
 /** docs/backups.md#visibility */
 const SYNC_WARNING_AGE = 3 * DAY;
+/** About 4 GB of R2 once retention fills (docs/accounts.md#account-cap). */
+export const DATABASE_WARNING_BYTES = 700 * 1024 * 1024;
 
 /**
  * What the warning badge on Settings is for, or null: changes that haven't
@@ -82,5 +84,8 @@ export function useBackupWarning(): string | null {
     return "Changes haven't synced for days";
   }
   if (owner && !owner.backupsOk) return "A server backup is out of date";
+  if (owner && owner.databaseBytes > DATABASE_WARNING_BYTES) {
+    return "The server database is over 700 MB";
+  }
   return null;
 }

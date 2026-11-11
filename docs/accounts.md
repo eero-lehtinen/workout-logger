@@ -25,7 +25,7 @@ The owner account is created once with a server command, never by sign-up. See
 
 - **Library:** Better Auth, pinned (1.7.18), mounted in the Hono server at `/api/auth/*`, storing its tables (`user`, `session`, `account`, `verification`) in the server SQLite database through its Kysely adapter. Its plugin packaging changes between minor versions (e.g. the API-key plugin moved to `@better-auth/api-key`), so check its docs before upgrading.
   - Its admin plugin is not used: it brings its own `admin` role, needs custom access control for `owner`, and covers only users and bans. The [admin page](#admin-page) is hand-built.
-  - The role is an extra `role` column on `user` (`owner` or `user`), which sign-in can't set. `disabled` *(phase 11)* is another such column.
+  - The role is an extra `role` column on `user` (`owner` or `user`), which sign-in can't set. `disabled` is another such column.
 - **Method:** Google sign-in. There are no passwords, so no password storage, reset links, or email sending.
   - `SIGN_IN_PROVIDERS` lists the enabled providers (`google`, `github`; default `google`). GitHub stays in the code behind it. `GET /api/status` reports the list as `signIn`, and the app shows one sign-in button per entry, Google first. The app remembers the last list, so the buttons show offline.
   - Google uses `prompt: "select_account"`, so a phone with several Google accounts asks which one. Google refuses OAuth inside WebViews; the Android flow below runs in a Custom Tab.
@@ -44,8 +44,8 @@ The owner account is created once with a server command, never by sign-up. See
   - Chrome may refuse to open an app from a redirect no tap started (e.g. when the provider skips its consent screen), so `/finish` answers with a page that redirects by script and also has a "Return to the app" button.
   - The token is stored in Keystore-backed secure storage (`@aparajita/capacitor-secure-storage`), never in `localStorage`. Android Auto Backup is disabled (`allowBackup=false`).
   - Logout calls `POST /api/native-auth/sign-out`, which deletes the session.
-- **CORS:** `/api/sync/*`, `/api/me`, `/api/native-auth/*`, and `/api/status` (for the owner's backup status) allow only the Capacitor Android origin (`https://localhost`), without credentials, with the `Authorization`, `Content-Type`, `X-Client-Version`, and `X-Expected-User` headers. Their preflight answer may be cached for 2 hours (`Access-Control-Max-Age`), so a sync doesn't cost an extra round trip. `/api/android/*` allows that origin with Hono's default methods and headers.
-- **Current user:** `GET /api/me` returns `{ id, name, email, image, role }`, or 401. A disabled account gets 403 `account_disabled` *(phase 11)*; the app shows "This account is disabled" in Settings and stops syncing, and local data stays.
+- **CORS:** `/api/sync/*`, `/api/me` and below it, `/api/admin/*`, `/api/native-auth/*`, and `/api/status` (for the owner's backup status) allow only the Capacitor Android origin (`https://localhost`), without credentials, with `GET`, `POST`, `PUT`, and `DELETE`, and the `Authorization`, `Content-Type`, `X-Client-Version`, and `X-Expected-User` headers. Their preflight answer may be cached for 2 hours (`Access-Control-Max-Age`), so a sync doesn't cost an extra round trip. `/api/android/*` allows that origin with Hono's default methods and headers.
+- **Current user:** `GET /api/me` returns `{ id, name, email, image, role }`, or 401. A disabled account gets 403 `account_disabled` on every route behind sign-in; the app shows "This account is disabled" in Settings, and local data stays. Disabling also ends the account's sessions, so its devices usually see 401 first and then a refused sign-in.
 - **CLI:** personal API keys (Better Auth API-key plugin), created in the app's settings and revocable (phase 10).
   - Read-only by default.
   - Write scope must be granted explicitly and is needed for `wl restore` and imports.
@@ -111,7 +111,7 @@ unsynced changes, and why sync is stuck, if it is.
 ## Data scoping
 
 - Every server table that holds user data, apart from Better Auth's own, has a `user_id` column, and every query filters by the authenticated user. This lives in one data-access module that takes `userId` as a required parameter, so no handler can forget it.
-- The one exception is the `admin` module *(phase 11)*, which reads across users for the [admin page](#admin-page). Only `/api/admin/*` uses it, behind a check that the session is the owner's.
+- The one exception is the `admin` module (`apps/server/src/admin.ts`), which reads across users for the [admin page](#admin-page). Only `/api/admin/*` uses it, behind a check that the session is the owner's.
 - The sync tables are keyed by `user_id` first. See [sync.md](sync.md#server-side).
 - Deterministic row ids (UUIDv5 of builtin keys) repeat across users. This is fine because uniqueness is per user.
 
@@ -128,7 +128,7 @@ unsynced changes, and why sync is stuck, if it is.
 
 The owner has none. Every other account gets the defaults below, constants in
 the server code, unless the owner sets an override for it on the
-[admin page](#admin-page) *(phase 11)*.
+[admin page](#admin-page).
 
 | Quota | Default | Reason |
 | --- | --- | --- |
@@ -157,14 +157,14 @@ client or a misused account.
 
 ## Admin page
 
-*(phase 11)*
+`/admin` in the web app ("Users"), linked from Settings for the owner, over
+`/api/admin/*` (403 for anyone else). Its header shows the server database
+size, with a warning over 700 MB.
 
-`/admin` in the web app, linked from Settings for the owner, over
-`/api/admin/*` (403 for anyone else).
-
-- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user: edit quota overrides (empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete.
-- **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect).
+- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups *(phase 11; sign-up is off until then)*.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete *(phase 11)*. None of these apply to the owner's own account.
+- `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`.
+- **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
 - **Delete** is the same as the user's own [account deletion](#privacy).
 
 ## Privacy

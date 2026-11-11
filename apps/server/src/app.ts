@@ -4,6 +4,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
+import { adminRoutes } from "./admin.ts";
 import { bundleRoutes } from "./android-bundle.ts";
 import {
   ANDROID_ORIGIN,
@@ -63,7 +64,7 @@ const cacheControl =
  * Behind `requireUser` and the per-user limit. `/api/me/*` matches `/api/me`
  * too; listing both would count each request twice.
  */
-const USER_PATHS = ["/api/me/*", "/api/sync/*"];
+const USER_PATHS = ["/api/me/*", "/api/sync/*", "/api/admin/*"];
 
 export function createApp(options: AppOptions): Hono<AuthEnv> {
   const { webRoot, auth } = options;
@@ -86,7 +87,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   const androidCors = cors({
     origin: ANDROID_ORIGIN,
     maxAge: 7200,
-    allowMethods: ["GET", "POST"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE"],
     allowHeaders: [
       "Authorization",
       "Content-Type",
@@ -140,6 +141,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     c.json(await usageReport(options.db, c.get("user").id, now())),
   );
   app.route("/api/sync/v1", syncRoutes(options.db, now));
+  app.route("/api/admin", adminRoutes(options.db, options.limitCache, now));
 
   // Before the APK routes, which answer everything under /api/android with
   // 503 when no release token is configured.

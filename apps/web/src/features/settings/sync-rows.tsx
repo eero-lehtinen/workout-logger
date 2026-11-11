@@ -33,6 +33,8 @@ export function SyncRows(props: { sync: SyncState }) {
 }
 
 function problem(sync: SyncState, usage: Usage | null): string | null {
+  if (sync.failure === "account_disabled")
+    return "This account is disabled. Your data stays on this device; sync resumes if the owner enables it.";
   if (sync.updateRequired) return "Update the app to keep syncing.";
   if (sync.failure === "offline")
     return "Offline; syncs when the server can be reached.";
