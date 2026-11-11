@@ -13,9 +13,9 @@ const WIDTHS = {
 
 /**
  * A screen: a fixed header, a body that alone scrolls, and an optional
- * fixed footer. Header, body, and footer span the full width, so the
- * scrollbar runs at the edge and only beside the body. Their content starts
- * at the sidebar on wide screens, so titles line up across screens.
+ * fixed footer. Header, body, and footer span the full width with their
+ * content centered, so the scrollbar runs at the edge and only beside the
+ * body.
  */
 export function Screen(props: {
   header: ReactNode;
@@ -28,7 +28,7 @@ export function Screen(props: {
   align?: "top" | "bottom";
 }) {
   const width = clsx(
-    "w-full",
+    "mx-auto w-full",
     props.width === "pane" ? "lg:px-6" : "lg:px-8",
     WIDTHS[props.width ?? "wide"],
   );
