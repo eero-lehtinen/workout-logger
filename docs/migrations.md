@@ -7,9 +7,9 @@ Data exists in several places, at different schema versions, at the same time:
 | Local DB on each device | `SCHEMA_VERSION` of the web build the device runs | Client migrations, on app start |
 | Rows arriving via sync | `v` of the app that wrote them | Row upgrade on apply |
 | Server change log and head table | Each row's original `v`, kept forever | Never upgraded on the server. Readers upgrade. |
-| Snapshots and backups | `v` stored in their `meta` table | Row upgrade on import |
-| CLI mirror | `SCHEMA_VERSION` of the CLI build | The same client migrations |
-| Server's own tables (auth, `change`, `head`, usage, ...) | Server schema | Server migrations, on startup |
+| Snapshots and backups | `schema_version` in their `meta` table | Row upgrade on import |
+| CLI mirror (phase 10) | `SCHEMA_VERSION` of the CLI build | The same client migrations |
+| Server's own tables (auth, `change`, `head`, `job_run`, ...) | Server schema | Server migrations, on startup |
 
 The domain schema has one version number, `SCHEMA_VERSION` in `packages/core`.
 It is the same number as the `v` on synced rows. Server tables have their own
@@ -46,7 +46,7 @@ The same upgrade functions are used everywhere:
 
   `migrate` takes a `beforeMigrate(from, to)` hook, called for an existing database before the transaction starts. The caller copies the database file there. A database from a newer app (`user_version` above the app's version) is never touched; opening it fails with "update the app".
 - **Sync pull:** incoming rows with `v < SCHEMA_VERSION` are passed through each step up to the current version before the LWW comparison.
-- **Snapshot import, the CLI mirror, and `wl restore`** use the same path.
+- **Snapshot import** uses the same path, and so will the CLI mirror and `wl restore` (phase 10).
 
 ### Rules
 
@@ -101,12 +101,15 @@ forward ([deployment.md](deployment.md#recovery-procedures)).
 
 ## Data fixes
 
+Not built yet, and no phase has needed one so far: this is the design for
+when one does.
+
 Some changes depend on more than one row: deduplicating exercises, re-deriving
 muscle targets from an updated catalog, repairing data written by a buggy
 version. They can't be expressed as per-row upgrades, and they *are* edits, so
 they must sync.
 
-A data fix is a named, versioned function in `packages/core/fixes/` that reads
+A data fix is a named, versioned function in `packages/core/src/fixes/` that reads
 a user's data and returns rows to write. Only one place runs it, so devices
 can't race:
 
@@ -130,13 +133,14 @@ current revision are skipped.
 ## Server migrations
 
 Server tables (`change`, `head`, `server_meta`, `user_sync`, `job_run`, and
-later invites, usage, quotas) use Kysely's migrator, with the steps in
+in phase 11 `usage`, `quota`, `stored`) use Kysely's migrator, with the steps in
 `apps/server/src/db/migrations.ts` (`0001_sync`, `0002_job_run`, ...). Better
 Auth's tables are migrated by its `getMigrations` API right after, from the
 same configuration the server runs with.
 
 - **When:** on startup, before the server accepts requests ([deployment.md](deployment.md#build-and-release)), and when the `server` command opens the database.
-- **Order:** take the pre-migration DB copy to R2 (only for a database that has tables), then Kysely's steps, each in its own transaction, then Better Auth's.
+- **Order:** take the pre-migration DB copy to R2 (only for a database that has tables), then Kysely's steps, then Better Auth's.
+- **Not transactional.** Kysely runs SQLite migrations without a transaction (its SQLite adapter reports no transactional DDL), so a step that fails halfway leaves its earlier statements applied. Recover with the pre-migration copy.
 - **Forward only.** To roll back: restore the pre-migration copy, run `server new-epoch`, and redeploy the previous SHA ([deployment.md](deployment.md#recovery-procedures)).
 - No expand/contract dance: there is one instance and a few seconds of downtime, and clients are offline-tolerant.
 - Server migrations never touch `data` in `change` or `head`. Domain data changes go through data fixes.

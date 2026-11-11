@@ -19,11 +19,11 @@ These are human estimates. AI agents can do large phases very quickly.
 | Milestone | After phase | Meaning |
 | --- | --- | --- |
 | **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, measurements, and all FitNotes history imported. Workouts are logged only here from now on. |
-| **M2: other users invited** | 11 | Google sign-in, invites, quotas, admin, account deletion. |
+| **M2: other users** | 11 | Google sign-in, sign-up up to an account cap, quotas, admin, account deletion. |
 
 ## Phase 0: Scaffolding (S) [done]
 
-- pnpm workspace with the layout from [architecture.md](architecture.md#repository-layout-planned).
+- pnpm workspace with the layout from [architecture.md](architecture.md#repository-layout).
 - TypeScript strict, ESM, a shared `tsconfig`.
 - Lint/format: Biome.
 - Tests: Vitest.
@@ -88,7 +88,7 @@ Health Connect and charting spikes are deferred to their phases; they are lower 
 Result: 5000 runs of up to 150 operations converge. The fuzz test found that a
 device pushing before its first pull couldn't detect a server restore; push
 responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
-[architecture.md](architecture.md#repository-layout-planned).
+[architecture.md](architecture.md#repository-layout).
 
 ## Phase 3: Logging slice, web (M–L) [done]
 
@@ -186,7 +186,7 @@ Result: sign-in is GitHub only, instead of email
 and password: the Android app signs in through a Custom Tab and a deep link
 ([accounts.md](accounts.md#login)). The Playwright suite syncs two browser
 devices through the real server. The restore rehearsal job and the warning
-for old on-device snapshots moved to phase 11.
+for old on-device snapshots moved to phase 11b.
 
 ## Phase 7: History, records, calendar (M) [done]
 
@@ -250,12 +250,12 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 Detailed plan: [plans/multi-user.md](plans/multi-user.md).
 
 - Google sign-in instead of GitHub, which stays behind a flag.
-- Invite links (entropy, expiry, transactional redemption) and sign-up, with a privacy notice.
+- Open sign-up up to an account cap sized from the R2 free tier, with a privacy notice. No invites.
 - Rate limits (per-IP before auth, per user after), body limits, trusted proxy configuration.
-- Quotas and their exemptions, the usage table and pruning, usage shown to the user, the owner admin page (invites, users, usage, quotas, disable).
+- Quotas and their exemptions, the usage table and pruning, usage shown to the user, the owner admin page (users, usage, quotas, disable).
 - Account deletion with stated retention. Data export already exists (Settings → Export snapshot).
 
-**Exit:** **M2.** The first invited user onboarded.
+**Exit:** **M2.** The first other user onboarded.
 
 ## Phase 11b: Backup checks (S)
 

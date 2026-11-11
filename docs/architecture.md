@@ -1,8 +1,5 @@
 # Architecture
 
-Status: draft. Library choices marked *candidate* still need checking against
-current docs before we commit to them.
-
 The UI targets two screens: logging is phone-first, while history, routine
 editing, settings, and charts must be comfortable on a PC screen.
 Narrow screens get one pane with bottom navigation; wide screens (Tailwind
@@ -39,17 +36,18 @@ and, on Android, the system bar style.
  │  ┌──────────────┐                  ┌──────────────┐ ┌───────────────┐  │
  │  │  UI (React)  │                  │  UI (React)  │ │ native plugins│  │
  │  ├──────────────┤                  ├──────────────┤ │ rest timer,   │  │
- │  │ core: domain,│                  │ core         │ │ health connect│  │
+ │  │ core: domain,│                  │ core         │ │ live update   │  │
  │  │ queries, sync│                  │              │ │ keep-awake    │  │
  │  ├──────────────┤                  ├──────────────┤ └───────────────┘  │
  │  │ SQLite (WASM)│                  │ SQLite       │                    │
  │  └──────┬───────┘                  └──────┬───────┘                    │
  └─────────┼─────────────────────────────────┼────────────────────────────┘
-           │  login, push / pull changes (HTTPS, bearer token)
+           │  login, push / pull changes (HTTPS; cookie on the web,
+           │  bearer token on Android)
            ▼                                 ▼
       ┌──────────────────────────────────────────────┐       ┌─────────┐
       │ Server (Hono): auth, per-user change log,    │◀──────│   CLI   │
-      │ quotas, snapshots. VPS (Dokploy) + SQLite    │       └─────────┘
+      │ snapshots. VPS (Dokploy) + SQLite            │       └─────────┘
       └──────────────────────┬───────────────────────┘
                              │ Litestream replica + daily DB copies
                              ▼
@@ -60,9 +58,9 @@ Principles:
 
 - **Local-first.** Every read and write goes to the on-device SQLite database. The network is used for login and sync only. The app is fully usable without an account; an account adds sync and server backups.
 - **One UI codebase.** The web build is the product. Android is the same build inside a Capacitor shell, plus a few native plugins.
-- **Server stores data, not domain logic.** The server handles accounts, quotas, and a per-user change log of opaque rows. It never interprets workout data, so app schema changes never need server migrations.
+- **Server stores data, not domain logic.** The server handles accounts, quotas (phase 11), and a per-user change log of opaque rows. It never interprets workout data, so app schema changes never need server migrations.
 - **Small data.** Years of training for one user are on the order of 10^4-10^5 sets. Analytics run on-device with plain SQL. No server-side aggregation.
-- **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few invited users", not the public internet. See [accounts.md](accounts.md).
+- **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few users the owner knows", not the public internet. See [accounts.md](accounts.md).
 
 ## Tech stack
 
@@ -71,6 +69,7 @@ Principles:
 | Language | TypeScript everywhere | One language for UI, core, server, CLI. Shared types for the sync protocol. |
 | Repo | pnpm workspace monorepo | Shared `core` package. |
 | UI | React + Vite | Largest ecosystem for components and charts. |
+| Drag and drop | `@dnd-kit` (`core`, `sortable`) | Sortable lists: routines, days, slots, session exercises. |
 | Styling | Tailwind CSS | Utility classes, no separate stylesheet architecture to maintain. |
 | Routing | TanStack Router, file-based routes | Type-safe routes and search params. |
 | Components | Base UI (`@base-ui/react`) | Headless, accessible primitives from the Radix authors, actively released since v1; Radix Primitives releases have slowed. Styling is our own. Its bundled docs (`node_modules/@base-ui/react/docs`) match the installed version. |
@@ -92,7 +91,7 @@ Principles:
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Android live updates | `@capawesome/capacitor-live-update` (pinned 8.8.1) | Downloads a zip of the web build from our own server and runs it from the same origin. See [live updates](#live-updates). |
 | Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
-| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub until phase 11, then behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. See [accounts.md](accounts.md#login). |
+| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub until phase 11, then behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI (phase 10). See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
 | Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely) | Same engine as the clients. No platform row limits. Kysely's migrator for the server's tables. |
 | Server jobs | `croner` | In-process cron with overrun protection; the daily DB copy. |
@@ -100,9 +99,9 @@ Principles:
 | Server bundle | esbuild | The image runs one bundled file; see [deployment.md](deployment.md#build-and-release). |
 | Server backups | Litestream to Cloudflare R2 | Continuous replication with point-in-time restore, at a different provider than the VPS. |
 | Object storage | Cloudflare R2 | Litestream replica and daily DB copies, in separate buckets. |
-| CLI | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
+| CLI (phase 10) | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
 
-## Repository layout (planned)
+## Repository layout
 
 ```
 apps/
@@ -112,8 +111,8 @@ apps/
   android/    Gradle project of the Android app: the Capacitor shell and
               the RestTimer plugin (Kotlin)
   server/     Hono server: the web build, /api/status, Android updates,
-              auth, sync, DB copies to R2, the server CLI; later quotas
-  cli/        `wl` command
+              auth, sync, DB copies to R2, the server CLI; quotas in phase 11
+  cli/        `wl` command (phase 10, not built yet)
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
               idle end), queries, sync client
@@ -163,16 +162,21 @@ driver), `/wasm` (sqlite-wasm driver), `/sync-server`, `/testing`.
 `apps/server/src`:
 
 ```
-app.ts           routes: static files, /api/status, /api/auth, /api/me,
-                 /api/native-auth, /api/sync/v1, /api/android
-auth/            Better Auth setup, the session middleware, the Android sign-in
-db/              database (pragmas) and migrations (own, then Better Auth's)
-backup/          DB copies (VACUUM INTO, check, gzip), R2, Litestream status
-sync-routes.ts   /api/sync/v1 over the shared sync module
-jobs.ts          scheduled jobs with catch-up
-status.ts        /api/status, the owner's backup view
-startup.ts       open, pre-migration copy, migrate
-main.ts, cli.ts  the server, and the `server` command (create-owner, new-epoch)
+app.ts             routes: static files, /api/status, /api/auth, /api/me,
+                   /api/native-auth, /api/sync/v1, /api/android
+auth/              Better Auth setup, the session middleware, the Android sign-in
+db/                database (pragmas) and migrations (own, then Better Auth's)
+backup/            DB copies (VACUUM INTO, check, gzip), R2, Litestream status
+sync-routes.ts     /api/sync/v1 over the shared sync module
+android-release.ts /api/android: the APK release from GitHub
+android-bundle.ts  /api/android/bundle: the live-update bundle
+jobs.ts            scheduled jobs with catch-up
+status.ts          /api/status, the owner's backup view
+config.ts          settings from the environment
+startup.ts         open, pre-migration copy, migrate, a new epoch after a
+                   restore, the daily copy job
+main.ts, cli.ts    the server, and the `server` command (create-owner, new-epoch)
+testing.ts         `openTestApp` for the server tests
 ```
 
 ## Data model (client)
@@ -190,7 +194,7 @@ and `_undo` are described in [sync.md](sync.md#client-side).
 
 ```
 muscle            (id, name, group_name)               -- seeded, effectively static
-exercise          (id, name, type, default_rest_s?, weight_increment_kg?, notes, archived, builtin_key)
+exercise          (id, name, type, default_rest_s?, weight_increment_kg?, notes, archived, builtin_key?)
 exercise_muscle   (id, exercise_id, muscle_id, factor)  -- factor 0..1
 
 routine           (id, name, position, archived, description)
@@ -232,9 +236,9 @@ The weight unit is a per-user display setting. Storage is always kg.
 - **Input.** A value entered in lb is converted with the exact factor (1 lb = 0.45359237 kg) and stored unrounded. Converting it back for display gives the entered value again, e.g. 225 lb → 102.0582 kg → 225 lb.
 - **Display.** Weights are converted to the display unit, rounded to 2 decimals, and trailing zeros are trimmed (`100`, `102.5`, `220.46`). e1RM and other derived values are rounded to 1 decimal.
 - **Increment.**
-  - Defaults: 2.5 kg, or 5 lb when the unit is lb. The value is overridable per exercise (`weight_increment_kg`), e.g. 1 kg for dumbbells.
+  - Defaults: the `weight_increment_kg` and `weight_increment_lb` settings (2.5 kg and 5 lb unless changed), by display unit. The value is overridable per exercise (`weight_increment_kg`), e.g. 1 kg for dumbbells.
   - The +/- buttons snap to the nearest multiple of the increment first, then step. A converted 220.46 lb becomes 225 after +, not 225.46.
-- **Prefill.** The prefilled weight is shown unrounded, in display units. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
+- **Prefill.** The prefilled weight is kept unrounded and shown in display units with at most 2 decimals, not snapped to the increment. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
 - **Comparisons** for set records and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
 
 ## Client runtime
@@ -345,7 +349,7 @@ The Android app downloads newer web builds from the server and runs them instead
 
 | Layer | Runs | Covers |
 | --- | --- | --- |
-| Unit (Vitest, Node) | `pnpm test` | Everything in `core`: domain functions, queries, commands, migrations, snapshots, and the sync fuzz test. Pure web helpers. |
+| Unit (Vitest, Node) | `pnpm test` | Everything in `core`: domain functions, queries, commands, migrations, snapshots, and the sync fuzz test. The server's routes, auth, and backups on an in-memory database. The exercise catalog. The live-update bundle script. Pure web helpers. |
 | Stories (Storybook + `@storybook/addon-vitest`, Chromium) | `pnpm test`, `pnpm storybook` to browse | Every screen at phone and PC widths, light and dark, with interaction checks in `play` functions and axe accessibility checks that fail the test. |
 | End-to-end (Playwright, Chromium) | `pnpm e2e` | What only the real app shell shows: OPFS persistence across reloads, tab ownership through the Web Lock, the DB worker, offline use through the service worker, and two devices syncing through the server. Runs against the production build, served by `apps/server` with its production caching headers. The sync test creates its user and session straight in the server's database and sends the token as a bearer header, so it needs no GitHub. |
 
@@ -368,7 +372,7 @@ A single Node container on the owner's VPS, managed by Dokploy, at <https://lift
 
 ## Accounts
 
-Invite-only sign-up, an owner role without limits, and per-user quotas. Full design: [accounts.md](accounts.md).
+An owner role without limits; open sign-up up to an account cap and per-user quotas come in phase 11. Full design: [accounts.md](accounts.md).
 
 ## Backups
 
@@ -377,7 +381,7 @@ Layered:
 - the server change log
 - a Litestream replica
 - daily full-DB copies in R2
-- the owner's encrypted PC copy
+- the owner's encrypted PC copy (phase 10)
 - on-device snapshot files
 
 Full design: [backups.md](backups.md).
@@ -407,7 +411,7 @@ A custom Capacitor plugin in Kotlin, `RestTimer`, registered in `MainActivity` b
 
 In the UI, the rest timer (`lib/rest-timer.ts`) owns what is shown and delegates the alert to a `RestAlarm`: the in-page one on the web, the plugin on Android. The service decides when a rest ends and whether it has; the page adds what only it knows (the full length, the exercise).
 
-- **API:** `start({ endsAt })` starts a rest or moves the running one, `cancel()` stops the countdown or dismisses a finished rest, and `getState()` returns the rest as the service knows it. Events back to JS: `finished`, and `adjusted` and `cancelled` for the notification's buttons. The rest (`endsAt`, `finished`) is persisted in `SharedPreferences`. The page calls `getState()` on start and whenever it becomes visible, so it shows the right countdown, or a finished rest, after a cold start or after the notification's buttons were used while the WebView was gone.
+- **API:** `start({ endsAt, volume? })` starts a rest or moves the running one, `cancel()` stops the countdown or dismisses a finished rest, and `getState()` returns the rest as the service knows it. `preview({ volume })` plays the alert for the volume setting; `notificationPermission()` and `requestNotificationPermission()` check and ask for the notification permission. Events back to JS: `finished`, and `adjusted` and `cancelled` for the notification's buttons. The rest (`endsAt`, `finished`) is persisted in `SharedPreferences`. The page calls `getState()` on start and whenever it becomes visible, so it shows the right countdown, or a finished rest, after a cold start or after the notification's buttons were used while the WebView was gone.
 - **Start:** `start` runs when a set is logged, with the app visible. It starts `RestTimerService` with `startForegroundService` (`foregroundServiceType="mediaPlayback"`; permissions `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`). Android only allows this while the app is visible. Otherwise it throws `ForegroundServiceStartNotAllowedException`, which the plugin catches; `start` then rejects, and the UI clears the rest and says that the timer didn't start, instead of the app crashing.
 - **Countdown:** the service acquires a non-reference-counted `PARTIAL_WAKE_LOCK` with a timeout of the remaining time plus 30 s, and posts the end on a main-thread `Handler`. The wake lock keeps the CPU running in Doze, so the handler fires on time. A changed end time re-arms the handler, extends the wake lock, and re-posts the notification.
 - **Countdown notification** (the foreground-service notification):
@@ -459,6 +463,8 @@ Not tested: Bluetooth earbuds (where an alarm-usage sound is routed), DND config
 
 ### Health Connect
 
+Phase 8, not built yet.
+
 - Read body weight records through a Capacitor health plugin. Candidates: Capawesome Health, `@capgo/capacitor-health`. Requires the `READ_WEIGHT` permission.
 - Health Connect limits reads to about 30 days of history unless the user also grants history access. Request it for the first import.
 - Import runs on app start and resume. It reads records changed since a stored watermark and writes them as `measurement` rows with `source = 'health_connect'`, using the deterministic id and HLC from [sync.md](sync.md#deterministic-writes). Re-reads are idempotent across devices, and a user's deletes or edits of imported rows survive.
@@ -471,6 +477,8 @@ Not tested: Bluetooth earbuds (where an alarm-usage sound is routed), DND config
 - **Distribution:** an APK built in CI and attached to GitHub releases, sideloaded. No Play Store. Other users install the same APK, which the server hands out ([deployment.md](deployment.md#android-releases)). Web changes reach installed apps as [live updates](#live-updates).
 
 ## CLI
+
+Phase 10, not built yet.
 
 `wl` logs in with a personal API key and keeps a local SQLite mirror by using
 the same pull protocol as the app. It can also read a snapshot file instead.

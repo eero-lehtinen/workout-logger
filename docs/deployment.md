@@ -4,12 +4,12 @@ The server runs on the owner's VPS under Dokploy, at
 <https://lift.eerolehtinen.fi>. Backups go to Cloudflare R2, a different
 provider, so losing either the VPS or the bucket loses no data.
 
-**Current state (phase 6):** the `app` container serves the static web build,
+**Current state:** the `app` container serves the static web build,
 `GET /api/status`, the Android app's update endpoints
 ([Android releases](#android-releases), [live updates](#live-updates)),
 sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. Google sign-in, invites, and quotas are phase
+daily job copies it there too. Google sign-in, sign-up, and quotas are phase
 11 ([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
@@ -36,7 +36,8 @@ VPS (Dokploy, Traefik)
     ├── litestream-init  one-shot: restore app.db from R2 if missing
     ├── litestream       sidecar: streams app.db to R2 (wl-litestream)
     ├── app              Node + Hono: static web build + PWA, /api/status,
-    │                    /api/android, /api/auth, /api/sync; scheduled jobs
+    │                    /api/android, /api/auth, /api/native-auth, /api/me,
+    │                    /api/sync; scheduled jobs
     ├── volume "data":   app.db (SQLite, WAL)
     └── volume "litestream-run": Litestream's control socket
 
@@ -61,8 +62,8 @@ to expand at runtime, so the secrets never land in the file.
 
 - **App pragmas:** `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_keys=ON`. Only Better Auth's tables declare foreign keys: deleting a user deletes their sessions and accounts. The sync tables have none. With `NORMAL` a restart of the app, the container, or a cleanly rebooted VPS loses nothing. A host power loss, kernel panic, or hard reset can roll back roughly the last 30 s of commits (Linux's default writeback delay). A push lost that way isn't re-sent, because the device already dropped it from its outbox, and the rolled-back `seq` values get reused, so devices that pulled past them skip later changes. This is accepted as rare; after such a crash, run `new-epoch` so every device re-uploads and pulls again. Auto-checkpoint stays on: Litestream recommends turning it off only for very high write loads, and without it a stopped Litestream would let the WAL grow without bound.
 - **Sync interval:** 10 s, to keep R2 write operations low. The R2 free tier allows 1M Class A operations/month.
-- **Snapshots:** every 24 h, kept for 336 h (14 days; durations take no days unit). Retention is global in 0.5 (`snapshot.retention`). The default (24 h) limits how far back a point-in-time restore can go.
-- **R2 lifecycle rule on `wl-litestream`:** delete objects older than 16 days. R2 may report `DeleteObjects` as done without deleting, so Litestream's own retention can leave files behind.
+- **Snapshots:** every 24 h, kept for 72 h (3 days; durations take no days unit). Retention is global in 0.5 (`snapshot.retention`) and limits how far back a point-in-time restore can go. It is short on purpose: every day kept costs a copy of the database in R2 ([accounts.md](accounts.md#account-cap)), and the change log keeps every row's history anyway.
+- **R2 lifecycle rule on `wl-litestream`:** delete objects older than 5 days. If Litestream stops uploading for that long, the rule deletes the whole replica; the stale-backup alert fires after an hour. R2 may report `DeleteObjects` as done without deleting, so Litestream's own retention can leave files behind.
 - **Freshness:** Litestream's Prometheus metrics have no "last upload" timestamp, but its control socket's `GET /list` reports `last_sync_at` per database: the last successful upload, recorded on every sync tick even when nothing changed. The socket is on the shared `litestream-run` volume; the app reads it for `/api/status` (`LITESTREAM_SOCKET`).
 - **Init step:** when `/data/app.db` is missing, `litestream restore -if-replica-exists /data/app.db`, and if that restored anything, an empty `/data/app.db.restored`. On a fresh VPS this restores automatically; on an existing one it does nothing. At startup the app sees the marker, starts a new epoch, and deletes the marker, so a restore never serves the old epoch. Any manual restore into the volume can create the same marker instead of running `new-epoch`.
 - **Point-in-time restore:** `litestream restore -config /etc/litestream.yml -timestamp <RFC 3339, exclusive> -o <file> /data/app.db`, e.g. from a one-off container of the same image with the same environment.
@@ -148,14 +149,14 @@ A new version must be higher than the installed one: Android refuses to install 
 
 | Endpoint | Answer |
 | --- | --- |
-| `GET /api/android/latest` | `{ "version": "1.2.3" }`: the latest release that has an APK. 404 when there is none. |
+| `GET /api/android/latest` | `{ "version": "1.2.3" }`: GitHub's latest release, if it has an APK. 404 when it has none; older releases aren't searched. |
 | `GET /api/android/download` | `{ "version": "1.2.3", "url": "…" }`: GitHub's short-lived signed URL of that APK. The app opens it in the phone's browser. |
 | `GET /api/android/apk` | A redirect to the same URL, for a first install from a browser. The download doesn't pass through the VPS either way. |
 
 - All are public, like the web app, and allow CORS from `https://localhost`, the app's WebView origin.
 - The app never sends the browser to this site for the download. The browser may have the web app installed, and its service worker answers navigations on this origin with the app shell. The service worker also leaves `/api/*` navigations alone, so the `/apk` link works in such a browser once its service worker has updated.
 - The server caches the latest release for 5 minutes, so the public endpoints can't spend the token's rate limit.
-- `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it both endpoints answer 503, and the app shows no update prompt.
+- `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it the three endpoints answer 503, and the app shows no update prompt. They answer 502 when GitHub can't be reached. `GITHUB_RELEASES_REPOSITORY` overrides the repository (default `eero-lehtinen/workout-logger`).
 - The first install is the same download: in a browser on Android, the web app's Settings show an "Android app" row with a link to `/api/android/apk` when the server has a release. The browser must be allowed to install apps.
 
 **Building locally.** Needs JDK 21 and the Android SDK (`platforms;android-36`, `build-tools;35.0.0`), with `ANDROID_HOME` set or `sdk.dir` in `apps/android/local.properties`.
@@ -230,13 +231,17 @@ backups or sign-in.
 | `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
 | `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
+| `MAX_ACCOUNTS` | Phase 11. Optional; the [account cap](accounts.md#account-cap), default 30, the owner included. |
 | `GITHUB_RELEASES_TOKEN` | Optional. Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
 
 Set by the compose file: `PUBLIC_URL` (`https://lift.eerolehtinen.fi`, for
 auth callbacks) and `LITESTREAM_SOCKET`. The image sets `DATABASE_PATH`
-(`/data/app.db`). Without `NODE_ENV=production`, as in development, the server
-falls back to a fixed development `AUTH_SECRET`, `data/app.db`, and
-`http://localhost:<port>`.
+(`/data/app.db`). Unset, `DATABASE_PATH` is `data/app.db` relative to the
+working directory, and `PUBLIC_URL` is `http://localhost:<port>`. A missing
+`AUTH_SECRET` fails startup with `NODE_ENV=production`, and falls back to a
+fixed development secret otherwise. Without the GitHub OAuth variables the
+server starts with sign-in off and logs a warning, which is enough for local
+runs without sign-in.
 
 The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
 The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
@@ -298,7 +303,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
-- `GET /api/status`: `{ version, commit, backupsOk }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, and each layer's last success and last error ([backups.md](backups.md#visibility)).
+- `GET /api/status`: `{ version, commit, backupsOk }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the daily copy's last error ([backups.md](backups.md#visibility)).
 - An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or doesn't contain `"backupsOk":true`.
 - If Litestream can't upload, the WAL keeps growing. Free disk and the replica's age on `/api/status` catch this early.
 
@@ -310,11 +315,11 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code.
 | Bad web build with a domain schema migration | Fix forward. Browsers and phones that ran the bad build have migrated their database, and an older build refuses a newer database ("Update the app") until a build with that schema version is deployed. |
 | Live-update bundle doesn't start on phones | Nothing to do on the phone: it rolls back and never downloads that commit again. Push a fix. |
 | Bad deploy with a migration | Stop `app`. Restore the deploy's `pre-migration/` copy (gunzip it to `/data/app.db`) into the volume, or restore Litestream to before the deploy. Run `new-epoch` with the previous SHA's image ([the server command](#the-server-command)). Redeploy the previous SHA. |
-| Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` ([backups.md](backups.md#restore-procedures)). |
+| Bad data (wrong edits, buggy client) | Don't restore the DB. Use `wl restore` (phase 10, [backups.md](backups.md#restore-procedures)). Until then, import an earlier snapshot file with Replace on one device; it syncs out. |
 | VPS crashed (power loss, kernel panic, hard reset) | Once it is back, run `new-epoch`: the last seconds of commits may be gone ([Litestream](#litestream)), and devices re-upload them. Not needed after a clean reboot or a container restart. |
 | Server DB corrupted | Stop `app` and `litestream`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy: gunzip it to `/data/app.db`. Either way, first delete the old `app.db-wal`, `app.db-shm`, and `.app.db-litestream` (an old WAL would be applied to the restored file), and create an empty `/data/app.db.restored` so the app starts a new epoch. Start the stack; `litestream-init` hands the files to uid 1000. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). Accounts and sessions created after the copy are gone: users sign in again, and an account created after it must be created again with a new id, so its devices ask to merge (choose Merge). |
 | VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start, and the app starts a new epoch itself. |
-| Bad Android release | Delete the GitHub release (or its APK); within 5 minutes the server offers the previous release again. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
+| Bad Android release | Delete the GitHub release; within 5 minutes the server offers the previous release again. Deleting only its APK stops all update offers instead. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
 | Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
 | Live-update signing key lost or leaked | Create a key pair (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072`, `openssl pkey -pubout`). Put the public key in `apps/web/capacitor.config.ts` and the private key in `LIVE_UPDATE_PRIVATE_KEY`, raise `MIN_NATIVE` to the next version, and release an APK. Older apps stay on their web build until they install it. A leaked key is only useful to someone who also controls the server or the connection to it. |
-| R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy covers the gap. |
+| R2 lost | Data on the VPS is unaffected. Create new buckets and tokens and update the env vars. Litestream starts a fresh replica, and the daily job resumes. The owner's PC copy (phase 10) covers the gap; until then, devices hold every account's full state. |

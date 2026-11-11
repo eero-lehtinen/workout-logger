@@ -13,7 +13,7 @@ import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 
 /**
- * The JS side of the rest timer (apps/web/src/lib/rest-timer-native.ts).
+ * The JS side of the rest timer (apps/web/src/lib/rest-alarm-native.ts).
  * The service owns the countdown; this starts and stops it and reports what
  * the service did while the UI wasn't looking.
  */

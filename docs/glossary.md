@@ -70,7 +70,7 @@ previous performance, not by prescribing.
 | --- | --- |
 | **Rest timer** | A countdown that starts when a set is logged. When it ends, the phone vibrates and plays a sound, even when the app is in the background or music is playing. Can be turned off in settings. |
 | **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle auto-end. Its display can be hidden in settings. |
-| **Idle auto-end** | If no set has been logged for the idle threshold (default 15 min, configurable), the session counts as ended at the timestamp of its last set. |
+| **Idle auto-end** | If no set has been logged for the idle threshold (default 15 min, configurable), the session counts as ended at the timestamp of its last set, or at its start if it has no sets. |
 
 ## Data, sync, and backups
 
@@ -99,8 +99,8 @@ See [accounts.md](accounts.md).
 | Term | Meaning |
 | --- | --- |
 | **Account** (user) | A login. Each account's data is fully isolated; accounts never share rows. |
-| **Owner** | The admin account (you). No quotas. Manages invites, users, and quotas. |
-| **Invite** | A single-use link from the owner, required for sign-up. Its code is the last part of the link. |
+| **Owner** | The admin account (you). No quotas. Manages users and quotas. |
+| **Account cap** | The most accounts the server allows, the owner included. Sign-up is open until it is reached. |
 | **Quota** | A per-user limit on server usage: changes pushed per day, stored bytes, request rate, snapshots per day. Hitting one pauses sync, never local use. |
-| **Disabled account** | An account the owner has switched off: its sessions are gone and it can't sign in or sync. Its data stays on the server and on its devices. |
+| **Disabled account** | An account the owner has switched off: its sign-ins and Android tokens are revoked and it can't sign in or sync. Its data stays on the server and on its devices. |
 | **API key** | A personal, revocable token the CLI uses instead of a login session. |

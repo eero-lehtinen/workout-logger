@@ -5,7 +5,6 @@ doc and delete it here.
 
 ## Deferred
 
-1. **Charting library.** Try several (e.g. ECharts, uPlot) on real data when building the first graphs. Requirements: multi-series time charts, zoom, a shared crosshair across stacked panels, and multiple y-axes.
-2. **Quota numbers** in [accounts.md](accounts.md#quotas). Tune them once there is real usage data from the owner account.
+1. **Quota numbers** in [accounts.md](accounts.md#quotas) and the account cap. Tune them once there is real usage data from the owner account.
 
 The order of work is in [implementation-plan.md](implementation-plan.md).

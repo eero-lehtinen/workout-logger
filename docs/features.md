@@ -29,16 +29,17 @@ FitNotes gaps that this app addresses:
 
 ## Accounts
 
-The app is shared with a few invited users, each with their own private data. See
+The app is shared with a few other users, each with their own private data. See
 [accounts.md](accounts.md).
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Use without an account (local only) | P0 | |
-| Google sign-in (GitHub behind a flag); sync tied to the account | P0 | No passwords. |
-| Invite-only sign-up with owner-created invite links | P0 | |
-| Per-user quotas for non-owner users; usage visible to the user | P1 | Quotas are needed before inviting anyone. |
-| Owner admin page: invites, users, usage, quotas, disable, delete | P1 | |
+| Sign-in; sync tied to the account | P0 | GitHub. No passwords. |
+| Google sign-in (GitHub behind a flag) | P1 | |
+| Open sign-up up to an account cap | P1 | |
+| Per-user quotas for non-owner users; usage visible to the user | P1 | Quotas are needed before anyone else signs up. |
+| Owner admin page: users, usage, quotas, disable, delete | P1 | |
 | Personal API keys for the CLI | P1 | |
 | Account deletion and full data export by the user | P1 | |
 
@@ -178,9 +179,9 @@ A page for tracking body data and other quantities next to training data.
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a setting). Several sessions per day are possible. Each mark is labeled and colored by the routine day (by its index in the cycle; six colors repeat), or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. Sessions from today open editable, since an idle end may only be a long rest. |
+| Month calendar with sessions marked per day | P1 | A session's day is the local date of its start in the session's time zone. Weeks start on Monday (a synced setting, `week_start`, with no control in Settings yet). Several sessions per day are possible. Each mark is labeled and colored by the routine day (by its index in the cycle; six colors repeat), or "ad hoc". Tapping a day lists its sessions; tapping a session opens it read-only, with editing available. Sessions from today open editable, since an idle end may only be a long rest. |
 | Year heatmap of training days | P2 | |
-| Sessions per week over time, with average | P1 | Over the last 3 months, the last year, or all time; a period starts no earlier than the first session, so averages aren't diluted. |
+| Sessions per week over time, with average | P1 | Over the history period (3 months, 6 months, a year, or all); a period starts no earlier than the first session, so averages aren't diluted. |
 | Days between sessions: average and distribution | P1 | Between training days: several sessions on one date count once. Gaps of 14 days or more share one bucket. |
 | Per muscle group and muscle: weighted sets per week | P1 | [Weighted sets](glossary.md#metrics-and-records) averaged over the weeks of the period, with the last date trained. For a group, a set counts once, by its exercise's largest factor among the group's muscles. Muscles are listed under their groups behind a switch. |
 | Per routine day: how often each day was performed, last date performed | P1 | Shows whether the cycle is actually followed. Archived routines are listed only if they were used in the period. |

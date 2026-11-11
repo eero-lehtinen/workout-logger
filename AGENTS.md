@@ -5,9 +5,9 @@ Guidance for coding agents working in this repository.
 ## Project
 
 A local-first workout logger: React web app + Capacitor Android shell, a Hono
-server on a Dokploy-managed VPS (auth, sync, quotas, snapshots; backups to
-Cloudflare R2), and a CLI. Used by the
-owner and a few invited users. Not a production service, but user data
+server on a Dokploy-managed VPS (auth, sync, snapshots; backups to
+Cloudflare R2). A CLI and multi-user quotas are planned. Used by the owner,
+later by a few other users. Not a production service, but user data
 must never be lost or leaked between accounts.
 
 What is built and what is next is in
@@ -15,7 +15,7 @@ What is built and what is next is in
 
 - `apps/web`: the local-first PWA, with Storybook stories and Playwright tests.
 - `packages/core`: the DB drivers, schema and migrations, the write API, the sync client and the shared server sync module, the domain functions, and the UI's queries and commands.
-- `packages/exercises`: the seed catalog.
+- `packages/exercises`: the seed catalog, the muscle list, and the built-in routines.
 - `apps/android`: the Capacitor shell around the same web build, with the Kotlin `RestTimer` plugin. A `v*` tag releases a signed APK; between releases the app replaces its web build with the server's (live updates).
 - `apps/server`: serves the web build, `/api/status`, the Android update endpoints, Better Auth, and sync, copies its database to R2, and has the `server` command. Every push to `main` deploys it to <https://lift.eerolehtinen.fi> ([docs/deployment.md](docs/deployment.md)).
 
@@ -98,7 +98,7 @@ the repo root.
 | `pnpm test` | Vitest across all packages, including every Storybook story as a browser test; `pnpm test <filter>` to narrow by file name, `--project storybook` for stories only. |
 | `pnpm storybook` | Storybook on http://localhost:6006: every screen with fixture data, at phone and PC widths, light and dark. |
 | `pnpm start` | Serve the last `pnpm build` of the web app with the production server on http://localhost:3000, with its database in `apps/server/data/app.db`. `pnpm dev` proxies `/api` to it. Sign-in needs a GitHub OAuth app ([docs/deployment.md](docs/deployment.md#github-oauth-app)). |
-| `node apps/server/src/cli.ts create-owner --email <email>` | Create the owner account in the local server database (`new-epoch` ends a restore). |
+| `pnpm --filter @workout-logger/server exec node src/cli.ts create-owner --email <email>` | Create the owner account in the local server database, `apps/server/data/app.db` (`new-epoch` ends a restore). Run from the repo root, `node apps/server/src/cli.ts` would open `data/app.db` there instead. |
 | `pnpm e2e` | Playwright end-to-end tests against a fresh production build, served by `apps/server`. |
 | `docker build -t workout-logger . && docker run --rm -p 3000:3000 workout-logger` | Build and run the deployed image locally. |
 | `SYNC_FUZZ_RUNS=5000 pnpm test fuzz` | Longer sync fuzz run (CI runs 300). Run it after changing clock, merge, or sync code. |

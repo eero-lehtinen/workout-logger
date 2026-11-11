@@ -5,7 +5,7 @@ import { html, raw } from "hono/html";
 import type { Auth } from "./auth.ts";
 
 /**
- * GitHub sign-in for the Android app (docs/accounts.md#android-sessions).
+ * GitHub sign-in for the Android app (docs/accounts.md#login, Android sessions).
  *
  * The app's WebView can't host the OAuth flow: GitHub's callback would
  * leave the app's origin. The app opens `/start` in a Custom Tab instead.

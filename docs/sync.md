@@ -77,7 +77,7 @@ Clock rules. `l` is the last issued HLC and `now` is `Date.now()`.
 Each synced table has these columns:
 
 ```
-id       TEXT PRIMARY KEY   -- UUIDv7, or deterministic UUIDv5 (see "Deterministic writes")
+id       TEXT PRIMARY KEY   -- UUIDv7, deterministic UUIDv5 (see "Deterministic writes"), or the key of a setting row
 hlc      TEXT NOT NULL
 deleted  INTEGER NOT NULL DEFAULT 0
 ...domain columns
@@ -87,7 +87,7 @@ Three internal tables are local only and never synced:
 
 ```
 _outbox      (table_name, id, PRIMARY KEY (table_name, id))
-_sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, last_sync_at, user_id
+_sync_state  (key PRIMARY KEY, value)   -- device_id, server_epoch, cursor, last_hlc, accepted_hlc, last_sync_at, user_id
 _undo        (seq, tx, table_name, id, previous)   -- previous row versions, see features.md#data
 ```
 
@@ -115,7 +115,7 @@ This means:
 
 ### Push
 
-1. In one read transaction, take up to 500 outbox entries joined with their current rows, and at most 1 MB of JSON less 4 KB for the envelope: the server answers 413 to a larger body. `hlc` comes from the row. A single row over that size stays queued and is reported as `too_large`; the rest of the outbox still goes.
+1. In one transaction, take up to 500 outbox entries joined with their current rows, and at most 1 MB of JSON less 4 KB for the envelope: the server answers 413 to a larger body. `hlc` comes from the row. A single row over that size stays queued and is reported as `too_large`; the rest of the outbox still goes. Entries with nothing to send, a missing row or a table this version doesn't sync, are dropped.
 2. Send `POST /api/sync/v1/push { device_id, client_version, changes: [{ table, id, hlc, deleted, v, data }] }`. `data` is a flat JSON object of the row's domain columns.
 3. The response is `{ epoch, results }`, with a status per change: `ok` (inserted or a duplicate), or `rejected` with a reason (`invalid`, `future_clock`, `conflict`, `quota`, `schema_outdated`).
 4. If no epoch is stored yet, store the response's `epoch`. A known epoch is never replaced here; the next pull compares it.
@@ -151,12 +151,12 @@ not applied at all.
 ### When it runs
 
 - On app start, on resume (the page becoming visible, or Capacitor's `resume`), and when the browser comes back online.
-- 3 s after the last local write, while signed in.
+- 3 s after the last local write, while signed in and no run is in progress. A write during a run waits for the next trigger.
 - Every 60 s while the app is open.
 - Right after signing in, and on manual "sync now".
 
 Each run pushes first, then pulls (`syncOnce` in `core`). An epoch reset
-during the run starts it over, once. Later, a server-sent-events "poke" with
+during the run starts it over, at most twice; a third fails the run. Later, a server-sent-events "poke" with
 the latest `seq` can replace polling. Pull stays the source of truth.
 
 The run happens in the DB worker (`syncOverHttp`), next to the database, so
@@ -205,15 +205,21 @@ HLC are derived from the source:
 | Source | id | HLC wall | Node |
 | --- | --- | --- | --- |
 | Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(`muscle:<key>`, `exercise:<key>`, `exercise_muscle:<exercise key>:<muscle key>`, `metric:<key>`) | `CATALOG_WALL`, fixed at 2026-11-10; the counter is `CATALOG_REVISION` | `seed` |
-| Health Connect record | UUIDv5(HC record id) | Record's last-modified time | `hc` |
+| Health Connect record (phase 8) | UUIDv5(HC record id) | Record's last-modified time | `hc` |
 | FitNotes import | UUIDv5(FitNotes natural key; see [fitnotes-import.md](fitnotes-import.md#ids)) | Conversion time; see [fitnotes-import.md](fitnotes-import.md#importing) | `fitnotes` |
 
 Each source has its own fixed UUIDv5 namespace (`ID_NAMESPACES` in `core`), so
 keys from different sources can't collide. The namespaces never change.
 Deterministic rows are written with their source's HLC, with counter 0 except
-for the catalog. They are not undoable.
+for the catalog.
 
-The rules:
+FitNotes rows are made by the conversion script and reach the device as a
+snapshot file, through Import snapshot: Merge applies them with plain LWW, so
+a newer conversion overwrites edits made in the app, and Replace re-stamps
+them with the device's clock ([fitnotes-import.md](fitnotes-import.md#importing)).
+
+The catalog seed, and later the Health Connect import, write through
+`writeDeterministic`, which is not undoable. The rules:
 
 - The writer skips rows whose local HLC is greater than or equal to the HLC it would write, and rows last written by any other node than its own pseudo-node. A user edit or delete survives re-seeding and re-reading Health Connect even if the source's HLC is newer.
 - The catalog's wall never moves, so a user's edit of a built-in, stamped later, beats every catalog revision under LWW too: a device that seeds a new revision before pulling the edit loses to the edit when it syncs.
@@ -249,6 +255,10 @@ head (user_id, table_name, id, hlc, deleted, v, data, seq,
 server_meta (key PRIMARY KEY, value)   -- epoch
 user_sync (user_id PRIMARY KEY, max_v)
 ```
+
+`change` is append-only: triggers abort every `UPDATE` and `DELETE` on it.
+Account deletion and compaction need a way past them, e.g. a migration that
+replaces them with a trigger allowing deletes of a whole user's rows.
 
 All endpoints act only on the authenticated `user_id`.
 
@@ -297,12 +307,12 @@ handles this.
 
 A whole-database restore is for disasters only, such as VPS loss or
 corruption. It is not for undoing bad data: the re-upload would bring the bad
-rows back. Bad data is undone with `wl restore`, which appends new changes (see
-[backups.md](backups.md#restore-procedures)).
+rows back. Bad data is undone with `wl restore` (phase 10), which appends new changes
+(see [backups.md](backups.md#restore-procedures)).
 
 ## Restores through the log
 
-`wl restore` reads old versions from `change` and writes them back as new
+Phase 10. `wl restore` reads old versions from `change` and writes them back as new
 changes:
 
 - **HLC:** `max(now, max hlc in the user's log)⁺` with node `restore`. The restored version always wins, even against a future-dated bad write.
