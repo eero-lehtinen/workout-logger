@@ -36,7 +36,7 @@ data. The layers below add history and copies outside the sync system.
    - Android lets the app see only files it created itself. After a reinstall, the earlier install's files stay in the folder but are no longer pruned.
    - On the web, use the manual export button. Browsers can't write files silently.
 
-Any user can export their own data from the app at any time. Settings → Export downloads `/snapshot`, or the local DB when offline.
+Any user can export their own data from the app at any time with Settings → Export snapshot. It exports the device's database, which on a synced device holds the account's full state.
 
 ## Storage isolation
 
@@ -81,7 +81,7 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 - the time of the last Litestream upload, from its control socket
 - the time of the last good daily DB copy, and the last error
 - free disk space and the database size
-- the result of the last restore rehearsal (phase 11)
+- the result of the last restore rehearsal (phase 11b)
 
 Settings shows the user's own last sync time and unsynced changes, the owner's
 server backup layers, and on Android, the time of the last snapshot file.

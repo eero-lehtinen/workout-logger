@@ -92,7 +92,7 @@ Principles:
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Android live updates | `@capawesome/capacitor-live-update` (pinned 8.8.1) | Downloads a zip of the web build from our own server and runs it from the same origin. See [live updates](#live-updates). |
 | Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
-| Auth | Better Auth (pinned 1.7.18), GitHub sign-in | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. See [accounts.md](accounts.md#login). |
+| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub until phase 11, then behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI. See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
 | Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely) | Same engine as the clients. No platform row limits. Kysely's migrator for the server's tables. |
 | Server jobs | `croner` | In-process cron with overrun protection; the daily DB copy. |
@@ -368,7 +368,7 @@ A single Node container on the owner's VPS, managed by Dokploy, at <https://lift
 
 ## Accounts
 
-Invite-only signup, an owner role without limits, and per-user quotas. Full design: [accounts.md](accounts.md).
+Invite-only sign-up, an owner role without limits, and per-user quotas. Full design: [accounts.md](accounts.md).
 
 ## Backups
 
@@ -392,7 +392,7 @@ The native app exists for the rest timer and health data. The web cannot reliabl
 
 - **Capacitor lives in `apps/web`:** `capacitor.config.ts` and the plugin packages are there, because the CLI finds native plugins through the dependencies of the package that holds the config. `android.path` points at `../android`.
 - **`pnpm android:sync`** builds the web app and runs `cap sync`: it copies `dist` into the Gradle project and writes the plugin wiring (`capacitor.settings.gradle`, `app/capacitor.build.gradle`). Those files hold pnpm store paths with version numbers, so they are generated, not committed, and Gradle needs a sync first.
-- **Plugins:** `@capacitor/app` (the installed version, deep links), `@capacitor/browser` (the GitHub sign-in in a Custom Tab), `@aparajita/capacitor-secure-storage` (the session token in Keystore-backed storage), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, `@capawesome/capacitor-live-update` ([live updates](#live-updates)), and the app's own `RestTimer`.
+- **Plugins:** `@capacitor/app` (the installed version, deep links), `@capacitor/browser` (the sign-in in a Custom Tab), `@aparajita/capacitor-secure-storage` (the session token in Keystore-backed storage), `@capacitor/filesystem` (snapshot files), `@capacitor-community/keep-awake`, `@capawesome/capacitor-live-update` ([live updates](#live-updates)), and the app's own `RestTimer`.
 - **Deep link:** `MainActivity` handles `<application id>://auth`, where the sign-in returns ([accounts.md](accounts.md#login)). The scheme is the application id, so the debug build has its own.
 - **Versions:** `minSdk` 30 (Android 11), where writing to the shared Documents folder needs no storage permission; target and compile SDK 36. `versionName` is the release tag and `versionCode` is `major * 1 000 000 + minor * 1 000 + patch`.
 - **Build types:** debug builds have the id `fi.eerolehtinen.lift.debug` and the name "Workouts (debug)", so they install next to the release app with their own database. Release builds are signed in CI ([deployment.md](deployment.md#android-releases)); without the keystore they come out unsigned. A release build never falls back to the debug key: replacing an install signed with another key needs an uninstall, which deletes the database.

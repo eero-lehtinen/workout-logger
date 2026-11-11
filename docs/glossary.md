@@ -100,6 +100,7 @@ See [accounts.md](accounts.md).
 | --- | --- |
 | **Account** (user) | A login. Each account's data is fully isolated; accounts never share rows. |
 | **Owner** | The admin account (you). No quotas. Manages invites, users, and quotas. |
-| **Invite code** | A single-use code from the owner, required for signup. |
-| **Quota** | A per-user limit on server usage: changes pushed per day, stored bytes, request rate. Hitting one pauses sync, never local use. |
+| **Invite** | A single-use link from the owner, required for sign-up. Its code is the last part of the link. |
+| **Quota** | A per-user limit on server usage: changes pushed per day, stored bytes, request rate, snapshots per day. Hitting one pauses sync, never local use. |
+| **Disabled account** | An account the owner has switched off: its sessions are gone and it can't sign in or sync. Its data stays on the server and on its devices. |
 | **API key** | A personal, revocable token the CLI uses instead of a login session. |

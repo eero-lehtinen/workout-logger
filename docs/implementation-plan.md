@@ -19,7 +19,7 @@ These are human estimates. AI agents can do large phases very quickly.
 | Milestone | After phase | Meaning |
 | --- | --- | --- |
 | **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, measurements, and all FitNotes history imported. Workouts are logged only here from now on. |
-| **M2: other users invited** | 11 | Multi-user hardening, quotas, admin, restore rehearsal. |
+| **M2: other users invited** | 11 | Google sign-in, invites, quotas, admin, account deletion. |
 
 ## Phase 0: Scaffolding (S) [done]
 
@@ -245,17 +245,24 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 - API keys in the app settings, with read and write scopes.
 - Owner backup task: `wl backup --all` plus restic, scheduled on your PC.
 
-## Phase 11: Multi-user hardening (M)
+## Phase 11: Multi-user (M)
 
-- Invites (entropy, expiry, transactional redemption), signup. Sign-in is GitHub only so far: decide whether invited users without GitHub get another method (email + password, magic links).
-- Rate limits (per-IP before auth, tight on auth endpoints), body limits, trusted proxy configuration.
-- Quotas and their exemptions, the usage table and pruning, the owner admin page (users, usage, quotas, disable).
-- Account deletion with stated retention; data export.
-- Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
-- Warning dot for an on-device snapshot older than 7 days.
-- Signup screen privacy notice.
+Detailed plan: [plans/multi-user.md](plans/multi-user.md).
+
+- Google sign-in instead of GitHub, which stays behind a flag.
+- Invite links (entropy, expiry, transactional redemption) and sign-up, with a privacy notice.
+- Rate limits (per-IP before auth, per user after), body limits, trusted proxy configuration.
+- Quotas and their exemptions, the usage table and pruning, usage shown to the user, the owner admin page (invites, users, usage, quotas, disable).
+- Account deletion with stated retention. Data export already exists (Settings → Export snapshot).
 
 **Exit:** **M2.** The first invited user onboarded.
+
+## Phase 11b: Backup checks (S)
+
+Moved out of phase 11: they protect the owner's backups, not other users.
+
+- Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
+- Warning dot for an on-device snapshot older than 7 days, and for a failed rehearsal.
 
 ## Phase 12: Analytics and P2 (ongoing)
 

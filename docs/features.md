@@ -35,13 +35,12 @@ The app is shared with a few invited users, each with their own private data. Se
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Use without an account (local only) | P0 | |
-| Email + password login; sync tied to the account | P0 | |
-| Invite-only signup with owner-created invite codes | P0 | |
+| Google sign-in (GitHub behind a flag); sync tied to the account | P0 | No passwords. |
+| Invite-only sign-up with owner-created invite links | P0 | |
 | Per-user quotas for non-owner users; usage visible to the user | P1 | Quotas are needed before inviting anyone. |
-| Owner admin page: invites, users, usage, quotas, disable, password reset link | P1 | |
+| Owner admin page: invites, users, usage, quotas, disable, delete | P1 | |
 | Personal API keys for the CLI | P1 | |
 | Account deletion and full data export by the user | P1 | |
-| OAuth login (Google/GitHub) | P2 | |
 
 ## Exercise catalog
 
@@ -204,7 +203,7 @@ series code.
 ## Non-goals
 
 - Social features, shared routines between users, teams.
-- Public signup and production-grade operations (SLAs, abuse handling beyond quotas).
+- Public sign-up and production-grade operations (SLAs, abuse handling beyond quotas).
 - Prescribed weights, reps, or set counts in routines.
 - Set types and extra set data: warm-up sets, supersets, drop sets, RPE, per-set notes. A set is weight × reps (or time/distance for those exercise types).
 - Automatic body weight in bodyweight exercises. Users enter whatever weight they want to track.

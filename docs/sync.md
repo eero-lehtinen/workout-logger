@@ -164,7 +164,7 @@ no rows cross to the main thread. The main thread (`lib/sync.ts` in the web
 app) decides when to run and passes the credentials: nothing on the web, where
 the session cookie goes along, and the bearer token on Android. HTTP 401 means
 the session ended: the app asks to sign in again and keeps the outbox. HTTP 426
-means the Android app is below the server's minimum version. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
+means the Android app is below the server's minimum version. HTTP 429 *(phase 11)* is a rate or snapshot limit: the run fails and the next one tries again; a 429 `quota` on a snapshot shows as the quota pause. HTTP 403 `account_disabled` *(phase 11)* stops sync until the owner enables the account. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
 
 Each write of a run checks that the device is still bound to the run's
 account, and each pull or snapshot page that the cursor is still the one it
@@ -258,7 +258,7 @@ All endpoints act only on the authenticated `user_id`.
      - same `deleted`, and identical `data` or a different `v`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal. A different `v` is the same row version rewritten by a client migration, which keeps HLCs; this happens on re-uploads after an epoch reset or a lost push response;
      - otherwise: `conflict`, which means a node-id or determinism bug. It is logged.
   3. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
-  4. If the quota is used up, reject it as `quota`. Duplicates don't count, so they are still `ok`.
+  4. If the quota is used up, reject it as `quota`. Duplicates don't count, so they are still `ok`. The server passes a quota hook that reads the user's allowance before the first change and records the inserted count and bytes after the last, inside the push transaction *(phase 11)*; without one, as in the fuzz test, there is no limit. The limits are in [accounts.md](accounts.md#quotas).
   5. `INSERT` into `change`, upsert `head` when `hlc > head.hlc`, and raise `max_v` if needed.
 
   The response carries the current `epoch`.
@@ -293,7 +293,7 @@ handles this.
    - set the cursor to 0;
    - store the new epoch;
    - sync.
-3. The server dedups everything it still has via the unique key. Re-uploads within 24 h of an epoch change are exempt from quota.
+3. The server dedups everything it still has via the unique key. Re-uploads within 24 h of an epoch change are exempt from the daily change quota; `server_meta` records when the epoch started *(phase 11)*.
 
 A whole-database restore is for disasters only, such as VPS loss or
 corruption. It is not for undoing bad data: the re-upload would bring the bad

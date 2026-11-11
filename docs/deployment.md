@@ -7,9 +7,10 @@ provider, so losing either the VPS or the bucket loses no data.
 **Current state (phase 6):** the `app` container serves the static web build,
 `GET /api/status`, the Android app's update endpoints
 ([Android releases](#android-releases), [live updates](#live-updates)),
-GitHub sign-in, and sync, with its
+sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. The restore rehearsal and quotas are phase 11.
+daily job copies it there too. Google sign-in, invites, and quotas are phase
+11 ([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
@@ -223,7 +224,9 @@ backups or sign-in.
 | Variable | Purpose |
 | --- | --- |
 | `AUTH_SECRET` | Better Auth's secret, e.g. `openssl rand -base64 32`. It signs the session cookies: rotating it signs every browser out. Android tokens keep working. |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | The GitHub OAuth app ([below](#github-oauth-app)) |
+| `SIGN_IN_PROVIDERS` | Phase 11. The enabled sign-in providers, comma-separated: `google`, `github`. Defaults to `google`. Each one listed needs its client id and secret below; startup fails without them. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Phase 11. The Google OAuth client ([below](#google-oauth-client)) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | The GitHub OAuth app ([below](#github-oauth-app)). Required until phase 11; then only when `SIGN_IN_PROVIDERS` lists `github`. |
 | `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
 | `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
@@ -241,10 +244,24 @@ with the workflow's own `GITHUB_TOKEN`. The other GitHub secrets are the
 Android keystore's ([Android releases](#android-releases)) and
 `LIVE_UPDATE_PRIVATE_KEY` ([live updates](#live-updates)).
 
+### Google OAuth client
+
+Phase 11. Google Cloud console → APIs & Services, in a project owned by the
+owner's Google account:
+
+- OAuth consent screen: external, scopes `openid`, `email`, `profile` only, privacy policy `https://lift.eerolehtinen.fi/privacy`, published to production. Check at setup that these basic scopes still need no verification.
+- Credentials → OAuth client ID, type Web application. Authorized redirect URIs: `https://lift.eerolehtinen.fi/api/auth/callback/google`, and for local development `http://localhost:5173/api/auth/callback/google`.
+
+**Switching the owner from GitHub:** deploy with `SIGN_IN_PROVIDERS=google,github`,
+sign in with Google on every device (it links to the owner account by email),
+then set `SIGN_IN_PROVIDERS=google`. Existing sessions and Android tokens keep
+working. If the owner's Google email isn't the account's, run `set-email` first
+([the server command](#the-server-command)).
+
 ### GitHub OAuth app
 
-GitHub → Settings → Developer settings → OAuth Apps, owned by the owner's
-account:
+Used while `SIGN_IN_PROVIDERS` lists `github`. GitHub → Settings → Developer
+settings → OAuth Apps, owned by the owner's account:
 
 - Homepage URL: `https://lift.eerolehtinen.fi`
 - Authorization callback URL: `https://lift.eerolehtinen.fi/api/auth/callback/github`
@@ -263,6 +280,7 @@ needed.
 
 - `create-owner --email <email> [--name <name>]` creates the owner account once, with the email marked verified. The owner then signs in with the GitHub account whose email it is: the public profile email, or the primary email when the profile shows none, verified on GitHub. The command refuses to run if an owner exists. No env var grants the owner role, so nobody can claim it by signing in first.
 - `new-epoch` ends a whole-database restore ([sync.md](sync.md#server-restore-and-epoch)).
+- `set-email --user <id or email> --email <email>` (phase 11) changes an account's email, marked verified, so the next sign-in with a provider reporting that email links to it.
 
 ## Scheduled jobs
 
@@ -273,8 +291,8 @@ period runs right away, which catches up on a run missed during downtime.
 | Job | Schedule | Status |
 | --- | --- | --- |
 | Daily DB copy (`daily-db-copy`) | 03:00 | Runs when `BACKUP_R2_*` is set |
-| Restore rehearsal | monthly | Phase 11 |
-| Prune old `usage` rows | daily | Phase 11, with quotas |
+| Restore rehearsal | monthly | Phase 11b |
+| Prune `usage` rows older than 90 days | daily | Phase 11, with quotas |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code.
 ## Monitoring
