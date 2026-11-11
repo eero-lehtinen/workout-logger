@@ -11,6 +11,7 @@ describe("syncOverHttp", () => {
     [401, "unauthorized"],
     [409, "account_changed"],
     [426, "update_required"],
+    [429, "rate_limited"],
     [500, "server"],
   ])("reports HTTP %i as %s", async (status, failure) => {
     const store = await openTestStore({ now: () => T0 });

@@ -20,7 +20,7 @@ on its own.
 
 0. **Head-only server sync.** The server keeps only `head`, `WITHOUT ROWID`, with a `seq` counter; migration `0003_sync_head_only` drops `change` ([sync.md](../sync.md#server-side)). Done, and the 5,000-run fuzz test passes. After the deploy, compare the size of the next `daily/` copy with the last one: dropping `change` frees pages but doesn't shrink `app.db` itself until a `VACUUM`, while the daily copy is made with `VACUUM INTO`.
 1. **Google sign-in.** `SIGN_IN_PROVIDERS`, the Google provider, `signIn` in `/api/status` and the buttons, the `provider` parameter of native auth, `set-email`. Sign-up stays off. Done. Before the branch deploys, create the Google OAuth client and set `GOOGLE_CLIENT_*` and `SIGN_IN_PROVIDERS=google,github` in Dokploy; after, switch the owner on the live server ([deployment.md](../deployment.md#google-oauth-client)).
-2. **Request limits.** Per-IP and per-user limits, body limits.
+2. **Request limits.** Per-IP and per-user limits, body limits. Done.
 3. **Quotas.** The tables (`usage`, `quota`, `limits`), the default quotas as code constants with per-user overrides, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Run the long fuzz test.
 4. **Admin page.** The account cap, users, usage, quota overrides, exemption windows, disable, the 700 MB database warning.
 5. **Account deletion.**
@@ -31,7 +31,6 @@ on its own.
 
 - **Counting accounts in Better Auth's transaction.** Better Auth 1.7.18 runs `createOAuthUser` in `runWithTransaction` and the user-create hooks inside it. The count must use that transaction (`getCurrentAdapter`): our own Kysely instance shares the one better-sqlite3 connection and would wait on it. First test: two concurrent sign-ups for the last place create one user.
 - **Storage quota calibration.** Before fixing the 10 MB, compare the live database size with `sum(length(data))` of `head`.
-- **`hono-rate-limiter`:** check that it is maintained and supports Hono 4 before adopting it; otherwise a fixed-window map.
 - **Google consent screen:** check that basic scopes still publish without verification.
 
 ## Tests

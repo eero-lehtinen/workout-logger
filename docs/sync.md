@@ -164,7 +164,7 @@ no rows cross to the main thread. The main thread (`lib/sync.ts` in the web
 app) decides when to run and passes the credentials: nothing on the web, where
 the session cookie goes along, and the bearer token on Android. HTTP 401 means
 the session ended: the app asks to sign in again and keeps the outbox. HTTP 426
-means the Android app is below the server's minimum version. HTTP 429 *(phase 11)* is a rate or snapshot limit: the run fails and the next one tries again; a 429 `quota` on a snapshot shows as the quota pause. HTTP 403 `account_disabled` *(phase 11)* stops sync until the owner enables the account. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
+means the Android app is below the server's minimum version. HTTP 429 is a rate limit, or *(phase 11)* the snapshot limit: the run fails and the next one tries again; a 429 `quota` on a snapshot shows as the quota pause. HTTP 403 `account_disabled` *(phase 11)* stops sync until the owner enables the account. Every request also names the account the device's data belongs to (`X-Expected-User`); the server answers 409 when the session is another account's, e.g. after a sign-in in another tab, and the app checks the account again before the next run.
 
 Each write of a run checks that the device is still bound to the run's
 account, and each pull or snapshot page that the cursor is still the one it

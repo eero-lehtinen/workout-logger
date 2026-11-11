@@ -31,6 +31,8 @@ export type SyncFailure =
   | "update_required"
   /** The session belongs to another account than expected: check it again. */
   | "account_changed"
+  /** Too many requests (HTTP 429); the next run tries again. */
+  | "rate_limited"
   /**
    * Another run, or an account choice, changed the sync state first. Nothing
    * was written; run again.
@@ -113,6 +115,9 @@ export async function syncOverHttp(
       }
       if (error.status === 426) {
         return { ok: false, failure: "update_required", message };
+      }
+      if (error.status === 429) {
+        return { ok: false, failure: "rate_limited", message };
       }
       return { ok: false, failure: "server", message };
     }

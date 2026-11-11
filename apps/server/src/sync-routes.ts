@@ -8,9 +8,11 @@ import {
   snapshot,
 } from "@workout-logger/core/sync-server";
 import { Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
 import type { AuthEnv } from "./auth/middleware.ts";
+import { requestBodyLimit } from "./limits.ts";
 
+/** Its body limit is `MAX_PUSH_BYTES`, not the general one. */
+export const PUSH_PATH = "/api/sync/v1/push";
 const MAX_PUSH_CHANGES = 1000;
 const DEVICE_ID_PATTERN = /^[0-9a-z]{1,16}$/;
 
@@ -31,24 +33,17 @@ export function syncRoutes(db: ServerDb, now: () => number = Date.now) {
     await next();
   });
 
-  app.post(
-    "/push",
-    bodyLimit({
-      maxSize: MAX_PUSH_BYTES,
-      onError: (c) => c.json({ error: "too_large" }, 413),
-    }),
-    async (c) => {
-      const body = await c.req.json().catch(() => null);
-      if (!isPushRequest(body)) return c.json({ error: "invalid" }, 400);
-      const { inserted: _, ...response } = await push(
-        db,
-        c.get("user").id,
-        body,
-        { now: now() },
-      );
-      return c.json(response);
-    },
-  );
+  app.post("/push", requestBodyLimit(MAX_PUSH_BYTES), async (c) => {
+    const body = await c.req.json().catch(() => null);
+    if (!isPushRequest(body)) return c.json({ error: "invalid" }, 400);
+    const { inserted: _, ...response } = await push(
+      db,
+      c.get("user").id,
+      body,
+      { now: now() },
+    );
+    return c.json(response);
+  });
 
   app.get("/pull", async (c) => {
     const after = Number(c.req.query("after") ?? 0);

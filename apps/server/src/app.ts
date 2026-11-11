@@ -19,8 +19,9 @@ import {
 } from "./auth/middleware.ts";
 import { nativeAuthRoutes } from "./auth/native-auth.ts";
 import { type ServerKysely, syncDb } from "./db/database.ts";
+import { ipLimit, requestBodyLimit, userLimit } from "./limits.ts";
 import { ownerStatus, publicStatus, type StatusSource } from "./status.ts";
-import { syncRoutes } from "./sync-routes.ts";
+import { PUSH_PATH, syncRoutes } from "./sync-routes.ts";
 
 export interface AppOptions {
   /** Directory with the built web app (`apps/web/dist`). */
@@ -93,6 +94,13 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     app.use(path, androidCors);
   }
 
+  // After CORS, so the Android app can read a 429.
+  app.use("/api/*", ipLimit());
+  const bodyLimit = requestBodyLimit();
+  app.use("/api/*", (c, next) =>
+    c.req.path === PUSH_PATH ? next() : bodyLimit(c, next),
+  );
+
   const status: StatusSource = {
     db: options.db,
     version: pkg.version,
@@ -115,9 +123,11 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   app.route("/api/native-auth", nativeAuthRoutes(auth, now));
 
+  const perUser = userLimit();
   for (const path of ["/api/me", "/api/sync/*"]) {
     app.use(path, requireClientVersion(options.minClientVersion));
     app.use(path, requireUser(auth));
+    app.use(path, perUser);
   }
   app.get("/api/me", (c) => c.json(c.get("user")));
   app.route("/api/sync/v1", syncRoutes(syncDb(options.db), now));

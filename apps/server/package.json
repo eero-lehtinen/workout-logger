@@ -21,6 +21,7 @@
     "croner": "^11.0.0",
     "esbuild": "^0.28.2",
     "hono": "^4.13.17",
+    "hono-rate-limiter": "^0.5.4",
     "kysely": "^0.29.8"
   },
   "files": [

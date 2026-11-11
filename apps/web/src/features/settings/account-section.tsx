@@ -151,6 +151,8 @@ function problem(sync: SyncState): string | null {
     return "Offline; syncs when the server can be reached.";
   if (sync.failure === "server")
     return "The last sync failed; it is retried every minute.";
+  if (sync.failure === "rate_limited")
+    return "Too many requests to the server; sync tries again in a minute.";
   if (sync.rejected.quota) return "Sync paused: the daily limit is reached.";
   if (
     sync.rejected.conflict ||

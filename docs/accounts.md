@@ -117,12 +117,12 @@ unsynced changes, and why sync is stuck, if it is.
 
 ## Rate limits and request hygiene
 
-- **Per IP, before auth** *(phase 11)*: 300 requests per minute on `/api/*`, enough for several devices behind one NAT. Static files aren't limited.
+- **Per IP, before auth**: 300 requests per minute on `/api/*`, enough for several devices behind one NAT. Static files and CORS preflights aren't counted. 429 `rate_limited` with `Retry-After`.
 - **Client IP:** every request arrives through the Cloudflare Tunnel, so Traefik and the app see cloudflared as the client. The client IP comes from `CF-Connecting-IP`, which Cloudflare sets at its edge ([deployment.md](deployment.md#topology)); without it (local runs) the socket address. The VPS takes no inbound HTTP, so only another container on the Dokploy network could set the header itself. That is accepted.
 - **Auth endpoints:** Better Auth's own limiter is on (in memory): 100 requests per minute per IP on `/api/auth/*`, 5 on `/sign-in/*`, and 10 on the OAuth callbacks. It reads the IP from `CF-Connecting-IP`.
-- **Per user, after auth** *(phase 11)*: the request quota below. 429 with `Retry-After`; the sync loop counts it as a failed run and tries again in a minute.
-- **Body size:** 1 MB on `/api/sync/v1/push`; 64 KB on every other `/api/*` POST *(phase 11)*.
-- Implementation: in-memory limiters, which are enough with a single instance. Candidate: `hono-rate-limiter`, checked against Hono 4 when adopted. Better Auth's limiter must be explicitly enabled outside development.
+- **Per user, after auth**: the request quota below, on `/api/me` and `/api/sync/*`. The owner has none. 429 `rate_limited` with `Retry-After`; the sync loop counts it as a failed run, says so in Settings, and tries again in a minute.
+- **Body size:** 1 MB on `/api/sync/v1/push`; 64 KB on every other `/api/*` request, including Better Auth's. 413 `too_large`.
+- Implementation: `hono-rate-limiter` (0.5, Hono 4) with its in-memory store, which is enough with a single instance (`apps/server/src/limits.ts`). Better Auth's limiter must be explicitly enabled outside development.
 
 ## Quotas
 
