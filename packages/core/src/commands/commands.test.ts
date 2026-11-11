@@ -101,6 +101,25 @@ describe("starting sessions", () => {
     expect(options.routines.map((r) => r.id)).toEqual([ids.routineId, other]);
   });
 
+  it("lists each day's exercises in slot order", async () => {
+    const { run, query, ids } = await setup();
+    await run("addSlot", { dayId: ids.upper, exerciseId: ids.dips });
+    const gone = await run("addSlot", {
+      dayId: ids.upper,
+      exerciseId: ids.squat,
+    });
+    await run("deleteSlot", { slotId: gone });
+    const [routine] = (await query("startOptions", undefined)).routines;
+    expect(routine?.days).toEqual([
+      {
+        id: ids.upper,
+        name: "Upper",
+        exercises: ["Bench Press (Barbell)", "Dip"],
+      },
+      { id: ids.lower, name: "Lower", exercises: ["Squat (Barbell)"] },
+    ]);
+  });
+
   it("fills a day's slots as session exercises", async () => {
     const { run, query, ids } = await setup();
     const sessionId = await run("startSession", {

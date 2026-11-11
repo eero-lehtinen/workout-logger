@@ -145,11 +145,18 @@ export const recentSessions = defineQuery(
   },
 );
 
+export interface StartDay {
+  id: string;
+  name: string;
+  /** The names of the day's exercises, in slot order. */
+  exercises: string[];
+}
+
 export interface StartOptions {
   routines: {
     id: string;
     name: string;
-    days: { id: string; name: string }[];
+    days: StartDay[];
     lastDayId: string | null;
     nextDayId: string | null;
   }[];
@@ -158,7 +165,7 @@ export interface StartOptions {
 }
 
 export const startOptions = defineQuery(
-  ["routine", "routine_day", "session"],
+  ["routine", "routine_day", "slot", "exercise", "session"],
   async (db): Promise<StartOptions> => {
     const routines = await db
       .selectFrom("routine")
@@ -183,6 +190,19 @@ export const startOptions = defineQuery(
     const lastByRoutine = new Map(
       latest.rows.map((r) => [r.routine_id, r] as const),
     );
+    // Slots on deleted exercises have nothing to show.
+    const slots = await db
+      .selectFrom("slot")
+      .innerJoin("exercise", "exercise.id", "slot.exercise_id")
+      .select(["slot.id", "slot.day_id", "slot.position", "exercise.name"])
+      .where("slot.deleted", "=", 0)
+      .where("exercise.deleted", "=", 0)
+      .execute();
+    const exercisesOf = (dayId: string) =>
+      slots
+        .filter((s) => s.day_id === dayId)
+        .sort(compareOrder)
+        .map((s) => s.name);
 
     const listed = routines.sort(compareOrder).map((routine) => {
       const routineDays = days.filter((d) => d.routine_id === routine.id);
@@ -193,7 +213,11 @@ export const startOptions = defineQuery(
         days: routineDays
           .filter((d) => !d.deleted)
           .sort(compareOrder)
-          .map((d) => ({ id: d.id, name: d.name })),
+          .map((d) => ({
+            id: d.id,
+            name: d.name,
+            exercises: exercisesOf(d.id),
+          })),
         lastDayId,
         nextDayId: nextDay(routineDays, lastDayId),
       };
