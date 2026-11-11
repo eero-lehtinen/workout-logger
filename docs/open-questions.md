@@ -5,6 +5,6 @@ doc and delete it here.
 
 ## Deferred
 
-1. **Quota numbers** in [accounts.md](accounts.md#quotas) and the account cap. Tune them once there is real usage data from the owner account.
+1. **Quota numbers** in [accounts.md](accounts.md#quotas) and the account cap. Tune them once there is real usage data from the owner account; they change on the admin page, without a deploy.
 
 The order of work is in [implementation-plan.md](implementation-plan.md).

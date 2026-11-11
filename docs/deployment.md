@@ -231,7 +231,6 @@ backups or sign-in.
 | `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
 | `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
-| `MAX_ACCOUNTS` | Phase 11. Optional; the [account cap](accounts.md#account-cap), default 30, the owner included. |
 | `GITHUB_RELEASES_TOKEN` | Optional. Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
 
 Set by the compose file: `PUBLIC_URL` (`https://lift.eerolehtinen.fi`, for

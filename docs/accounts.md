@@ -58,26 +58,26 @@ There are no invites. The app isn't advertised, so few strangers will find
 it, and the owner can disable or delete any account. What needs a limit is
 the total, because every account's data is copied many times into R2.
 
-- `MAX_ACCOUNTS` (default 30, the owner included) caps the number of accounts.
+- The cap is 100 accounts, the owner included, changeable on the [admin page](#admin-page) without a deploy.
 - `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction (`createOAuthUser`) and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place.
 - The sign-in row says that signing in creates an account, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
 - Sign-up lands on Settings with a welcome toast. Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
 
-**Why 30.** The binding limit is R2's free tier, 10 GB of storage, which
+**Why 100.** The binding limit is R2's free tier, 10 GB of storage, which
 other projects on the account share; about 8 GB is left for this server.
-Once retention fills, R2 holds about 3–6× the server database: Litestream
+Once retention fills, R2 holds about 4–5× the server database: Litestream
 keeps ~4 daily snapshots and 3 days of incremental files, compressed with LZ4,
 and the daily job keeps 7 daily and 3 monthly Brotli-compressed copies
-([backups.md](backups.md#layers)). A model with synthetic data gives 3×;
-the owner's real data compresses worse. Even at 6×, the database can grow to
-about 1.3 GB. The owner's 2.5 years of FitNotes history was a 2.8 MB
-Litestream snapshot and a 1.3 MB daily copy while the server also kept every
-version in a log; keeping only the newest version in a `WITHOUT ROWID` table
-makes it about a third of that
-([sync.md](sync.md#why-only-the-newest-version)). Assume 0.5 MB of database
-per active user per year: 30 accounts take decades to fill the budget, so the
-cap is about strangers, not storage, and could rise. The
-[storage quota](#quotas) bounds a runaway account. Everything else is far from a limit: Litestream's R2 writes are
+([backups.md](backups.md#layers)). The database is about 1.8× the stored
+`data`, and an active user adds about 1 MB of it a year, plus a fixed ~0.2 MB
+for the built-in catalog: roughly 5 MB of R2 per account per year, so 8 GB
+holds about 1,500 account-years and 100 accounts last over a decade. The cap
+is sized for realistic use, not for every account filling its
+[storage quota](#quotas): a full 10 MB quota is about 90 MB of R2, so even a
+third of the accounts at their quota stays near 3 GB. The quota bounds a
+runaway account, the database warning below gives months of notice, and R2
+beyond the free tier costs cents. The cap itself mostly bounds strangers, if
+the app is ever found. Everything else is far from a limit: Litestream's R2 writes are
 bounded by its sync interval (at most ~350k of the 1M free Class A operations
 a month, whatever the user count), and the VPS and the Cloudflare Tunnel
 carry a few hundred MB of SQLite and a sync a minute per open app without
@@ -128,9 +128,12 @@ unsynced changes, and why sync is stuck, if it is.
 
 *(phase 11)*
 
-Defaults for `user`, changeable by the owner per user. The owner has none.
+The owner has none. Every other account gets the defaults, unless the owner
+sets an override for it. Both the defaults and the overrides are edited on the
+[admin page](#admin-page), so changing a limit needs no deploy. The table
+gives the built-in values, which apply until the owner changes them.
 
-| Quota | Default | Reason |
+| Quota | Built-in default | Reason |
 | --- | --- | --- |
 | Bytes written per day | 5 MB of `data` | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 200 KB. |
 | Stored data size | 10 MB of `data` | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). Check the ratio of database size to stored `data` on the live server before fixing the number. |
@@ -161,7 +164,8 @@ client or a misused account.
 `/admin` in the web app, linked from Settings for the owner, over
 `/api/admin/*` (403 for anyone else).
 
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user: edit quota overrides, allow unlimited uploads for 24 h, disable or enable, delete.
+- **Limits:** the account cap and the default [quotas](#quotas), with the number of accounts and the database size next to them. A field left empty uses the built-in value. Lowering the cap below the number of accounts only stops new sign-ups.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user: edit quota overrides (empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect).
 - **Delete** is the same as the user's own [account deletion](#privacy).
 
@@ -189,8 +193,14 @@ job_run (name PK, last_run_at, last_ok_at?, last_error?)   -- scheduled jobs, se
 usage   (user_id, day, bytes_written, snapshots,
          PRIMARY KEY (user_id, day))                        -- phase 11
 quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
-         snapshots_per_day?, exempt_until?)                 -- phase 11; NULL = default
+         snapshots_per_day?, exempt_until?)                 -- phase 11; NULL = the default
+limits  (id PK CHECK (id = 1), max_accounts?, bytes_per_day?, max_bytes?,
+         requests_per_minute?, snapshots_per_day?)          -- phase 11; one row; NULL = built-in
 ```
+
+A limit for an account resolves as its `quota` override, else `limits`, else
+the built-in value. The per-minute request limiter reads it from memory, and
+the admin endpoints refresh that copy when they write.
 
 `role` and `disabled` live on the auth user record. The sync tables (`head`,
 `server_meta`, `user_sync`) are in [sync.md](sync.md#server-side).
