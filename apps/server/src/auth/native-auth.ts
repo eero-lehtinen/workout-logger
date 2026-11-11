@@ -55,6 +55,8 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
       body: {
         provider,
         callbackURL: `/api/native-auth/finish?${query}`,
+        // A sign-up: the app welcomes the new account.
+        newUserCallbackURL: `/api/native-auth/finish?${query}&welcome=1`,
         errorCallbackURL: `/api/native-auth/finish?${query}`,
         disableRedirect: true,
       },
@@ -110,6 +112,7 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
       expiresAt: now() + CODE_TTL_MS,
     });
     back.searchParams.set("code", code);
+    if (c.req.query("welcome")) back.searchParams.set("welcome", "1");
     // The tab's session would otherwise stay signed in in the phone's browser.
     const signOut = (await auth.api.signOut({
       headers: c.req.raw.headers,

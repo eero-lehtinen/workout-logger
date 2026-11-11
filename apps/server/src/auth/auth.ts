@@ -3,8 +3,10 @@ import {
   type BetterAuthOptions,
   betterAuth,
   type GenericEndpointContext,
+  getCurrentAdapter,
 } from "better-auth";
 import { bearer } from "better-auth/plugins/bearer";
+import type { GoogleOptions } from "better-auth/social-providers";
 import { type Kysely, sql } from "kysely";
 
 export type Role = "owner" | "user";
@@ -24,8 +26,17 @@ export interface AuthSettings {
   publicUrl: string;
   secret: string;
   signIn: SignInClients;
+  /**
+   * The account cap, the owner included (docs/accounts.md#account-cap). From
+   * memory: the sign-up hook runs inside Better Auth's transaction, which
+   * holds the one connection, so a query of our own there would wait for it
+   * forever.
+   */
+  maxAccounts: () => number;
   /** Better Auth's limiter; off in tests, where every request has the same IP. */
   rateLimit?: boolean;
+  /** Tests stand in for Google's token check and profile. */
+  googleOverrides?: Pick<GoogleOptions, "verifyIdToken" | "getUserInfo">;
 }
 
 const DAY_S = 24 * 60 * 60;
@@ -38,22 +49,26 @@ export function authOptions(settings: AuthSettings) {
     baseURL: settings.publicUrl,
     basePath: "/api/auth",
     secret: settings.secret,
-    database: { db: settings.db, type: "sqlite" },
+    // Real transactions: Better Auth creates a user and its provider account
+    // in one, and the account cap's count must see a sign-up running beside
+    // it. Every query shares the one SQLite connection, so a transaction
+    // also keeps other queries out until it ends.
+    database: { db: settings.db, type: "sqlite", transaction: true },
     trustedOrigins: [settings.publicUrl],
     emailAndPassword: { enabled: false },
-    // Accounts exist only through `server create-owner` for now. A first
-    // sign-in with a provider links to the account whose email matches the
-    // provider's verified one.
+    // A sign-in with a provider account that has no account here creates
+    // one, up to the cap. A first sign-in with a provider links to the
+    // account whose email matches the provider's verified one.
     socialProviders: {
       ...(google && {
         google: {
           ...google,
           // A phone with several Google accounts asks which one.
           prompt: "select_account",
-          disableSignUp: true,
+          ...settings.googleOverrides,
         },
       }),
-      ...(github && { github: { ...github, disableSignUp: true } }),
+      ...(github && { github }),
     },
     user: {
       additionalFields: {
@@ -72,6 +87,24 @@ export function authOptions(settings: AuthSettings) {
       },
     },
     databaseHooks: {
+      user: {
+        create: {
+          // Runs inside the transaction that creates the user and its
+          // provider account, so two sign-ups can't both take the last
+          // place. A creation outside a request (`create-owner`) passes.
+          async before(_user, context) {
+            if (!context) return;
+            const adapter = await getCurrentAdapter(context.context.adapter);
+            const accounts = await adapter.count({ model: "user" });
+            if (accounts >= settings.maxAccounts()) {
+              throw new APIError("FORBIDDEN", {
+                code: "signup_closed",
+                message: "No new accounts at the moment",
+              });
+            }
+          },
+        },
+      },
       session: {
         create: {
           // The admin page deletes a disabled user's sessions; this keeps

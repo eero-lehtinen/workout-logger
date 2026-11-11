@@ -29,7 +29,6 @@ export interface ServerConfig {
 }
 
 const DEV_SECRET = "development-only-secret-not-for-production";
-
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const production = env.NODE_ENV === "production";
   const port = Number(env.PORT ?? 3000);

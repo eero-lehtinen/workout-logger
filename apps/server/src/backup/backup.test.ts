@@ -122,6 +122,7 @@ describe("pre-migration copy", () => {
       publicUrl: "http://localhost:3000",
       secret: "test-secret-that-is-long-enough-for-better-auth",
       signIn: {},
+      maxAccounts: () => 100,
     });
 
   it("is skipped for a new database", async () => {

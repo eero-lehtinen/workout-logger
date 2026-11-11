@@ -5,9 +5,6 @@ users the owner knows, not the public; the app isn't advertised. The design
 should be safe to expose to the internet, but it isn't hardened for hostile
 traffic or scale.
 
-Parts marked *(phase 11)* aren't built yet; the order of work is in
-[plans/multi-user.md](plans/multi-user.md).
-
 ## Roles
 
 | Role | Who | Limits | Extra abilities |
@@ -32,7 +29,7 @@ The owner account is created once with a server command, never by sign-up. See
 - **Linking by email.** The first sign-in with a provider links it to the account with the same email. The provider must report the email verified, and so must the account: Better Auth refuses the link otherwise, and no provider is "trusted" to skip that. GitHub's email is the public profile email, or the primary one when the profile shows none.
   - The owner account is created with `server create-owner --email <email>` ([deployment.md](deployment.md#configuration)), with the email marked verified.
   - `server set-email` changes an account's email, e.g. when the owner's Google email differs from the GitHub one.
-- **Sign-up** *(phase 11; until then sign-up is disabled, and a sign-in without a matching account fails with `signup_disabled`)*: signing in with a provider account that has no account here creates one, until the [account cap](#account-cap) is reached.
+- **Sign-up:** signing in with a provider account that has no account here creates one, until the [account cap](#account-cap) is reached.
 - **Sessions:** 60 days, extended by a day whenever used after a day, so a device that syncs at least every two months stays signed in. Signing out deletes the session on the server.
 - **Web sessions:** httpOnly, secure, same-site cookies. The web app is served from the API origin (see [deployment.md](deployment.md#topology)), so cookies work without CORS. Sign-in is a redirect to the provider and back to Settings; a failed one comes back with `?error=<code>` and shows a toast.
 - **Android sessions:** a bearer token (Better Auth's bearer plugin: the session token in `Authorization: Bearer`).
@@ -52,16 +49,15 @@ The owner account is created once with a server command, never by sign-up. See
 
 ### Account cap
 
-*(phase 11)*
-
 There are no invites. The app isn't advertised, so few strangers will find
 it, and the owner can disable or delete any account. What needs a limit is
 the total, because every account's data is copied many times into R2.
 
 - The cap is 100 accounts, the owner included, changeable on the [admin page](#admin-page) without a deploy.
-- `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction (`createOAuthUser`) and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place.
-- The sign-in row says that signing in creates an account, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
-- Sign-up lands on Settings with a welcome toast. Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
+- `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"; a 403 from id-token sign-in, `?error=signup_closed` on the OAuth redirect). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place. That needs `transaction: true` in its database options: without it Better Auth runs the two inserts without a transaction.
+- The hook counts through Better Auth's adapter, which joins the transaction, and reads the cap from the server's in-memory copy of `limits`: a query on the server's own Kysely instance would wait for the connection the transaction holds.
+- The sign-in row says that signing in creates an account, that the owner can read the data, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
+- Sign-up lands on Settings with a welcome toast: Better Auth sends a new user to `newUserCallbackURL` (`/settings?welcome=1`; for Android, `/finish` passes `welcome=1` on to the deep link). Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
 
 **Why 100.** The binding limit is R2's free tier, 10 GB of storage, which
 other projects on the account share; about 8 GB is left for this server.
@@ -161,7 +157,7 @@ client or a misused account.
 `/api/admin/*` (403 for anyone else). Its header shows the server database
 size, with a warning over 700 MB.
 
-- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups *(phase 11; sign-up is off until then)*.
+- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
 - **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
 - `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`; `DELETE /api/admin/users/:id`.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
@@ -169,7 +165,7 @@ size, with a warning over 700 MB.
 
 ## Privacy
 
-- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says this plainly and links to a `/privacy` page *(phase 11)* with this section's content; the Google consent screen links to it too.
+- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says this plainly and links to a `/privacy` page with this section's content; the Google consent screen links to it too.
 - There is no end-to-end encryption. It would complicate the CLI and server-side restores, and a lost key would mean lost data.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.
@@ -197,8 +193,9 @@ limits  (id PK CHECK (id = 1), max_accounts?)              -- one row; NULL = 10
 ```
 
 A quota for an account is its `quota` override, else the default from the
-code. The per-minute request limiter reads the overrides from memory, and the
-admin endpoints refresh that copy when they write.
+code. The per-minute request limiter reads the overrides from memory, and so
+does the sign-up hook the cap (`LimitCache`); the admin endpoints refresh
+that copy when they write.
 
 `role` and `disabled` live on the auth user record. The sync tables (`head`,
 `server_meta`, `user_sync`) are in [sync.md](sync.md#server-side).

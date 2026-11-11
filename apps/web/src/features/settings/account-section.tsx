@@ -33,9 +33,19 @@ export function AccountSection() {
               : "Sync"
           }
           hint={
-            account.status === "signed-out" && account.expired
-              ? "Your session ended. Sign in again to keep syncing; nothing logged here is lost."
-              : "Sign in to sync with your other devices and keep a copy on the server. Without an account, your data stays on this device."
+            account.status === "signed-out" && account.expired ? (
+              "Your session ended. Sign in again to keep syncing; nothing logged here is lost."
+            ) : (
+              <>
+                Sign in to sync with your other devices and keep a copy on the
+                server. Signing in the first time creates your account. The
+                server stores your data unencrypted, and its owner can read it.{" "}
+                <Link to="/privacy" className="underline">
+                  Privacy
+                </Link>
+                . Without an account, your data stays on this device.
+              </>
+            )
           }
         >
           <SignInButtons />

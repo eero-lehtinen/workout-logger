@@ -107,6 +107,7 @@ export async function signIn(provider: SignInProvider): Promise<void> {
     const { error } = await authClient.signIn.social({
       provider,
       callbackURL: "/settings",
+      newUserCallbackURL: "/settings?welcome=1",
       errorCallbackURL: "/settings",
     });
     if (error) throw new Error(error.message ?? "Sign-in failed");
@@ -172,7 +173,7 @@ export function initAccount(): void {
       void finishNativeSignIn(url);
     });
   } else {
-    reportWebSignInError();
+    reportWebSignInReturn();
   }
   void refreshAccount();
 }
@@ -197,25 +198,40 @@ async function finishNativeSignIn(url: string) {
     if (!res.ok) throw new Error(`The server answered ${res.status}`);
     await storeToken(((await res.json()) as { token: string }).token);
     await refreshAccount();
+    if (link.searchParams.has("welcome")) welcome();
   } catch (error) {
     signInFailed(error instanceof Error ? error.message : String(error));
   }
 }
 
-/** Better Auth sends a failed web sign-in back with `?error=`. */
-function reportWebSignInError() {
+/**
+ * Better Auth sends a failed web sign-in back with `?error=`, and a sign-up
+ * with `?welcome=1` (`newUserCallbackURL`).
+ */
+function reportWebSignInReturn() {
   const params = new URLSearchParams(location.search);
   const error = params.get("error");
-  if (!error) return;
+  const isWelcome = params.has("welcome");
+  if (!error && !isWelcome) return;
   params.delete("error");
+  params.delete("welcome");
+  params.delete("error_description");
   const search = params.size > 0 ? `?${params}` : "";
   history.replaceState(history.state, "", `${location.pathname}${search}`);
-  signInFailed(error);
+  if (error) signInFailed(error);
+  else welcome();
+}
+
+function welcome() {
+  toasts.add({
+    title: "Welcome",
+    description:
+      "Your account is ready. What you logged on this device uploads in the first sync.",
+  });
 }
 
 const SIGN_IN_ERRORS: Record<string, string> = {
-  signup_disabled:
-    "No account here uses this email. New accounts can't be created yet.",
+  signup_closed: "No new accounts at the moment.",
   account_disabled: "This account is disabled.",
 };
 

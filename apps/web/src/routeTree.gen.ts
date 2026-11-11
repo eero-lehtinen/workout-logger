@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as ExercisesIndexRouteImport } from './routes/exercises/index'
@@ -37,6 +38,11 @@ const AdminRoute = AdminRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRouteRouteWithChildren
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/history': typeof HistoryRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
   '/sessions/$sessionId': typeof SessionsSessionIdRouteRouteWithChildren
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/privacy'
     | '/settings'
     | '/start'
     | '/sessions/$sessionId'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/privacy'
     | '/settings'
     | '/start'
     | '/exercises/$exerciseId'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/history'
+    | '/privacy'
     | '/settings'
     | '/start'
     | '/sessions/$sessionId'
@@ -199,6 +211,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   HistoryRoute: typeof HistoryRoute
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   StartRoute: typeof StartRoute
   SessionsSessionIdRouteRoute: typeof SessionsSessionIdRouteRouteWithChildren
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -334,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   HistoryRoute: HistoryRoute,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   StartRoute: StartRoute,
   SessionsSessionIdRouteRoute: SessionsSessionIdRouteRouteWithChildren,

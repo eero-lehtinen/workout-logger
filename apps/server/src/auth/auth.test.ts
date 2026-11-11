@@ -176,7 +176,11 @@ describe("Android sign-in", () => {
    * `/start`, then GitHub (a new session), then `/finish` in the same tab.
    * `started: false` skips `/start`; `oldSession` signs in before it.
    */
-  async function finish({ started = true, oldSession = false } = {}) {
+  async function finish({
+    started = true,
+    oldSession = false,
+    welcome = false,
+  } = {}) {
     const test = await openTestApp();
     const early = oldSession ? await test.signIn("alice@example.com") : null;
     if (oldSession) await new Promise((r) => setTimeout(r, 1100));
@@ -191,7 +195,7 @@ describe("Android sign-in", () => {
     const browser = early ?? (await test.signIn("alice@example.com"));
     // After GitHub, Better Auth lands here with the tab's session.
     const res = await test.app.request(
-      `/api/native-auth/finish?app=${APP}&challenge=${challenge}`,
+      `/api/native-auth/finish?app=${APP}&challenge=${challenge}${welcome ? "&welcome=1" : ""}`,
       { headers: { authorization: `Bearer ${browser.token}`, cookie } },
     );
     const page = await res.text();
@@ -204,6 +208,14 @@ describe("Android sign-in", () => {
     const { link, code } = await finish();
     expect(link).toMatch(new RegExp(`^${APP}://auth\\?code=`));
     expect(code).toBeTruthy();
+  });
+
+  it("tells the app about a sign-up, which Better Auth sends to the welcome URL", async () => {
+    const { link } = await finish({ welcome: true });
+    expect(new URL(link ?? "x:").searchParams.get("welcome")).toBe("1");
+    expect(
+      new URL((await finish()).link ?? "x:").searchParams.has("welcome"),
+    ).toBe(false);
   });
 
   it("trades the code once, with the verifier, for a token of a new session", async () => {

@@ -207,6 +207,13 @@ export const SignedOut = pageStory({
     await expect(
       canvas.queryByRole("button", { name: "Sign in with GitHub" }),
     ).toBeNull();
+    await expect(
+      canvas.getByText(/Signing in the first time creates your account\./),
+    ).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
   },
 });
 

@@ -9,6 +9,7 @@ const settings = (db: unknown) =>
     publicUrl: "http://localhost:3000",
     secret: "test-secret-that-is-long-enough-for-better-auth",
     signIn: {},
+    maxAccounts: () => 100,
   });
 
 describe("server migrations", () => {

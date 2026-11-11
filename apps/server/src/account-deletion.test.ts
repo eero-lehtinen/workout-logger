@@ -181,6 +181,7 @@ describe("secure delete", () => {
         publicUrl: "http://localhost:3000",
         secret: "test-secret-that-is-long-enough-for-better-auth",
         signIn: {},
+        maxAccounts: () => 100,
       }),
     );
     await pushAs(database.db, "u1", [change("note", `"${MARKER.repeat(50)}"`)]);

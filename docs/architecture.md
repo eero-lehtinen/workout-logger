@@ -372,7 +372,7 @@ A single Node container on the owner's VPS, managed by Dokploy, at <https://lift
 
 ## Accounts
 
-An owner role without limits; open sign-up up to an account cap and per-user quotas come in phase 11. Full design: [accounts.md](accounts.md).
+An owner role without limits; open sign-up up to an account cap, and per-user quotas. Full design: [accounts.md](accounts.md).
 
 ## Backups
 

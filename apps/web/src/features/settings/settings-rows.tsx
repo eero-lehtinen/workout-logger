@@ -13,7 +13,7 @@ export function Section(props: { title: string; children: React.ReactNode }) {
 
 export function Row(props: {
   label: string;
-  hint?: string;
+  hint?: React.ReactNode;
   /** For a control too wide to sit beside the text on a phone: it goes below. */
   stacked?: boolean;
   children?: React.ReactNode;

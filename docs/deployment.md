@@ -9,8 +9,8 @@ provider, so losing either the VPS or the bucket loses no data.
 ([Android releases](#android-releases), [live updates](#live-updates)),
 sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. Sign-up, the admin page, and account deletion
-are phase 11 ([accounts.md](accounts.md)); the restore rehearsal is phase 11b.
+daily job copies it there too. Accounts, sign-up, quotas, and the admin page
+are in [accounts.md](accounts.md); the restore rehearsal is phase 11b.
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
