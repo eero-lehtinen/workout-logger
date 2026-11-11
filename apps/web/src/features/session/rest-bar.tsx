@@ -94,7 +94,7 @@ export function RestBar() {
   const label = <RestLabel state={state} />;
   const target = "flex h-full items-center rounded-full px-3 hover:bg-surface";
   return (
-    <div className={PILL}>
+    <div data-bottom-chrome className={PILL}>
       {state.for ? (
         <Link
           to="/sessions/$sessionId/$sessionExerciseId"

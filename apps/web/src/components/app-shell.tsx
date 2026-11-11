@@ -82,7 +82,7 @@ function Sidebar() {
           key={item.to}
           to={item.to}
           activeOptions={{ exact: item.exact }}
-          className="flex h-10 items-center gap-3 rounded-lg px-3 font-medium text-ink-muted hover:bg-surface data-[status=active]:bg-surface data-[status=active]:text-ink"
+          className="flex h-10 items-center gap-3 rounded-xl px-3 font-medium text-ink-muted hover:bg-surface data-[status=active]:bg-surface data-[status=active]:text-ink"
         >
           <item.icon size={19} />
           {item.label}
@@ -98,6 +98,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Main"
+      data-bottom-chrome
       className="grid shrink-0 grid-cols-5 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {NAV.map((item) => (

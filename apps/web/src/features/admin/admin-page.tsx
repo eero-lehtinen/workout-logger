@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useAccount } from "../../lib/account.ts";
@@ -60,9 +61,7 @@ export function AdminPage() {
       ) : (
         <>
           <ServerSection status={status} now={now} />
-          <h2 className="px-4 pt-6 pb-1 text-lg font-semibold lg:px-0">
-            Accounts
-          </h2>
+          <SectionHeading className="pt-6 pb-1">Accounts</SectionHeading>
           {users.isError ? (
             <Empty>Couldn't load the accounts: {users.error.message}</Empty>
           ) : !users.data ? (

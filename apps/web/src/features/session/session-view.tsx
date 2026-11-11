@@ -14,12 +14,17 @@ import {
 import { clsx } from "clsx";
 import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import {
+  Button,
+  buttonClass,
+  dangerAlignClass,
+} from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { GripHandle, SortableList } from "../../components/sortable.tsx";
+import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
   deviceTimeZone,
@@ -31,6 +36,7 @@ import {
 } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
+import { markResumed } from "./running.ts";
 import { SetLine } from "./set-line.tsx";
 
 const route = getRouteApi("/sessions/$sessionId");
@@ -137,6 +143,19 @@ function SessionPanel(props: {
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const unit = settings.weight_unit as WeightUnit;
+
+  /** Opens the exercise to continue with; its next set resumes the session. */
+  function resumeIdle() {
+    markResumed(session.id);
+    const next =
+      view.exercises.find((e) => e.sets.length === 0) ?? view.exercises.at(-1);
+    if (next) {
+      void navigate({
+        to: "/sessions/$sessionId/$sessionExerciseId",
+        params: { sessionId: session.id, sessionExerciseId: next.id },
+      });
+    } else setAdding(true);
+  }
   const search = route.useSearch();
   const date = localDate(session.startedAt, session.tz);
   const back = search.exerciseId
@@ -175,19 +194,24 @@ function SessionPanel(props: {
               </Button>
             ) : (
               session.routineId && (
-                <Link
-                  to="/routines/$routineId"
-                  params={{ routineId: session.routineId }}
-                  search={{
-                    sessionId: session.id,
-                    ...(session.dayId && { dayId: session.dayId }),
-                  }}
-                  aria-label="Edit routine"
-                  title="Edit routine"
-                  className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
-                >
-                  <ListOrdered size={20} />
-                </Link>
+                // Labelled on phones; an icon in the narrow pane on PC.
+                <IconTip label="Edit routine">
+                  <Link
+                    to="/routines/$routineId"
+                    params={{ routineId: session.routineId }}
+                    search={{
+                      sessionId: session.id,
+                      ...(session.dayId && { dayId: session.dayId }),
+                    }}
+                    aria-label="Edit routine"
+                    className={`${buttonClass("ghost", "sm")} lg:size-10 lg:px-0`}
+                  >
+                    <ListOrdered size={18} />
+                    <span aria-hidden className="lg:hidden">
+                      Edit routine
+                    </span>
+                  </Link>
+                </IconTip>
               )
             )
           }
@@ -197,6 +221,7 @@ function SessionPanel(props: {
             idleThresholdS={settings.idle_threshold_s}
             showElapsed={settings.session_timer_shown}
             readOnly={readOnly}
+            onResumeIdle={resumeIdle}
           />
         </PageHeader>
       }
@@ -256,6 +281,15 @@ function SessionPanel(props: {
         />
       )}
 
+      {!readOnly && (
+        <div className="px-4 pt-3 lg:px-0">
+          <Button className="w-full" onClick={() => setAdding(true)}>
+            <Plus size={18} />
+            Add exercise to session
+          </Button>
+        </div>
+      )}
+
       {readOnly ? (
         session.notes && (
           <p className="whitespace-pre-wrap px-4 pt-4 text-[0.9375rem] lg:px-0">
@@ -263,7 +297,7 @@ function SessionPanel(props: {
           </p>
         )
       ) : (
-        <div className="px-4 pt-4 lg:px-0">
+        <div className="px-4 pt-6 lg:px-0">
           <NotesField
             label="Session notes"
             value={session.notes}
@@ -276,15 +310,10 @@ function SessionPanel(props: {
       )}
 
       {!readOnly && (
-        <div className="flex flex-col items-start gap-2 px-4 pt-4 lg:px-0">
-          <Button className="w-full" onClick={() => setAdding(true)}>
-            <Plus size={18} />
-            Add exercise
-          </Button>
+        <div className="px-4 pt-6 lg:px-0">
           <Button
             variant="danger"
-            size="sm"
-            className="mt-4"
+            className={dangerAlignClass}
             onClick={() => setConfirmDelete(true)}
           >
             Delete session
@@ -294,7 +323,7 @@ function SessionPanel(props: {
       <ExercisePicker
         open={adding}
         onOpenChange={setAdding}
-        title="Add exercise"
+        title="Add exercise to session"
         onPick={async (exerciseId) => {
           const id = await command("addSessionExercise", {
             sessionId: session.id,
@@ -412,6 +441,7 @@ function SessionTimer(props: {
   showElapsed: boolean;
   /** A past session being viewed: a quiet summary, nothing to press. */
   readOnly: boolean;
+  onResumeIdle: () => void;
 }) {
   const { session } = props.view;
   const command = useCommand();
@@ -429,7 +459,7 @@ function SessionTimer(props: {
 
   if (end.running) {
     return (
-      <div className="flex items-center gap-3 rounded-xl bg-surface py-2 pr-2 pl-4">
+      <div className="flex items-center gap-3 rounded-2xl bg-surface py-2 pr-2 pl-4">
         {props.showElapsed ? (
           <p className="flex-1">
             <span className="numerals text-3xl">
@@ -442,7 +472,6 @@ function SessionTimer(props: {
           </p>
         )}
         <Button
-          variant="primary"
           onClick={() => command("endSession", { sessionId: session.id })}
         >
           End session
@@ -465,7 +494,7 @@ function SessionTimer(props: {
       ? "Duration not recorded"
       : `Lasted ${formatSessionLength(end.endedAt - session.startedAt)}, ${end.reason === "idle" ? "no sets since" : "ended at"} ${formatTime(end.endedAt, session.tz)}`;
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-surface py-2 pr-2 pl-4">
+    <div className="flex items-center gap-3 rounded-2xl bg-surface py-2 pr-2 pl-4">
       <p className="flex-1 text-[0.9375rem] text-ink-muted">{ended}</p>
       {end.reason === "manual" && (
         <Button
@@ -473,6 +502,11 @@ function SessionTimer(props: {
           size="sm"
           onClick={() => command("resumeSession", { sessionId: session.id })}
         >
+          Resume
+        </Button>
+      )}
+      {end.reason === "idle" && (
+        <Button variant="ghost" size="sm" onClick={props.onResumeIdle}>
           Resume
         </Button>
       )}

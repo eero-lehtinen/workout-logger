@@ -208,7 +208,9 @@ export const SignedOut = pageStory({
       canvas.queryByRole("button", { name: "Sign in with GitHub" }),
     ).toBeNull();
     await expect(
-      canvas.getByText(/Signing in the first time creates your account\./),
+      canvas.getByText(
+        /the server keeps an unencrypted copy its owner can read/,
+      ),
     ).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Privacy" })).toHaveAttribute(
       "href",

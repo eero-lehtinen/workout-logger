@@ -9,7 +9,7 @@ export async function startWithExercise(
   await page.goto("/");
   await page.getByRole("link", { name: "Start session" }).click();
   await page.getByRole("button", { name: "Ad hoc session" }).click();
-  await page.getByRole("button", { name: "Add exercise" }).click();
+  await page.getByRole("button", { name: "Add exercise to session" }).click();
   await page.getByRole("searchbox", { name: "Search exercises" }).fill(search);
   await page.getByRole("button", { name }).first().click();
   await expect(page.getByRole("button", { name: "Log set 1" })).toBeVisible();

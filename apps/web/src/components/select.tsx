@@ -32,10 +32,8 @@ export function Select<T extends string>(props: {
         aria-label={props.label}
         title={props.label}
         className={clsx(
-          "inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-lg bg-raised pr-2 font-medium text-ink ring-1 ring-rule outline-none select-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-ink data-popup-open:bg-surface",
-          { sm: "h-9 text-sm", md: "h-10", lg: "h-11 rounded-xl" }[
-            props.size ?? "md"
-          ],
+          "inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-xl bg-raised pr-2 font-medium text-ink ring-1 ring-rule outline-none select-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-ink data-popup-open:bg-surface",
+          { sm: "h-9 text-sm", md: "h-10", lg: "h-11" }[props.size ?? "md"],
           props.icon ? "pl-2.5" : "pl-3",
           props.className,
         )}
@@ -57,14 +55,14 @@ export function Select<T extends string>(props: {
           sideOffset={6}
           alignItemWithTrigger={false}
         >
-          <BaseSelect.Popup className="min-w-[var(--anchor-width)] origin-[var(--transform-origin)] rounded-xl bg-raised p-1 text-ink shadow-lg ring-1 ring-rule transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+          <BaseSelect.Popup className="min-w-[var(--anchor-width)] origin-[var(--transform-origin)] rounded-2xl bg-raised p-1 text-ink shadow-lg ring-1 ring-rule transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <BaseSelect.List className="max-h-[var(--available-height)] overflow-y-auto">
               {props.options.map((o) => (
                 <BaseSelect.Item
                   key={o.value}
                   value={o.value}
                   className={clsx(
-                    "grid cursor-default grid-cols-[1.25rem_1fr] items-center gap-1.5 rounded-lg pr-4 pl-2 outline-none select-none data-highlighted:bg-surface",
+                    "grid cursor-default grid-cols-[1.25rem_1fr] items-center gap-1.5 rounded-xl pr-4 pl-2 outline-none select-none data-highlighted:bg-surface",
                     sm ? "h-10 text-sm" : "h-11",
                   )}
                 >

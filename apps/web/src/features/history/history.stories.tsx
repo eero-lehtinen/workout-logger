@@ -239,7 +239,7 @@ export const Frequency = pageStory({
     ).toBeVisible();
     await expect(canvas.getByRole("rowheader", { name: "Legs" })).toBeVisible();
     await expect(canvas.queryByRole("rowheader", { name: "Quads" })).toBeNull();
-    await userEvent.click(canvas.getByRole("switch", { name: "Show muscles" }));
+    await userEvent.click(canvas.getByRole("switch", { name: "By muscle" }));
     await expect(
       canvas.getByRole("rowheader", { name: "Quads" }),
     ).toBeVisible();
@@ -254,4 +254,9 @@ export const Frequency = pageStory({
 export const HistoryEmpty = pageStory({
   fixture: empty,
   url: () => "/history",
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByRole("link", { name: "Start a session" }),
+    ).toHaveAttribute("href", "/start");
+  },
 });

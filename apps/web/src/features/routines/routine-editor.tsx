@@ -4,17 +4,19 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import type { RoutineDetail } from "@workout-logger/core";
-import { clsx } from "clsx";
-import { ArrowLeftRight, Copy, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button, IconButton } from "../../components/button.tsx";
+import { Archive, ArchiveRestore, Copy, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "../../components/button.tsx";
+import { fieldLabelClass } from "../../components/headings.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
+import { MoreMenu } from "../../components/more-menu.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
-import { GripHandle, SortableList } from "../../components/sortable.tsx";
+import { SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { ExercisePicker } from "../exercises/picker.tsx";
-import { SlotDetails } from "./slot-details.tsx";
+import { DayCard } from "./day-card.tsx";
+import { SlotSheet } from "./slot-sheet.tsx";
 
 const route = getRouteApi("/routines/$routineId");
 
@@ -56,6 +58,7 @@ export function RoutineEditor() {
       routine={routine}
       back={back}
       highlightDayId={search.dayId ?? null}
+      isNew={search.new === true}
     />
   );
 }
@@ -71,17 +74,17 @@ function RoutineDescription({ routine }: { routine: RoutineDetail }) {
     setDraft(null);
   };
   return (
-    <div className="px-4 pt-2 pb-2 lg:px-0">
+    <label className="flex max-w-3xl flex-col gap-1.5 px-4 pt-2 pb-2 lg:px-0">
+      <span className={fieldLabelClass}>Description</span>
       <textarea
-        aria-label="Routine description"
         value={draft ?? routine.description}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
-        placeholder="Description: what the routine is for, how to run it"
+        placeholder="What the routine is for, how to run it"
         rows={1}
-        className="field-sizing-content block min-h-10 w-full resize-none rounded-lg bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink"
+        className="field-sizing-content block min-h-10 w-full resize-none rounded-xl bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink"
       />
-    </div>
+    </label>
   );
 }
 
@@ -89,11 +92,14 @@ function Editor({
   routine,
   back,
   highlightDayId,
+  isNew,
 }: {
   routine: RoutineDetail;
   back: LinkProps & { label: string };
   /** The day of the session the editor was opened from. */
   highlightDayId: string | null;
+  /** Just created with a placeholder name. */
+  isNew: boolean;
 }) {
   useEffect(() => {
     if (highlightDayId) {
@@ -106,8 +112,22 @@ function Editor({
   const navigate = useNavigate();
   const settings = useDbQuery("settings");
   const [pick, setPick] = useState<PickTarget | null>(null);
+  const [openSlotId, setOpenSlotId] = useState<string | null>(null);
+  // A slot's sheet closes while the picker is open, then comes back.
+  const reopenSlot = useRef<string | null>(null);
   const [dayName, setDayName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const openSlot =
+    routine.days.flatMap((d) => d.slots).find((s) => s.id === openSlotId) ??
+    null;
+
+  function startPick(target: PickTarget) {
+    if (openSlotId) {
+      reopenSlot.current = openSlotId;
+      setOpenSlotId(null);
+    }
+    setPick(target);
+  }
 
   async function onPick(exerciseId: string) {
     if (!pick) return;
@@ -129,6 +149,21 @@ function Editor({
       setDayName("");
   }
 
+  const toggleArchived = () =>
+    command("updateRoutine", {
+      routineId: routine.id,
+      archived: !routine.archived,
+    });
+  async function duplicate() {
+    const copyId = await command("duplicateRoutine", { routineId: routine.id });
+    if (copyId) {
+      await navigate({
+        to: "/routines/$routineId",
+        params: { routineId: copyId },
+      });
+    }
+  }
+
   return (
     <Screen
       scrollId="routine"
@@ -138,6 +173,7 @@ function Editor({
             <InlineName
               label="Routine name"
               value={routine.name}
+              select={isNew}
               onSave={(name) =>
                 command("updateRoutine", { routineId: routine.id, name })
               }
@@ -147,43 +183,31 @@ function Editor({
           subtitle={routine.archived ? "Archived" : undefined}
           back={back}
           actions={
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  command("updateRoutine", {
-                    routineId: routine.id,
-                    archived: !routine.archived,
-                  })
-                }
-              >
-                {routine.archived ? "Unarchive" : "Archive"}
-              </Button>
-              <IconButton
-                label="Duplicate routine"
-                onClick={async () => {
-                  const copyId = await command("duplicateRoutine", {
-                    routineId: routine.id,
-                  });
-                  if (copyId) {
-                    await navigate({
-                      to: "/routines/$routineId",
-                      params: { routineId: copyId },
-                    });
-                  }
-                }}
-              >
-                <Copy size={19} />
-              </IconButton>
-              <IconButton
-                label="Delete routine"
-                variant="danger"
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 size={19} />
-              </IconButton>
-            </>
+            <MoreMenu
+              label="More actions"
+              items={[
+                {
+                  label: routine.archived ? "Unarchive" : "Archive",
+                  icon: routine.archived ? (
+                    <ArchiveRestore size={18} />
+                  ) : (
+                    <Archive size={18} />
+                  ),
+                  onClick: () => void toggleArchived(),
+                },
+                {
+                  label: "Duplicate",
+                  icon: <Copy size={18} />,
+                  onClick: () => void duplicate(),
+                },
+                {
+                  label: "Delete routine",
+                  icon: <Trash2 size={18} />,
+                  danger: true,
+                  onClick: () => setConfirmDelete(true),
+                },
+              ]}
+            />
           }
         />
       }
@@ -195,146 +219,20 @@ function Editor({
       <SortableList
         items={routine.days}
         layout="grid"
-        className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-2 lg:px-0 xl:grid-cols-3"
+        // Columns wide enough for exercise names; fewer columns, not
+        // narrower ones, on smaller windows.
+        className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] lg:px-0"
         handleLabel={(day) => `Move ${day.name}`}
         onMove={(dayId, toIndex) => command("moveDay", { dayId, toIndex })}
         render={(day, dayIndex, handle) => (
-          <div
-            id={`day-${day.id}`}
-            className={clsx(
-              "rounded-2xl bg-raised p-3",
-              day.id === highlightDayId
-                ? "ring-2 ring-ink/60"
-                : "ring-1 ring-rule",
-            )}
-          >
-            <div className="flex items-center gap-1">
-              <GripHandle handle={handle} />
-              <span className="tabular w-5 shrink-0 text-sm text-ink-muted">
-                {dayIndex + 1}
-              </span>
-              <InlineName
-                label="Day name"
-                value={day.name}
-                onSave={(name) => command("renameDay", { dayId: day.id, name })}
-                className="flex-1 text-lg font-semibold"
-              />
-              <IconButton
-                label={`Duplicate ${day.name}`}
-                onClick={() => command("duplicateDay", { dayId: day.id })}
-              >
-                <Copy size={17} />
-              </IconButton>
-              <IconButton
-                label={`Delete ${day.name}`}
-                variant="danger"
-                onClick={() =>
-                  command(
-                    "deleteDay",
-                    { dayId: day.id },
-                    { undoLabel: `Deleted ${day.name}` },
-                  )
-                }
-              >
-                <Trash2 size={17} />
-              </IconButton>
-            </div>
-
-            <SortableList
-              items={day.slots}
-              className="mt-2 flex flex-col gap-1"
-              handleLabel={(slot) =>
-                `Move ${slot.exerciseName ?? "deleted exercise"}`
-              }
-              onMove={(slotId, toIndex) =>
-                command("moveSlot", { slotId, toIndex })
-              }
-              render={(slot, _index, slotHandle) => (
-                <div className="rounded-xl bg-chalk py-2 pr-1 pl-1">
-                  <div className="flex items-center gap-1">
-                    <GripHandle handle={slotHandle} />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPick({ kind: "slotExercise", slotId: slot.id })
-                      }
-                      className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-1 py-1 text-left font-medium hover:bg-surface"
-                      title="Change exercise"
-                    >
-                      <span className="truncate">
-                        {slot.exerciseName ?? "Deleted exercise"}
-                      </span>
-                      <ArrowLeftRight
-                        size={15}
-                        className="shrink-0 text-ink-muted"
-                      />
-                    </button>
-                    <IconButton
-                      label={`Remove ${slot.exerciseName ?? "exercise"} from day`}
-                      variant="danger"
-                      className="size-9"
-                      onClick={() =>
-                        command(
-                          "deleteSlot",
-                          { slotId: slot.id },
-                          {
-                            undoLabel: `Removed ${slot.exerciseName ?? "exercise"}`,
-                          },
-                        )
-                      }
-                    >
-                      <Trash2 size={16} />
-                    </IconButton>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-10">
-                    {slot.alternatives.map((alt) => (
-                      <span
-                        key={alt.id}
-                        className="inline-flex h-8 items-center gap-0.5 rounded-full bg-surface pr-0.5 pl-3 text-sm"
-                      >
-                        {alt.exerciseName ?? "Deleted exercise"}
-                        <button
-                          type="button"
-                          aria-label={`Remove alternative ${alt.exerciseName ?? ""}`}
-                          onClick={() =>
-                            command("deleteAlternative", {
-                              alternativeId: alt.id,
-                            })
-                          }
-                          className="flex size-7 items-center justify-center rounded-full hover:bg-rule"
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPick({ kind: "alternative", slotId: slot.id })
-                      }
-                      className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-sm text-ink-muted hover:bg-surface hover:text-ink"
-                    >
-                      <Plus size={14} />
-                      Alternative
-                    </button>
-                  </div>
-                  <SlotDetails
-                    slot={slot}
-                    defaultRestS={settings.rest_default_s}
-                  />
-                </div>
-              )}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={() => setPick({ kind: "slot", dayId: day.id })}
-            >
-              <Plus size={16} />
-              Add exercise
-            </Button>
-          </div>
+          <DayCard
+            day={day}
+            dayIndex={dayIndex}
+            handle={handle}
+            highlighted={day.id === highlightDayId}
+            onOpenSlot={setOpenSlotId}
+            onAddSlot={() => startPick({ kind: "slot", dayId: day.id })}
+          />
         )}
       />
       <form onSubmit={addDay} className="flex max-w-xl gap-2 px-4 pt-4 lg:px-0">
@@ -343,16 +241,34 @@ function Editor({
           onChange={(e) => setDayName(e.target.value)}
           placeholder="New day, e.g. Upper A"
           aria-label="New day name"
-          className="h-10 min-w-0 flex-1 rounded-lg bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+          className="h-10 min-w-0 flex-1 rounded-xl bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
         />
         <Button type="submit" disabled={!dayName.trim()}>
           Add day
         </Button>
       </form>
 
+      <SlotSheet
+        slot={openSlot}
+        defaultRestS={settings.rest_default_s}
+        onClose={() => setOpenSlotId(null)}
+        onChangeExercise={(slotId) =>
+          startPick({ kind: "slotExercise", slotId })
+        }
+        onAddAlternative={(slotId) =>
+          startPick({ kind: "alternative", slotId })
+        }
+      />
       <ExercisePicker
         open={pick !== null}
-        onOpenChange={(open) => !open && setPick(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setPick(null);
+          if (reopenSlot.current) {
+            setOpenSlotId(reopenSlot.current);
+            reopenSlot.current = null;
+          }
+        }}
         title={pick ? PICKER_TITLES[pick.kind] : ""}
         onPick={onPick}
       />

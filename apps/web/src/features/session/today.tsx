@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { effectiveSessionEnd, type SessionSummary } from "@workout-logger/core";
 import { Play } from "lucide-react";
 import { buttonClass } from "../../components/button.tsx";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
@@ -47,25 +48,25 @@ export function TodayPage() {
         {wide && <section>{action}</section>}
 
         <section>
-          <h2 className="px-4 pb-2 text-lg font-semibold lg:px-0">
-            Past sessions
-          </h2>
           {past.length === 0 ? (
             <Empty>Sessions you log show up here.</Empty>
           ) : (
-            <ul className={listClass}>
-              {past.map((s) => (
-                <li key={s.id}>
-                  <SessionRow
-                    session={s}
-                    now={now}
-                    idleThresholdS={settings.idle_threshold_s}
-                    when="date"
-                    showRoutine={spansRoutines(past)}
-                  />
-                </li>
-              ))}
-            </ul>
+            <>
+              <SectionHeading>Past sessions</SectionHeading>
+              <ul className={listClass}>
+                {past.map((s) => (
+                  <li key={s.id}>
+                    <SessionRow
+                      session={s}
+                      now={now}
+                      idleThresholdS={settings.idle_threshold_s}
+                      when="date"
+                      showRoutine={spansRoutines(past)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       </div>

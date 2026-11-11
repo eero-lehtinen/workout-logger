@@ -1,18 +1,21 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
   type ExerciseDetail,
   type ExerciseType,
   fromKg,
+  type MuscleItem,
   roundTo,
   toKg,
 } from "@workout-logger/core";
 import { MUSCLE_GROUPS } from "@workout-logger/exercises";
 import { clsx } from "clsx";
-import { Copy } from "lucide-react";
+import { Archive, ArchiveRestore, Copy } from "lucide-react";
 import { useState } from "react";
-import { Button, buttonClass } from "../../components/button.tsx";
+import { Button } from "../../components/button.tsx";
+import { chipClass } from "../../components/chip.tsx";
+import { FieldLabel, fieldLabelClass } from "../../components/headings.tsx";
+import { MoreMenu } from "../../components/more-menu.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
-import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
@@ -88,17 +91,7 @@ function CopyExercise({ from }: { from: string }) {
   );
 }
 
-/** No option chosen means the exercise doesn't target the muscle. */
-const FACTOR_OPTIONS = [
-  { value: "0.5", label: "Secondary" },
-  { value: "1", label: "Primary" },
-] as const;
-
-type FactorValue = (typeof FACTOR_OPTIONS)[number]["value"];
-
-function factorValue(factor: number | undefined): FactorValue | null {
-  return factor === 1 ? "1" : factor === 0.5 ? "0.5" : null;
-}
+const FORM_ID = "exercise-form";
 
 function ExerciseForm({
   exercise,
@@ -133,18 +126,24 @@ function ExerciseForm({
       : String(roundTo(fromKg(start.weightIncrementKg, unit), 3)),
   );
   const [notes, setNotes] = useState(start?.notes ?? "");
+  // Problems show once a save was tried, not while the form is being filled.
+  const [attempted, setAttempted] = useState(false);
 
   const hasPrimary = Object.values(targets).includes(1);
   const restS = rest.trim() ? parseDuration(rest) : null;
   const incrementValue = increment.trim() ? parseNumber(increment) : null;
-  const invalid =
-    !name.trim() ||
-    !hasPrimary ||
-    (rest.trim() !== "" && restS === null) ||
-    (increment.trim() !== "" && !incrementValue);
+  const problems = {
+    name: !name.trim(),
+    primary: !hasPrimary,
+    rest: rest.trim() !== "" && restS === null,
+    increment: increment.trim() !== "" && !incrementValue,
+  };
+  const invalid = Object.values(problems).some(Boolean);
+  const shown = (problem: boolean) => attempted && problem;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    setAttempted(true);
     if (invalid) return;
     const fields = {
       name: name.trim(),
@@ -164,6 +163,15 @@ function ExerciseForm({
     }
   }
 
+  async function toggleArchived() {
+    if (!exercise) return;
+    await command("updateExercise", {
+      exerciseId: exercise.id,
+      archived: !exercise.archived,
+    });
+    await goBack();
+  }
+
   return (
     <Screen
       scrollId="exercise"
@@ -177,36 +185,77 @@ function ExerciseForm({
                 ? "Copy exercise"
                 : "New exercise"
           }
-          subtitle={
-            exercise?.builtin
-              ? "Built in. Your changes are kept over catalog updates."
-              : undefined
-          }
           back={back}
+          actions={
+            exercise && (
+              <MoreMenu
+                label="More actions"
+                items={[
+                  {
+                    label: exercise.archived ? "Unarchive" : "Archive",
+                    icon: exercise.archived ? (
+                      <ArchiveRestore size={18} />
+                    ) : (
+                      <Archive size={18} />
+                    ),
+                    onClick: () => void toggleArchived(),
+                  },
+                  {
+                    label: "Copy as new",
+                    icon: <Copy size={18} />,
+                    onClick: () =>
+                      void navigate({
+                        to: "/exercises/new",
+                        search: { from: exercise.id },
+                      }),
+                  },
+                ]}
+              />
+            )
+          }
         />
       }
+      // The save stays in reach however long the form is.
+      footer={
+        <div className="px-4 py-3 lg:px-0">
+          <Button
+            type="submit"
+            form={FORM_ID}
+            variant="primary"
+            className="w-full sm:w-auto"
+          >
+            {exercise ? "Save exercise" : "Create exercise"}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={save} className="pb-8">
+      <form id={FORM_ID} onSubmit={save} noValidate className="pb-8">
         <div className="flex flex-col gap-5 px-4 lg:px-0">
-          <Field label="Name">
+          {exercise?.builtin && (
+            <p className="-mb-2 text-sm text-ink-muted">
+              Built in. Your changes are kept over catalog updates.
+            </p>
+          )}
+          <Field label="Name" error={shown(problems.name) && "Enter a name."}>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Row (Chest Supported)"
+              aria-invalid={shown(problems.name)}
               className={inputClass}
             />
           </Field>
 
           <fieldset>
-            <legend className="pb-1.5 text-sm font-medium">
+            <FieldLabel as="legend" className="pb-1.5">
               What a set records
-            </legend>
+            </FieldLabel>
             <div className="flex flex-col gap-1">
               {(Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]).map(
                 (t) => (
                   <label
                     key={t}
-                    className="flex h-10 items-center gap-3 rounded-lg px-2 hover:bg-surface"
+                    className="flex h-10 items-center gap-3 rounded-xl px-2 hover:bg-surface"
                   >
                     <input
                       type="radio"
@@ -222,71 +271,56 @@ function ExerciseForm({
             </div>
           </fieldset>
 
-          <fieldset>
-            <legend className="pb-1.5 text-sm font-medium">Muscles</legend>
+          <fieldset className="min-w-0">
+            <FieldLabel as="legend" className="pb-1">
+              Muscles
+            </FieldLabel>
             <p
               className={clsx(
-                "pb-2 text-sm",
-                hasPrimary ? "text-ink-muted" : "text-danger",
+                "pb-3 text-sm",
+                shown(problems.primary) ? "text-danger" : "text-ink-muted",
               )}
             >
-              Pick at least one primary muscle.
+              Tap a muscle once for secondary, twice for primary. Pick at least
+              one primary.
             </p>
-            <div className="gap-x-8 sm:columns-2">
-              {MUSCLE_GROUPS.map((group) => (
-                <div key={group} className="break-inside-avoid pb-3">
-                  <h2 className="pb-1 text-sm text-ink-muted">{group}</h2>
-                  {muscles
-                    .filter((m) => m.group === group)
-                    .map((muscle) => (
-                      <div
-                        key={muscle.id}
-                        className="flex h-10 items-center gap-2"
-                      >
-                        <span className="flex-1">{muscle.name}</span>
-                        <Segmented
-                          label={muscle.name}
-                          size="sm"
-                          deselectable
-                          value={factorValue(targets[muscle.id])}
-                          options={FACTOR_OPTIONS}
-                          onChange={(value) =>
-                            setTargets({
-                              ...targets,
-                              [muscle.id]: value === null ? 0 : Number(value),
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                </div>
-              ))}
-            </div>
+            <MuscleCycle
+              muscles={muscles}
+              targets={targets}
+              onChange={setTargets}
+            />
           </fieldset>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Rest time" hint="m:ss. Empty uses your default.">
+            <Field
+              label="Rest time"
+              hint="m:ss. Empty uses your default."
+              error={shown(problems.rest) && "Enter a time as m:ss."}
+            >
               <input
                 value={rest}
                 onChange={(e) => setRest(e.target.value)}
                 inputMode="numeric"
-                placeholder={formatDuration(settings.rest_default_s)}
+                placeholder={`Default ${formatDuration(settings.rest_default_s)}`}
+                aria-invalid={shown(problems.rest)}
                 className={inputClass}
               />
             </Field>
             <Field
               label={`Weight step (${unit})`}
               hint="Empty uses your default."
+              error={shown(problems.increment) && "Enter a number above 0."}
             >
               <input
                 value={increment}
                 onChange={(e) => setIncrement(e.target.value)}
                 inputMode="decimal"
-                placeholder={String(
+                placeholder={`Default ${
                   unit === "kg"
                     ? settings.weight_increment_kg
-                    : settings.weight_increment_lb,
-                )}
+                    : settings.weight_increment_lb
+                }`}
+                aria-invalid={shown(problems.increment)}
                 className={inputClass}
               />
             </Field>
@@ -301,61 +335,118 @@ function ExerciseForm({
               className={clsx(inputClass, "h-auto py-2")}
             />
           </Field>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full sm:w-auto"
-              disabled={invalid}
-            >
-              {exercise ? "Save exercise" : "Create exercise"}
-            </Button>
-            {exercise && (
-              <Button
-                onClick={async () => {
-                  await command("updateExercise", {
-                    exerciseId: exercise.id,
-                    archived: !exercise.archived,
-                  });
-                  await goBack();
-                }}
-              >
-                {exercise.archived ? "Unarchive" : "Archive"}
-              </Button>
-            )}
-            {exercise && (
-              <Link
-                to="/exercises/new"
-                search={{ from: exercise.id }}
-                className={buttonClass()}
-              >
-                <Copy size={16} />
-                Copy as new
-              </Link>
-            )}
-          </div>
         </div>
       </form>
     </Screen>
   );
 }
 
+type Targets = Record<string, number>;
+
+function byGroup(muscles: MuscleItem[]) {
+  return MUSCLE_GROUPS.map((group) => ({
+    group,
+    muscles: muscles.filter((m) => m.group === group),
+  })).filter((g) => g.muscles.length > 0);
+}
+
+const NEXT_FACTOR: Record<number, number> = { 0: 0.5, 0.5: 1, 1: 0 };
+
+/**
+ * One chip per muscle, by region, that steps through none, secondary, and
+ * primary. Secondary is `aria-pressed="mixed"`: outlined with a hollow dot;
+ * primary is a selected chip with a filled dot.
+ */
+function MuscleCycle(props: {
+  muscles: MuscleItem[];
+  targets: Targets;
+  onChange: (targets: Targets) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {byGroup(props.muscles).map(({ group, muscles }) => (
+        <Region key={group} group={group} label={group}>
+          {muscles.map((muscle) => {
+            const factor = props.targets[muscle.id] ?? 0;
+            return (
+              <button
+                key={muscle.id}
+                type="button"
+                aria-pressed={
+                  factor === 1 ? true : factor === 0.5 ? "mixed" : false
+                }
+                onClick={() =>
+                  props.onChange({
+                    ...props.targets,
+                    [muscle.id]: NEXT_FACTOR[factor] ?? 0,
+                  })
+                }
+                className={clsx(
+                  chipClass(),
+                  "aria-[pressed=mixed]:text-ink aria-[pressed=mixed]:ring-1 aria-[pressed=mixed]:ring-ink/50 aria-[pressed=mixed]:ring-inset",
+                )}
+              >
+                {factor > 0 && (
+                  <span
+                    aria-hidden
+                    className={clsx(
+                      "size-2 rounded-full",
+                      factor === 1 ? "bg-current" : "ring-[1.5px] ring-current",
+                    )}
+                  />
+                )}
+                {muscle.name}
+              </button>
+            );
+          })}
+        </Region>
+      ))}
+    </div>
+  );
+}
+
+/** A body region's muscles, its name in a column beside them. */
+function Region(props: {
+  group: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset aria-label={props.label} className="flex min-w-0 gap-2">
+      <span
+        aria-hidden
+        className="w-[4.5rem] shrink-0 pt-2 text-sm text-ink-muted"
+      >
+        {props.group}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+        {props.children}
+      </div>
+    </fieldset>
+  );
+}
+
 const inputClass =
-  "h-11 w-full rounded-lg bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink";
+  "h-11 w-full rounded-xl bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink aria-invalid:ring-2 aria-invalid:ring-danger";
 
 function Field(props: {
   label: string;
   hint?: string;
+  /** Shown instead of the hint once a save was tried. */
+  error?: string | false;
   children: React.ReactNode;
 }) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the control is the child
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{props.label}</span>
+      <span className={fieldLabelClass}>{props.label}</span>
       {props.children}
-      {props.hint && (
-        <span className="text-sm text-ink-muted">{props.hint}</span>
+      {props.error ? (
+        <span className="text-sm text-danger">{props.error}</span>
+      ) : (
+        props.hint && (
+          <span className="text-sm text-ink-muted">{props.hint}</span>
+        )
       )}
     </label>
   );

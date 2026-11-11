@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 import { Plus, Search } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { Button, buttonClass } from "../../components/button.tsx";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
@@ -83,9 +84,7 @@ export function ExercisesPage() {
       )}
       {archived.length > 0 && showArchived && (
         <section className="pt-6">
-          <h2 className="px-4 pb-1 font-semibold text-ink-muted lg:px-0">
-            Archived
-          </h2>
+          <SectionHeading>Archived</SectionHeading>
           <ExerciseList exercises={archived} muscles={muscles} />
         </section>
       )}

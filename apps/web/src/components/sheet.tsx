@@ -28,7 +28,7 @@ export function Sheet(props: {
             </Dialog.Title>
             <Dialog.Close
               aria-label="Close"
-              className="flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+              className="flex size-10 items-center justify-center rounded-xl hover:bg-surface"
             >
               <X size={20} />
             </Dialog.Close>
@@ -94,7 +94,7 @@ export function Confirm(props: {
             ))}
             <AlertDialog.Close
               onClick={props.onCancel}
-              className="h-10 rounded-lg text-[0.9375rem] font-medium text-ink-muted hover:bg-surface"
+              className="h-10 rounded-xl text-[0.9375rem] font-medium text-ink-muted hover:bg-surface"
             >
               {props.cancelLabel ?? "Cancel"}
             </AlertDialog.Close>

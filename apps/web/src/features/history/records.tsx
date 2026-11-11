@@ -5,6 +5,7 @@ import type {
   WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
+import { SectionHeading } from "../../components/headings.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import {
   formatSessionDate,
@@ -32,14 +33,14 @@ export function RecordsSection(props: {
   );
   return (
     <section className="px-4 lg:px-0">
-      <h2 className="pb-2 text-lg font-semibold">
+      <SectionHeading inset={false}>
         {`Records ${PERIOD_PHRASES[props.period]}`.trim()}
-      </h2>
+      </SectionHeading>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {records.headline.map((r) => (
           <li
             key={r.kind}
-            className="rounded-xl bg-raised p-3 ring-1 ring-rule"
+            className="rounded-2xl bg-raised p-3 ring-1 ring-rule"
           >
             <p className="text-sm text-ink-muted">{HEADLINE_LABELS[r.kind]}</p>
             <p className="numerals text-2xl">

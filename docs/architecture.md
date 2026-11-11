@@ -10,11 +10,34 @@ The window never scrolls. Every screen is a `Screen`: a fixed header, a body
 that alone scrolls, and an optional fixed footer (the set entry while
 logging). On phones, a screen's main action goes in the footer or the body
 is aligned to the bottom, so it sits in thumb reach: the Today screen's
-Start session button or running session, the Start screen's days. Scrollbars therefore run only beside what scrolls, and sticky
-elements never overlap content. Header, body, and footer span the full width
-with their content centered, so on a wide window the scrollbar stays at the
-edge. The router restores each screen body's scroll position when returning
-to the screen, keyed by path.
+Start session button or running session, the Start screen's days, the
+exercise editor's Save. Scrollbars therefore run only beside what scrolls, and sticky
+elements never overlap content. Header, body, and footer span the full width,
+so on a wide window the scrollbar stays at the edge; their content starts at
+the sidebar, so titles line up across screens. The router restores each
+screen body's scroll position when returning to the screen, keyed by path.
+
+Toasts (undo, errors) appear at the bottom on phones, in thumb reach above
+whatever is fixed there: the tab bar, a screen's footer, or the rest timer,
+each marked `data-bottom-chrome`. On wide screens they appear top right.
+
+Shared UI pieces live in `components/`: `SectionHeading` above every card or
+block and `FieldLabel` for form labels and chart titles (`headings.tsx`),
+`Chip` for every rounded choice, `MoreMenu` for a header's rarer actions,
+`IconTip` to name an icon-only header button on hover (it keeps its own
+`aria-label`). A screen has at most one `primary` (ink-filled) button;
+destructive actions are `danger` text, last on the screen.
+
+Corners come in three sizes. Cards, sheets, dialogs, and floating panels
+(menus, select popups, toasts, popovers) are `rounded-2xl` (16px). Every
+control is `rounded-xl` (12px): buttons of every size, icon buttons, inputs,
+selects, stepper fields and buttons, the segmented control's track, and rows
+inside a floating panel. Anything inside a control is `rounded-lg` (8px), with
+4px of padding between, so the corners are concentric (the segmented
+control's thumb, the rest timer's buttons; a tooltip is this size too). Chips
+and small badges stay `rounded-full`, which marks them as toggles, as do
+dots, switches, the calendar's today circle, and other shapes whose roundness
+is their meaning.
 
 On phones, the on-screen keyboard resizes the layout instead of panning the
 page (`interactive-widget=resizes-content` in the viewport meta, honored by

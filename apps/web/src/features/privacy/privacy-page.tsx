@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { SectionHeading } from "../../components/headings.tsx";
 import { PageHeader, Screen } from "../../components/page.tsx";
 
 // The content of docs/accounts.md#privacy. Google's consent screen links
@@ -8,7 +9,9 @@ import { PageHeader, Screen } from "../../components/page.tsx";
 function Part(props: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2 px-4 pt-5 lg:px-0">
-      <h2 className="text-lg font-semibold">{props.title}</h2>
+      <SectionHeading inset={false} className="pb-0">
+        {props.title}
+      </SectionHeading>
       {props.children}
     </section>
   );

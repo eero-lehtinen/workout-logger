@@ -27,7 +27,7 @@ export function NotesField(props: {
       placeholder={props.placeholder}
       rows={2}
       className={clsx(
-        "field-sizing-content min-h-16 w-full resize-none rounded-lg bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink",
+        "field-sizing-content min-h-16 w-full resize-none rounded-xl bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink",
         props.className,
       )}
     />

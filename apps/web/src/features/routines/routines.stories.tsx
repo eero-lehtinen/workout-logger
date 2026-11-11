@@ -12,6 +12,20 @@ export const ListEmpty = pageStory({ fixture: empty, url: () => "/routines" });
 
 export const List = pageStory({ fixture: withRoutine, url: () => "/routines" });
 
+/** New opens the editor with the placeholder name selected, ready to type over. */
+export const NewRoutine = pageStory({
+  fixture: empty,
+  url: () => "/routines",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "New" }));
+    const name = await canvas.findByRole("textbox", { name: "Routine name" });
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.keyboard("Push/Pull{Enter}");
+    await waitFor(() => expect(name).toHaveValue("Push/Pull"));
+  },
+});
+
 /** Adding a built-in routine opens it, ready to edit. */
 export const AddBuiltin = pageStory({
   fixture: empty,
@@ -29,7 +43,7 @@ export const AddBuiltin = pageStory({
       ).toEqual(["Upper A", "Upper B", "Lower"]),
     );
     await expect(
-      canvas.getByRole("textbox", { name: "Routine description" }),
+      canvas.getByRole("textbox", { name: "Description" }),
     ).toHaveValue(ROUTINES[0]?.description);
   },
 });
@@ -41,7 +55,7 @@ export const Description = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(
-      canvas.getByRole("textbox", { name: "Routine description" }),
+      canvas.getByRole("textbox", { name: "Description" }),
       "Four days a week, alternating.",
     );
     await userEvent.tab();
@@ -72,21 +86,64 @@ export const EditorPc = pageStory({
   viewport: "pc",
 });
 
+/** A slot's row sums it up; its sheet edits it. */
 export const SlotNoteAndRest = pageStory({
   fixture: withRoutine,
   url: (ids) => `/routines/${ids.routineId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const note = canvas.getByRole("textbox", {
+    const body = within(canvasElement.ownerDocument.body);
+    const row = canvas.getByRole("button", {
+      name: /^Bench Press \(Barbell\)/,
+    });
+    await expect(row).toHaveTextContent("1 alternative");
+    await userEvent.click(row);
+    const sheet = within(
+      await body.findByRole("dialog", { name: "Bench Press (Barbell)" }),
+    );
+    const note = sheet.getByRole("textbox", {
       name: "Note for Bench Press (Barbell)",
     });
     await userEvent.type(note, "heavy, 6-10{Enter}");
-    const rest = canvas.getByRole("textbox", {
+    const rest = sheet.getByRole("textbox", {
       name: "Rest for Bench Press (Barbell), m:ss",
     });
     await userEvent.type(rest, "3:00{Enter}");
     await waitFor(() => expect(rest).toHaveValue("3:00"));
     await expect(note).toHaveValue("heavy, 6-10");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(row).toHaveTextContent("1 alternative · heavy, 6-10 · Rest 3:00"),
+    );
+  },
+});
+
+export const SlotSheetOpen = pageStory({
+  fixture: withRoutine,
+  url: (ids) => `/routines/${ids.routineId}`,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Bent-Over Row/ }),
+    );
+  },
+});
+
+/** The routine's rarer actions wait behind "⋯". */
+export const EditorMenu = pageStory({
+  fixture: withRoutine,
+  url: (ids) => `/routines/${ids.routineId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await body.findByRole("menuitem", { name: "Duplicate" }),
+    );
+    await waitFor(() =>
+      expect(canvas.getByRole("textbox", { name: "Routine name" })).toHaveValue(
+        "Upper/Lower (copy)",
+      ),
+    );
   },
 });
 

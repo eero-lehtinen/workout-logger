@@ -97,7 +97,7 @@ export function UserSheet(props: {
                 onChange={(e) =>
                   setDrafts((d) => ({ ...d, [key]: e.target.value }))
                 }
-                className="tabular h-10 rounded-lg bg-chalk px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+                className="tabular h-10 rounded-xl bg-chalk px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
               />
             </label>
           ))}

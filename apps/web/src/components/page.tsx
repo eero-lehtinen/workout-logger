@@ -13,9 +13,9 @@ const WIDTHS = {
 
 /**
  * A screen: a fixed header, a body that alone scrolls, and an optional
- * fixed footer. Header, body, and footer span the full width with their
- * content centered, so the scrollbar runs at the edge and only beside the
- * body.
+ * fixed footer. Header, body, and footer span the full width, so the
+ * scrollbar runs at the edge and only beside the body. Their content starts
+ * at the sidebar on wide screens, so titles line up across screens.
  */
 export function Screen(props: {
   header: ReactNode;
@@ -28,7 +28,7 @@ export function Screen(props: {
   align?: "top" | "bottom";
 }) {
   const width = clsx(
-    "mx-auto w-full",
+    "w-full",
     props.width === "pane" ? "lg:px-6" : "lg:px-8",
     WIDTHS[props.width ?? "wide"],
   );
@@ -53,7 +53,10 @@ export function Screen(props: {
         </div>
       </div>
       {props.footer && (
-        <div className="shrink-0 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)]">
+        <div
+          data-bottom-chrome
+          className="shrink-0 border-t border-rule bg-chalk pb-[env(safe-area-inset-bottom)]"
+        >
           <div className={width}>{props.footer}</div>
         </div>
       )}
@@ -70,6 +73,8 @@ export function PageHeader(props: {
   subtitle?: ReactNode;
   back?: LinkProps & { label: string };
   actions?: ReactNode;
+  /** Lets a long title take two lines instead of truncating. */
+  wrap?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
@@ -84,13 +89,18 @@ export function PageHeader(props: {
             {...back}
             aria-label={back.label}
             title={back.label}
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-surface"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl hover:bg-surface"
           >
             <ChevronLeft size={22} />
           </Link>
         )}
         <div className={clsx("min-w-0 flex-1", !back && "pl-2 lg:pl-0")}>
-          <h1 className="truncate text-xl leading-tight font-semibold lg:text-2xl">
+          <h1
+            className={clsx(
+              "text-xl leading-tight font-semibold lg:text-2xl",
+              props.wrap ? "line-clamp-2 py-1" : "truncate",
+            )}
+          >
             {props.title}
           </h1>
           {props.subtitle && (

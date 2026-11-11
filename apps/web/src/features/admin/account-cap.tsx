@@ -55,7 +55,7 @@ export function AccountCap(props: {
             placeholder={String(props.defaultMaxAccounts)}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            className="tabular h-10 w-20 rounded-lg bg-chalk px-3 text-right outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+            className="tabular h-10 w-20 rounded-xl bg-chalk px-3 text-right outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
           <Button disabled={save.isPending} onClick={submit}>
             Save

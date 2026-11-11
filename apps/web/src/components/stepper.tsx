@@ -112,7 +112,7 @@ function StepButton(props: {
       aria-label={props.label}
       onClick={props.onClick}
       className={clsx(
-        "flex shrink-0 items-center justify-center rounded-full bg-surface text-ink transition-colors hover:bg-rule active:bg-rule",
+        "flex shrink-0 items-center justify-center rounded-xl bg-surface text-ink transition-colors hover:bg-rule active:bg-rule",
         props.large ? "size-14" : "size-11",
       )}
     >

@@ -5,28 +5,30 @@ import {
   ROUTINES,
   routineContent,
 } from "@workout-logger/exercises";
-import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "../../components/button.tsx";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
+import { dayDotClass } from "../history/day-colors.ts";
 
 export function RoutinesPage() {
   const routines = useDbQuery("routines");
   const command = useCommand();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
   const active = routines.filter((r) => !r.archived);
   const archived = routines.filter((r) => r.archived);
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const routineId = await command("createRoutine", { name: trimmed });
+  /** Opens the editor with the placeholder name selected, to type over. */
+  async function create() {
+    const routineId = await command("createRoutine", { name: "New routine" });
     if (routineId) {
-      setName("");
-      await navigate({ to: "/routines/$routineId", params: { routineId } });
+      await navigate({
+        to: "/routines/$routineId",
+        params: { routineId },
+        search: { new: true },
+      });
     }
   }
 
@@ -43,33 +45,29 @@ export function RoutinesPage() {
 
   return (
     <Screen
-      header={<PageHeader title="Routines" />}
+      header={
+        <PageHeader
+          title="Routines"
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => void create()}>
+              <Plus size={17} />
+              New
+            </Button>
+          }
+        />
+      }
       scrollId="routines"
       width="medium"
     >
       {active.length === 0 ? (
         <Empty>
-          No routines yet. Name your first one below, or add a built-in one.
+          No routines yet. Create one with New, or add a built-in one.
         </Empty>
       ) : (
         <RoutineList routines={active} />
       )}
-      <form onSubmit={create} className="flex gap-2 px-4 pt-4 lg:px-0">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New routine, e.g. Upper/Lower"
-          aria-label="New routine name"
-          className="h-10 min-w-0 flex-1 rounded-lg bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
-        />
-        <Button type="submit" variant="primary" disabled={!name.trim()}>
-          Create
-        </Button>
-      </form>
       <section className="pt-8">
-        <h2 className="px-4 pb-2 font-semibold text-ink-muted lg:px-0">
-          Built-in routines
-        </h2>
+        <SectionHeading>Built-in routines</SectionHeading>
         <ul className={listClass}>
           {ROUTINES.map((routine) => (
             <li key={routine.key} className="flex items-center gap-3 px-4 py-3">
@@ -89,9 +87,7 @@ export function RoutinesPage() {
       </section>
       {archived.length > 0 && (
         <section className="pt-8">
-          <h2 className="px-4 pb-2 font-semibold text-ink-muted lg:px-0">
-            Archived
-          </h2>
+          <SectionHeading>Archived</SectionHeading>
           <RoutineList routines={archived} />
         </section>
       )}
@@ -114,11 +110,22 @@ function RoutineList({ routines }: { routines: RoutineItem[] }) {
               {r.description && (
                 <p className="line-clamp-2 text-sm">{r.description}</p>
               )}
-              <p className="truncate text-sm text-ink-muted">
-                {r.dayNames.length === 0
-                  ? "No days yet"
-                  : r.dayNames.join(", ")}
-              </p>
+              {r.dayNames.length === 0 ? (
+                <p className="text-sm text-ink-muted">No days yet</p>
+              ) : (
+                <p className="flex flex-wrap gap-x-3 text-sm text-ink-muted">
+                  {r.dayNames.map((name, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: the index is the day's place in the cycle
+                    <span key={index} className="flex items-center gap-1.5">
+                      <span
+                        aria-hidden
+                        className={`size-2 shrink-0 rounded-full ${dayDotClass(index)}`}
+                      />
+                      {name}
+                    </span>
+                  ))}
+                </p>
+              )}
             </div>
           </Link>
         </li>

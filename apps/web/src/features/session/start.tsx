@@ -3,13 +3,14 @@ import { RadioGroup } from "@base-ui/react/radio-group";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { chipClass } from "../../components/chip.tsx";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
+import { exerciseSummary } from "../exercises/name.ts";
 import { dayDotClass } from "../history/day-colors.ts";
 import { useRunningSession } from "./running.ts";
-
-const headingClass = "px-4 pb-2 font-semibold text-ink-muted lg:px-0";
 
 /** A row that starts a session when tapped. */
 function StartRow(props: {
@@ -31,7 +32,9 @@ function StartRow(props: {
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{props.title}</span>
         {props.subtitle && (
-          <span className="block text-sm text-ink-muted">{props.subtitle}</span>
+          <span className="block truncate text-sm text-ink-muted">
+            {props.subtitle}
+          </span>
         )}
       </span>
       {props.note}
@@ -75,7 +78,7 @@ export function StartPage() {
       align="bottom"
     >
       {running && (
-        <p className="mx-4 mb-3 rounded-xl bg-surface px-4 py-3 text-[0.9375rem] lg:mx-0">
+        <p className="mx-4 mb-3 rounded-2xl bg-surface px-4 py-3 text-[0.9375rem] lg:mx-0">
           A session is still running.{" "}
           <Link
             to="/sessions/$sessionId"
@@ -109,11 +112,7 @@ export function StartPage() {
               className="flex flex-wrap gap-2 px-4 lg:px-0"
             >
               {options.routines.map((r) => (
-                <Radio.Root
-                  key={r.id}
-                  value={r.id}
-                  className="h-10 shrink-0 rounded-full border border-rule px-4 font-medium text-ink-muted data-checked:border-ink/60 data-checked:bg-raised data-checked:text-ink"
-                >
+                <Radio.Root key={r.id} value={r.id} className={chipClass("md")}>
                   {r.name}
                 </Radio.Root>
               ))}
@@ -121,9 +120,9 @@ export function StartPage() {
           )}
           {routine && (
             <section className="pt-4">
-              <h2 className={headingClass}>
+              <SectionHeading>
                 {options.routines.length === 1 ? routine.name : "Pick a day"}
-              </h2>
+              </SectionHeading>
               {routine.days.length === 0 ? (
                 <Empty>
                   This routine has no days.{" "}
@@ -150,14 +149,19 @@ export function StartPage() {
                           />
                         }
                         title={day.name}
+                        subtitle={
+                          day.exercises.length > 0
+                            ? exerciseSummary(day.exercises)
+                            : "No exercises"
+                        }
                         note={
                           day.id === routine.nextDayId ? (
-                            <span className="rounded-full bg-surface px-2 py-0.5 text-sm font-medium">
+                            <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-sm font-medium">
                               Next
                             </span>
                           ) : (
                             day.id === routine.lastDayId && (
-                              <span className="text-sm text-ink-muted">
+                              <span className="shrink-0 text-sm text-ink-muted">
                                 Last time
                               </span>
                             )
@@ -174,7 +178,7 @@ export function StartPage() {
       )}
 
       <section className="pt-6">
-        <h2 className={headingClass}>Without a routine</h2>
+        <SectionHeading>Without a routine</SectionHeading>
         <ul className={listClass}>
           <li>
             <StartRow

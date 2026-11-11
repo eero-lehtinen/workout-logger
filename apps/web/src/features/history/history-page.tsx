@@ -1,4 +1,4 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
   type IsoDate,
   type ListedSession,
@@ -6,6 +6,7 @@ import {
   type WeekStart,
 } from "@workout-logger/core";
 import { useDeferredValue } from "react";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
@@ -37,7 +38,15 @@ export function HistoryPage() {
   return (
     <Screen header={<PageHeader title="History" />} scrollId="history">
       {stats.sessions.length === 0 ? (
-        <Empty>Sessions you log show up here.</Empty>
+        <Empty>
+          Sessions you log show up here.{" "}
+          <Link
+            to="/start"
+            className="font-semibold text-ink underline underline-offset-2"
+          >
+            Start a session
+          </Link>
+        </Empty>
       ) : (
         <div className="flex flex-col gap-10 pt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-12">
           <div>
@@ -103,12 +112,12 @@ function MonthSessions(props: {
       />
       {props.selected && (
         <section aria-labelledby="day-sessions" className="pt-6">
-          <h2 id="day-sessions" className="px-4 pb-2 font-semibold lg:px-0">
+          <SectionHeading id="day-sessions">
             {dayTitle.format(
               Temporal.PlainDate.from(props.selected).toZonedDateTime("UTC")
                 .epochMilliseconds,
             )}
-          </h2>
+          </SectionHeading>
           {daySessions.length === 0 ? (
             <p className="px-4 text-[0.9375rem] text-ink-muted lg:px-0">
               No sessions.

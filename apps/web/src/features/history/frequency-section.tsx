@@ -8,6 +8,7 @@ import {
   type WeekStart,
 } from "@workout-logger/core";
 import { BarChart } from "../../components/chart/index.tsx";
+import { FieldLabel, SectionHeading } from "../../components/headings.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { dateFromIso } from "../../lib/format.ts";
 import { dayDotClass } from "./day-colors.ts";
@@ -60,9 +61,9 @@ export function FrequencySection(props: {
   return (
     <section aria-labelledby="frequency" className="px-4 lg:px-0">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
-        <h2 id="frequency" className="text-lg font-semibold">
+        <SectionHeading id="frequency" inset={false} className="pb-0">
           Frequency
-        </h2>
+        </SectionHeading>
         <Segmented
           label="Period"
           size="sm"
@@ -80,7 +81,9 @@ export function FrequencySection(props: {
         />
       </dl>
 
-      <h3 className="pt-6 pb-2 font-semibold">Sessions per week</h3>
+      <FieldLabel as="h3" className="block pt-6 pb-2">
+        Sessions per week
+      </FieldLabel>
       <BarChart
         label="Sessions per week"
         xKind="time"
@@ -100,7 +103,9 @@ export function FrequencySection(props: {
 
       {gaps.distribution.length > 0 && (
         <>
-          <h3 className="pt-6 pb-2 font-semibold">Days between sessions</h3>
+          <FieldLabel as="h3" className="block pt-6 pb-2">
+            Days between sessions
+          </FieldLabel>
           <BarChart
             label="Days between sessions"
             xKind="category"
@@ -132,7 +137,7 @@ export function FrequencySection(props: {
 
 function Stat(props: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-raised p-3 ring-1 ring-rule">
+    <div className="rounded-2xl bg-raised p-3 ring-1 ring-rule">
       <dt className="text-sm text-ink-muted">{props.label}</dt>
       <dd className="numerals text-3xl">{props.value}</dd>
     </div>
@@ -155,7 +160,9 @@ function RoutineDays(props: {
     <>
       {routines.map((r) => (
         <div key={r.id}>
-          <h3 className="pt-6 pb-1 font-semibold">{r.name}</h3>
+          <FieldLabel as="h3" className="block pt-6 pb-1">
+            {r.name}
+          </FieldLabel>
           {r.days.length === 0 ? (
             <p className="text-sm text-ink-muted">No days.</p>
           ) : (

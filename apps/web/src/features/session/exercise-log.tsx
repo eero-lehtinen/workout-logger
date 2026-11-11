@@ -8,17 +8,14 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import {
-  ArrowLeftRight,
-  ChartLine,
-  ChevronDown,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ArrowLeftRight, ChartLine, ChevronDown, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, buttonClass, IconButton } from "../../components/button.tsx";
+import { Button, dangerAlignClass } from "../../components/button.tsx";
+import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
+import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import {
   formatSessionDate,
@@ -33,6 +30,7 @@ import { type Entry, entryFromSet, setFromEntry } from "./entry.ts";
 import { EntryFields } from "./entry-fields.tsx";
 import { Marker } from "./marker.tsx";
 import { RestControls } from "./rest-bar.tsx";
+import { wasResumed } from "./running.ts";
 
 const route = getRouteApi("/sessions/$sessionId/$sessionExerciseId");
 
@@ -168,7 +166,7 @@ function Logger({ log }: { log: ExerciseLog }) {
       Date.now(),
       settings.idle_threshold_s * 1000,
     );
-    if (end.running) {
+    if (end.running || (end.reason === "idle" && wasResumed(log.session.id))) {
       void logInto(log.session.id, log.sessionExerciseId, values);
     } else setEnded(end);
   }
@@ -218,10 +216,26 @@ function Logger({ log }: { log: ExerciseLog }) {
     to: "/exercises/$exerciseId/history",
   } as const;
 
+  const iconLinkClass =
+    "inline-flex size-10 items-center justify-center rounded-xl hover:bg-surface";
+  const historyIcon = (
+    <IconTip label="Exercise history">
+      <Link
+        {...historyLink}
+        aria-label="Exercise history"
+        className={iconLinkClass}
+      >
+        <ChartLine size={20} />
+      </Link>
+    </IconTip>
+  );
   const header = (
     <>
+      {/* The name is what must be readable: it may wrap, and the rarer
+          actions wait behind "⋯". */}
       <PageHeader
         title={exercise.name}
+        wrap
         back={{
           to: "/sessions/$sessionId",
           params: { sessionId: log.session.id },
@@ -230,47 +244,49 @@ function Logger({ log }: { log: ExerciseLog }) {
         className="lg:hidden"
         actions={
           <>
-            <Link
-              {...historyLink}
-              aria-label="Exercise history"
-              title="Exercise history"
-              className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
-            >
-              <ChartLine size={20} />
-            </Link>
-            <Link
-              {...settingsLink}
-              aria-label="Exercise settings"
-              title="Exercise settings"
-              className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
-            >
-              <SlidersHorizontal size={20} />
-            </Link>
-            <IconButton
-              label="Substitute exercise"
-              onClick={() => setSubstituting(true)}
-            >
-              <ArrowLeftRight size={20} />
-            </IconButton>
+            {historyIcon}
+            <MoreMenu
+              label="More actions"
+              items={[
+                {
+                  label: "Edit exercise",
+                  icon: <Pencil size={18} />,
+                  onClick: () => void navigate(settingsLink),
+                },
+                {
+                  label: "Substitute",
+                  icon: <ArrowLeftRight size={18} />,
+                  onClick: () => setSubstituting(true),
+                },
+              ]}
+            />
           </>
         }
       />
-      <div className="hidden items-center gap-2 pt-6 lg:flex">
+      <div className="hidden items-center gap-1 pt-6 lg:flex">
         <h1 className="flex-1 truncate text-2xl font-semibold">
           {exercise.name}
         </h1>
-        <Link {...historyLink} className={buttonClass("ghost", "sm")}>
-          <ChartLine size={17} />
-          History
-        </Link>
-        <Link {...settingsLink} className={buttonClass("ghost", "sm")}>
-          <SlidersHorizontal size={17} />
-          Settings
-        </Link>
-        <Button size="sm" variant="ghost" onClick={() => setSubstituting(true)}>
-          <ArrowLeftRight size={17} />
-          Substitute
-        </Button>
+        {historyIcon}
+        <IconTip label="Edit exercise">
+          <Link
+            {...settingsLink}
+            aria-label="Edit exercise"
+            className={iconLinkClass}
+          >
+            <Pencil size={19} />
+          </Link>
+        </IconTip>
+        <IconTip label="Substitute exercise">
+          <button
+            type="button"
+            aria-label="Substitute exercise"
+            onClick={() => setSubstituting(true)}
+            className={iconLinkClass}
+          >
+            <ArrowLeftRight size={20} />
+          </button>
+        </IconTip>
       </div>
       {log.slotNote && (
         <p className="px-4 pb-1 font-medium lg:px-0">{log.slotNote}</p>
@@ -404,8 +420,7 @@ function Logger({ log }: { log: ExerciseLog }) {
         />
         <Button
           variant="danger"
-          size="sm"
-          className="mt-6"
+          className={`mt-6 ${dangerAlignClass}`}
           onClick={async () => {
             await command(
               "removeSessionExercise",
@@ -512,7 +527,7 @@ function Ledger(props: {
                       type="button"
                       onClick={() => props.onEdit(today)}
                       aria-pressed={props.editingId === today.id}
-                      className="flex h-12 min-w-0 items-center rounded-lg px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
+                      className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
                     >
                       <span className="sr-only">Edit set {i + 1}: </span>
                       <span className="numerals truncate text-2xl">
@@ -530,7 +545,7 @@ function Ledger(props: {
                   <button
                     type="button"
                     onClick={props.onStopEditing}
-                    className="-ml-2 flex h-12 items-center rounded-lg px-2 text-ink-muted hover:bg-surface hover:text-ink"
+                    className="-ml-2 flex h-12 items-center rounded-xl px-2 text-ink-muted hover:bg-surface hover:text-ink"
                   >
                     <span className="sr-only">Stop editing, back to the </span>
                     next
@@ -549,7 +564,7 @@ function Ledger(props: {
                       type="button"
                       onClick={() => props.onCopy(before)}
                       aria-label={`Use ${formatSet(before, log.exercise.type, unit)} for the next set`}
-                      className="flex h-12 min-w-0 items-center rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+                      className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
                     >
                       <span className="numerals truncate text-xl">
                         {formatSet(before, log.exercise.type, unit)}
@@ -597,7 +612,7 @@ function EarlierPerformance(props: {
               <button
                 type="button"
                 onClick={() => props.onCopy(set)}
-                className="flex h-10 min-w-0 items-center gap-2 rounded-lg px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+                className="flex h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
               >
                 <span className="sr-only">Use set </span>
                 <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>

@@ -1,9 +1,10 @@
 import { clsx } from "clsx";
+import { SectionHeading } from "../../components/headings.tsx";
 
 export function Section(props: { title: string; children: React.ReactNode }) {
   return (
     <section className="pt-4">
-      <h2 className="px-4 pb-1 text-lg font-semibold lg:px-0">{props.title}</h2>
+      <SectionHeading className="pb-1">{props.title}</SectionHeading>
       <div className="mx-2 flex flex-col rounded-2xl bg-raised py-1 lg:mx-0">
         {props.children}
       </div>

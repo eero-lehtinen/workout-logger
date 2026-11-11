@@ -28,17 +28,19 @@ export function Segmented<T extends string>(
         if (next !== undefined) props.onChange(next);
         else if (props.deselectable) props.onChange(null);
       }}
-      className="inline-flex shrink-0 rounded-lg bg-surface p-0.5"
+      // The track's 4px padding keeps the thumb's corners concentric with it
+      // (12px outside, 8px inside).
+      className="inline-flex shrink-0 rounded-xl bg-surface p-1"
     >
       {props.options.map((option) => (
         <Toggle
           key={option.value}
           value={option.value}
           className={clsx(
-            "rounded-md font-medium whitespace-nowrap text-ink-muted transition-colors data-pressed:bg-selected data-pressed:text-ink data-pressed:shadow-sm",
+            "rounded-lg font-medium whitespace-nowrap text-ink-muted transition-colors data-pressed:bg-selected data-pressed:text-ink data-pressed:shadow-sm",
             props.size === "sm"
-              ? "h-8 min-w-9 px-2.5 text-sm"
-              : "h-9 min-w-14 px-3 text-[0.9375rem]",
+              ? "h-7 min-w-9 px-2.5 text-sm"
+              : "h-8 min-w-14 px-3 text-[0.9375rem]",
           )}
         >
           {option.label}

@@ -145,7 +145,7 @@ export function GripHandle({ handle }: { handle: DragHandle }) {
       aria-label={handle.label}
       title={handle.label}
       {...handle.props}
-      className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-ink-muted hover:bg-surface hover:text-ink active:cursor-grabbing"
+      className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-xl text-ink-muted hover:bg-surface hover:text-ink active:cursor-grabbing"
     >
       <GripVertical size={18} />
     </button>

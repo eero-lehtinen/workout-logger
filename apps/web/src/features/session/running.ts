@@ -22,6 +22,21 @@ export function isRunning(
   ).running;
 }
 
+/**
+ * Sessions the user chose to resume after they idled out. Idle end is
+ * derived from the last set, so nothing can be stored to resume one; its
+ * next logged set continues it without asking whether to.
+ */
+const resumed = new Set<string>();
+
+export function markResumed(sessionId: string) {
+  resumed.add(sessionId);
+}
+
+export function wasResumed(sessionId: string): boolean {
+  return resumed.has(sessionId);
+}
+
 /** The latest session that hasn't ended or idled out. */
 export function useRunningSession(): SessionSummary | null {
   const sessions = useDbQuery("recentSessions", { limit: RECENT_LIMIT });

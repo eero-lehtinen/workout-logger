@@ -235,7 +235,7 @@ function SettingInput<T extends number>(props: {
       onChange={(e) => setDraft(e.target.value)}
       onBlur={save}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      className="tabular h-10 w-24 rounded-lg bg-chalk px-3 text-right font-semibold outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+      className="tabular h-10 w-24 rounded-xl bg-chalk px-3 text-right font-semibold outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
     />
   );
 }

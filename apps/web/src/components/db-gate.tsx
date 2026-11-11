@@ -59,11 +59,22 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
       <h1 className="text-xl font-semibold">
         {tooNew ? "Update the app" : "Your log didn't open"}
       </h1>
-      <p className="max-w-sm text-ink-muted">
-        {tooNew
-          ? `Your data was saved by a newer version. ${isNative ? "Update" : "Reload"} to get it.`
-          : `Your data is untouched. ${error instanceof Error ? error.message : String(error)}`}
-      </p>
+      {tooNew ? (
+        <p className="max-w-sm text-ink-muted">
+          Your data was saved by a newer version.{" "}
+          {isNative ? "Update" : "Reload"} to get it.
+        </p>
+      ) : (
+        <div className="flex max-w-sm flex-col gap-2">
+          <p className="text-ink-muted">
+            Your data is untouched. Try again, or reload the app.
+          </p>
+          {/* For a bug report; a user can't act on it. */}
+          <p className="text-xs break-words text-ink-muted">
+            {error instanceof Error ? error.message : String(error)}
+          </p>
+        </div>
+      )}
       {tooNew ? (
         <Button
           variant="primary"

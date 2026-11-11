@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { Button, dangerAlignClass } from "../../components/button.tsx";
 import { Sheet } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useDb } from "../../db/react.tsx";
@@ -114,10 +114,15 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
             autoComplete="off"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-10 rounded-lg bg-chalk px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
+            className="h-10 rounded-xl bg-chalk px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
         </label>
-        <Button variant="danger" disabled={!matches || busy} onClick={remove}>
+        <Button
+          variant="danger"
+          className={`self-start ${dangerAlignClass}`}
+          disabled={!matches || busy}
+          onClick={remove}
+        >
           Delete account
         </Button>
       </div>

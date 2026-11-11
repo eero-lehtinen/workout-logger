@@ -59,13 +59,13 @@ export function Marker(props: {
     <Popover.Root>
       <Popover.Trigger
         aria-label={label}
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-surface data-popup-open:bg-surface"
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl hover:bg-surface data-popup-open:bg-surface"
       >
         <MarkerIcon marker={marker} size={props.size ?? 18} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner className="z-40" side="top" sideOffset={6}>
-          <Popover.Popup className="w-max max-w-80 origin-[var(--transform-origin)] rounded-xl border border-rule bg-raised p-3 text-ink shadow-lg outline-none transition-[scale,opacity] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+          <Popover.Popup className="w-max max-w-80 origin-[var(--transform-origin)] rounded-2xl border border-rule bg-raised p-3 text-ink shadow-lg outline-none transition-[scale,opacity] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <Popover.Title className="flex items-center gap-1.5 text-sm font-semibold">
               <MarkerIcon marker={marker} size={18} />
               {label}

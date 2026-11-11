@@ -31,11 +31,11 @@ export const PastSessionReadOnly = pageStory({
     ).toBeVisible();
     await expect(canvas.getByText("Set 3: knee felt off")).toBeVisible();
     await expect(
-      canvas.queryByRole("button", { name: "Add exercise" }),
+      canvas.queryByRole("button", { name: "Add exercise to session" }),
     ).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Edit" }));
     await expect(
-      await canvas.findByRole("button", { name: "Add exercise" }),
+      await canvas.findByRole("button", { name: "Add exercise to session" }),
     ).toBeVisible();
   },
 });
@@ -96,17 +96,40 @@ export const StartNoRoutines = pageStory({
   url: () => "/start",
 });
 
+/** Each day names its first exercises. */
 export const StartNextDay = pageStory({
   fixture: withHistory,
   url: () => "/start",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const upper = await canvas.findByRole("button", { name: /Upper/ });
+    await expect(upper).toHaveTextContent("Next");
+    await expect(upper).toHaveTextContent("Bench Press, Bent-Over Row, +1");
+    const lower = canvas.getByRole("button", { name: /Lower/ });
+    await expect(lower).not.toHaveTextContent("Next");
+    await expect(lower).toHaveTextContent("Squat, Romanian Deadlift, +1");
+  },
+});
+
+/** Several routines: picked with chips. */
+export const StartTwoRoutines = pageStory({
+  fixture: async (db) => {
+    const ids = await withHistory(db);
+    await db.run("createRoutine", { name: "Full body" });
+    return ids;
+  },
+  url: () => "/start",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const full = await canvas.findByRole("radio", { name: "Full body" });
     await expect(
-      await canvas.findByRole("button", { name: /Upper/ }),
-    ).toHaveTextContent("Next");
+      canvas.getByRole("radio", { name: "Upper/Lower" }),
+    ).toBeChecked();
+    await userEvent.click(full);
+    await expect(full).toBeChecked();
     await expect(
-      canvas.getByRole("button", { name: /Lower/ }),
-    ).toHaveTextContent("Last time");
+      await canvas.findByText(/^This routine has no days\./),
+    ).toBeVisible();
   },
 });
 
@@ -143,6 +166,31 @@ export const SessionIdle = pageStory({
         /^Lasted \d+(h \d+)?m, no sets since/,
       ),
     ).toBeVisible();
+  },
+});
+
+/**
+ * Idle end is derived, so Resume opens the exercise to continue with, and
+ * its next set continues the session without asking.
+ */
+export const ResumeIdleSession = pageStory({
+  fixture: idleEnded,
+  url: (ids) => `/sessions/${ids.idleSessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Resume" }),
+    );
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Log set 3" }),
+    );
+    await expect(
+      await canvas.findByRole("button", { name: /^Edit set 3/ }),
+    ).toBeVisible();
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByRole("alertdialog"),
+    ).toBeNull();
+    restTimer.skip();
   },
 });
 
@@ -183,10 +231,20 @@ export const LoggingWithMarkers = pageStory({
   },
 });
 
+/** On PC the header actions are icons named by tooltips. */
 export const LoggingPc = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   viewport: "pc",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const edit = await canvas.findByRole("link", { name: "Edit exercise" });
+    await userEvent.hover(edit);
+    // The link is an icon, so the only text is the tooltip's.
+    const tip = await body.findByText("Edit exercise");
+    await waitFor(() => expect(tip).toBeVisible());
+  },
 });
 
 export const LoggingDark = pageStory({
@@ -263,10 +321,10 @@ export const AddExerciseByMuscleGroup = pageStory({
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
-      await canvas.findByRole("button", { name: "Add exercise" }),
+      await canvas.findByRole("button", { name: "Add exercise to session" }),
     );
     const picker = within(
-      await body.findByRole("dialog", { name: "Add exercise" }),
+      await body.findByRole("dialog", { name: "Add exercise to session" }),
     );
     await userEvent.click(await picker.findByRole("button", { name: "Legs" }));
     await expect(
@@ -347,8 +405,12 @@ export const SettingsFromLogging = pageStory({
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
-      await canvas.findByRole("link", { name: "Exercise settings" }),
+      await canvas.findByRole("button", { name: "More actions" }),
+    );
+    await userEvent.click(
+      await body.findByRole("menuitem", { name: "Edit exercise" }),
     );
     await canvas.findByRole("heading", { name: "Edit exercise" });
     await expect(

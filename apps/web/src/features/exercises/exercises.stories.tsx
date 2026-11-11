@@ -48,7 +48,10 @@ export const SubstitutionSections = pageStory({
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
-      await canvas.findByRole("button", { name: "Substitute exercise" }),
+      await canvas.findByRole("button", { name: "More actions" }),
+    );
+    await userEvent.click(
+      await body.findByRole("menuitem", { name: "Substitute" }),
     );
     const sheet = await body.findByRole("dialog");
     const section = (title: string) =>
@@ -124,16 +127,21 @@ export const CopyAsNew = pageStory({
   url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
-      await canvas.findByRole("link", { name: "Copy as new" }),
+      await canvas.findByRole("button", { name: "More actions" }),
+    );
+    await userEvent.click(
+      await body.findByRole("menuitem", { name: "Copy as new" }),
     );
     await canvas.findByRole("heading", { name: "Copy exercise" });
     const name = canvas.getByRole("textbox", { name: "Name" });
     await expect(name).toHaveValue("Bench Press (Barbell) (copy)");
     const chest = within(canvas.getByRole("group", { name: "Chest" }));
-    await expect(
-      chest.getByRole("button", { name: "Primary" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(chest.getByRole("button", { name: "Chest" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     await userEvent.clear(name);
     await userEvent.type(name, "Bench Press (Close Grip Pause)");
@@ -162,17 +170,50 @@ export const BrowserPc = pageStory({
   viewport: "pc",
 });
 
+/** Nothing is red before a save was tried. */
+export const NewUntouched = pageStory({
+  fixture: empty,
+  url: () => "/exercises/new",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/Pick at least one primary\.$/),
+    ).not.toHaveClass("text-danger");
+    await expect(canvas.getByRole("textbox", { name: "Name" })).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+  },
+});
+
+/**
+ * A muscle chip steps through secondary, primary, and none. What's missing
+ * turns red only once a save was tried.
+ */
 export const New = pageStory({
   fixture: empty,
   url: () => "/exercises/new",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const chest = within(await canvas.findByRole("group", { name: "Chest" }));
-    const primary = chest.getByRole("button", { name: "Primary" });
-    await userEvent.click(primary);
-    await expect(primary).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(primary);
-    await expect(primary).toHaveAttribute("aria-pressed", "false");
+    const hint = await canvas.findByText(/Pick at least one primary\.$/);
+    await expect(hint).not.toHaveClass("text-danger");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Create exercise" }),
+    );
+    await expect(hint).toHaveClass("text-danger");
+    await expect(canvas.getByText("Enter a name.")).toBeVisible();
+
+    const chest = within(
+      canvas.getByRole("group", { name: "Chest" }),
+    ).getByRole("button", { name: "Chest" });
+    await userEvent.click(chest);
+    await expect(chest).toHaveAttribute("aria-pressed", "mixed");
+    await expect(hint).toHaveClass("text-danger");
+    await userEvent.click(chest);
+    await expect(chest).toHaveAttribute("aria-pressed", "true");
+    await expect(hint).not.toHaveClass("text-danger");
+    await userEvent.click(chest);
+    await expect(chest).toHaveAttribute("aria-pressed", "false");
   },
 });
 
@@ -180,4 +221,14 @@ export const EditBuiltIn = pageStory({
   fixture: empty,
   url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
   viewport: "pc",
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText(/^Built in\./),
+    ).toBeVisible();
+  },
+});
+
+export const EditBuiltInPhone = pageStory({
+  fixture: empty,
+  url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
 });

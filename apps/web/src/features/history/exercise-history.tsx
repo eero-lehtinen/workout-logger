@@ -14,7 +14,7 @@ import {
   type WeightUnit,
   weeklySets,
 } from "@workout-logger/core";
-import { SlidersHorizontal } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import {
@@ -23,6 +23,7 @@ import {
   type TimeSeries,
 } from "../../components/chart/index.tsx";
 import { seriesColor } from "../../components/chart/theme.ts";
+import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
@@ -135,9 +136,9 @@ function InPeriod(props: {
               search={props.editSearch}
               aria-label="Edit exercise"
               title="Edit exercise"
-              className="inline-flex size-10 items-center justify-center rounded-lg hover:bg-surface"
+              className="inline-flex size-10 items-center justify-center rounded-xl hover:bg-surface"
             >
-              <SlidersHorizontal size={20} />
+              <Pencil size={19} />
             </Link>
           }
         >
@@ -366,7 +367,7 @@ function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
   const newestFirst = [...history.performances].reverse();
   return (
     <section className="pt-8 lg:pt-2">
-      <h2 className="px-4 pb-2 text-lg font-semibold lg:px-0">Sessions</h2>
+      <SectionHeading>Sessions</SectionHeading>
       <ul className={listClass}>
         {newestFirst.slice(0, shown).map((p) => (
           <li key={p.sessionId}>

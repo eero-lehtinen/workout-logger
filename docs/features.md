@@ -70,7 +70,7 @@ The app is shared with a few other users, each with their own private data. See
 | Feature | Priority | Notes |
 | --- | --- | --- |
 | Routine of the most recent session preselected; changeable | P0 | "Most recent" = latest `started_at` among sessions that have a routine. Ad hoc sessions are ignored. |
-| Next day in the cycle highlighted; any day selectable | P0 | Next = the day after the latest session's day in this routine, by `position`, wrapping. If that day has since been deleted, its old `position` still locates the next existing day. Reordering days changes "next"; that's intended. The last performed day is also marked. |
+| Next day in the cycle highlighted; any day selectable | P0 | Next = the day after the latest session's day in this routine, by `position`, wrapping. If that day has since been deleted, its old `position` still locates the next existing day. Reordering days changes "next"; that's intended. Each day shows its first exercises. |
 | Ad hoc session without a routine | P0 | |
 | Adding, removing, and reordering exercises in a running session | P0 | Doesn't change the routine. |
 
@@ -81,7 +81,7 @@ The app is shared with a few other users, each with their own private data. See
 | List of session exercises; ones with logged sets are marked done | P0 | |
 | Tapping an exercise opens the exercise logging view | P0 | |
 | Substitution picker | P0 | Alternatives first, then exercises sharing a primary muscle, then all other exercises, each in the picker's chosen order; typing searches all exercises. Substituting before any set is logged swaps the exercise in place. After sets are logged, the substitute is added right after it in the same slot, so the logged sets stay with the exercise they were performed on. |
-| Session timer with manual start/stop and idle end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. |
+| Session timer with manual start/stop and idle end | P0 | Starts on the first logged set or a manual start; starting a session from the start screen is the manual start. Idle end is derived, never written (see [architecture.md](architecture.md#data-model-client)); a session without sets idles from its start. A manual stop of a session that has already idled out ends it at its last activity. Logging into an ended session (idle or manual) asks whether to continue it, which clears a manual end, or start a new session for the same routine day. An ended session offers Resume: a manual end is cleared; an idle session opens the exercise to continue with (the first without sets, else the last), and its next set continues the session without asking. |
 | Hide the session timer in settings | P1 | Hides only the running elapsed time; the session keeps its start and end, and ended sessions still show their duration. |
 | Keep the screen on while a session runs | P1 | A setting, off by default. Android, and browsers with the Screen Wake Lock API. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |

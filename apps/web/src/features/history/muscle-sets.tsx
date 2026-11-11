@@ -6,6 +6,7 @@ import {
   weeklyAverages,
 } from "@workout-logger/core";
 import { MUSCLE_GROUPS } from "@workout-logger/exercises";
+import { FieldLabel } from "../../components/headings.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { dateFromIso } from "../../lib/format.ts";
 import { useSwitchPreference } from "../../lib/preference.ts";
@@ -57,11 +58,11 @@ export function MuscleSets(props: {
   return (
     <>
       <div className="flex items-center justify-between gap-2 pt-6 pb-1">
-        <h3 className="font-semibold">Muscles</h3>
+        <FieldLabel as="h3">Muscles</FieldLabel>
         <span className="flex items-center gap-2 text-sm text-ink-muted">
-          <span aria-hidden>Show muscles</span>
+          <span aria-hidden>By muscle</span>
           <Switch
-            label="Show muscles"
+            label="By muscle"
             checked={showMuscles}
             onChange={setShowMuscles}
           />
