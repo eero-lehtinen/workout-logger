@@ -118,13 +118,18 @@ export function formatAgo(at: number, now: number): string {
 
 const KB = 1024;
 const MB = 1024 * KB;
+const GB = 1024 * MB;
 
-/** `850 B`, `12 kB`, `4.2 MB`; binary multiples, as the server's quotas. */
+/** `850 B`, `12 kB`, `4.2 MB`, `21 GB`; binary multiples, as the server's quotas. */
 export function formatBytes(bytes: number): string {
   // Intl's short byte unit reads "byte", not "B".
   if (bytes < KB) return `${bytes} B`;
   const [value, unit] =
-    bytes >= MB ? [bytes / MB, "megabyte"] : [bytes / KB, "kilobyte"];
+    bytes >= GB
+      ? [bytes / GB, "gigabyte"]
+      : bytes >= MB
+        ? [bytes / MB, "megabyte"]
+        : [bytes / KB, "kilobyte"];
   return new Intl.NumberFormat("en", {
     style: "unit",
     unit,

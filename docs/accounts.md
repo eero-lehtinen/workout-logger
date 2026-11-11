@@ -153,11 +153,12 @@ client or a misused account.
 
 ## Admin page
 
-`/admin` in the web app ("Users"), linked from Settings for the owner, over
-`/api/admin/*` (403 for anyone else). Its header shows the server database
-size, with a warning over 700 MB.
+`/admin` in the web app ("Admin"), linked from Settings for the owner, over
+`/api/admin/*` (403 for anyone else). The Settings row shows a stale server
+backup or a database over 700 MB instead of its description.
 
-- **Account cap:** edited next to the number of accounts and the database size. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
+- **Server:** the database size (with a warning over 700 MB), free disk, and each [backup layer](backups.md#visibility): when it last succeeded, whether it is stale, and the daily copy's last error, from the owner's `/api/status`.
+- **Account cap:** edited next to the number of accounts. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
 - **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
 - `GET /api/admin/users` (with the cap and the account count); `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`; `DELETE /api/admin/users/:id`.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).

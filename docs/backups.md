@@ -88,10 +88,13 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 - free disk space and the database size
 - the result of the last restore rehearsal (phase 11b)
 
-Settings shows the user's own last sync time and unsynced changes, the owner's
-server backup layers, and on Android, the time of the last snapshot file.
+Settings shows the user's own last sync time and unsynced changes, and on
+Android, the time of the last snapshot file. The owner's
+[admin page](accounts.md#admin-page) shows the server backup layers, free
+disk, and the database size.
 
-The Settings tab shows a warning dot when:
+The Settings tab shows a warning dot when (the owner's two also show on the
+Admin row in Settings):
 
 - signed in, with unsynced local changes, and no sync in the last 3 days (or ever)
 - for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days)

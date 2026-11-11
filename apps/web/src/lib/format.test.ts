@@ -9,6 +9,8 @@ describe("formatBytes", () => {
     [180 * 1024, "180 kB"],
     [2.4 * 1024 * 1024, "2.4 MB"],
     [10 * 1024 * 1024, "10 MB"],
+    [1023 * 1024 * 1024, "1,023 MB"],
+    [2.5 * 1024 * 1024 * 1024, "2.5 GB"],
   ])("formats %i as %s", (bytes, text) => {
     expect(formatBytes(bytes)).toBe(text);
   });

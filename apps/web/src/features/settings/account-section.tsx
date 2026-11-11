@@ -5,19 +5,17 @@ import { Confirm } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { signIn, signOut, useAccount } from "../../lib/account.ts";
-import { formatAgo } from "../../lib/format.ts";
-import { type BackupLayer, useOwnerStatus } from "../../lib/server-status.ts";
+import { ownerWarning, useOwnerStatus } from "../../lib/server-status.ts";
 import {
   PROVIDER_NAMES,
   useSignInProviders,
 } from "../../lib/sign-in-providers.ts";
 import { chooseAccount, repairClock, useSyncState } from "../../lib/sync.ts";
-import { useNow } from "../../lib/use-now.ts";
 import { DeleteAccountRow } from "./delete-account.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 import { SyncRows } from "./sync-rows.tsx";
 
-/** Sign-in, sync status, and for the owner, the server's backups. */
+/** Sign-in, sync status, and for the owner, the way to the admin page. */
 export function AccountSection() {
   const account = useAccount();
   const sync = useSyncState();
@@ -72,13 +70,8 @@ export function AccountSection() {
           <Button onClick={() => void repairClock()}>Repair clock</Button>
         </Row>
       )}
-      {account.user.role === "owner" && <ServerBackupsRow />}
       {account.user.role === "owner" ? (
-        <Row label="Users" hint="Accounts, their usage, and quotas.">
-          <Link to="/admin" className={buttonClass("secondary")}>
-            Open
-          </Link>
-        </Row>
+        <AdminRow />
       ) : (
         !account.offline && <DeleteAccountRow user={account.user} />
       )}
@@ -140,26 +133,25 @@ function SignOutButton() {
   );
 }
 
-function ServerBackupsRow() {
+/** The owner's way to the admin page, with what on the server needs attention. */
+function AdminRow() {
   const status = useOwnerStatus();
-  const now = useNow(60_000);
-  if (!status) return null;
-  const { litestream, dailyCopy } = status.backups;
-  const layer = (name: string, value: BackupLayer) => {
-    if (!value.configured) return `${name}: off`;
-    const at =
-      value.lastOkAt === null ? "never" : formatAgo(value.lastOkAt, now);
-    return `${name}: ${at}${value.stale ? " (stale)" : ""}`;
-  };
-  const free =
-    status.freeDiskBytes === null
-      ? ""
-      : ` Free disk ${(status.freeDiskBytes / 1e9).toFixed(1)} GB.`;
+  const warning = status && ownerWarning(status);
   return (
     <Row
-      label={status.backupsOk ? "Server backups" : "Server backups are stale"}
-      hint={`${layer("Replica", litestream)}. ${layer("Daily copy", dailyCopy)}.${free}`}
-    />
+      label="Admin"
+      hint={
+        warning ? (
+          <span className="text-danger">{warning}.</span>
+        ) : (
+          "Server storage and backups, accounts, and quotas."
+        )
+      }
+    >
+      <Link to="/admin" className={buttonClass("secondary")}>
+        Open
+      </Link>
+    </Row>
   );
 }
 

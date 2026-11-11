@@ -83,8 +83,13 @@ export function useBackupWarning(): string | null {
   ) {
     return "Changes haven't synced for days";
   }
-  if (owner && !owner.backupsOk) return "A server backup is out of date";
-  if (owner && owner.databaseBytes > DATABASE_WARNING_BYTES) {
+  return owner && ownerWarning(owner);
+}
+
+/** What on the server needs the owner's attention, or null. */
+export function ownerWarning(owner: OwnerStatus): string | null {
+  if (!owner.backupsOk) return "A server backup is out of date";
+  if (owner.databaseBytes > DATABASE_WARNING_BYTES) {
     return "The server database is over 700 MB";
   }
   return null;

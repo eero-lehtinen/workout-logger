@@ -2,7 +2,10 @@ import type { Meta } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { type AccountUser, setAccountForStory } from "../../lib/account.ts";
 import type { AdminUser, AdminUsers } from "../../lib/admin-api.ts";
-import { setOwnerStatusForStory } from "../../lib/server-status.ts";
+import {
+  type OwnerStatus,
+  setOwnerStatusForStory,
+} from "../../lib/server-status.ts";
 import { empty } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
@@ -82,20 +85,27 @@ const users: AdminUsers = {
 const realFetch = globalThis.fetch;
 const requests = fn();
 
+const healthy: OwnerStatus = {
+  backupsOk: true,
+  databaseBytes: 40 * MB,
+  freeDiskBytes: 20 * 1024 * MB,
+  backups: {
+    litestream: { configured: true, lastOkAt: NOW - 30_000, stale: false },
+    dailyCopy: {
+      configured: true,
+      lastOkAt: NOW - 5 * 60 * 60 * 1000,
+      stale: false,
+      lastError: null,
+    },
+  },
+};
+
 /** The owner, with the server answering `/api/admin/*` from `users`. */
-function asOwner(databaseBytes = 40 * MB) {
+function asOwner(status: OwnerStatus = healthy) {
   return () => {
     requests.mockClear();
     setAccountForStory({ status: "signed-in", user: owner, offline: false });
-    setOwnerStatusForStory({
-      backupsOk: true,
-      databaseBytes,
-      freeDiskBytes: 20e9,
-      backups: {
-        litestream: { configured: true, lastOkAt: NOW, stale: false },
-        dailyCopy: { configured: true, lastOkAt: NOW, stale: false },
-      },
-    });
+    setOwnerStatusForStory(status);
     globalThis.fetch = fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
@@ -114,14 +124,21 @@ function asOwner(databaseBytes = 40 * MB) {
   };
 }
 
-/** Every account with its usage against its limits. */
-export const Users = {
+/** The server's storage and backups, then every account with its usage. */
+export const Overview = {
   ...pageStory({
     fixture: empty,
     url: () => "/admin",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
       await expect(await canvas.findByText("Alice Example")).toBeVisible();
+      await expect(
+        canvas.getByRole("heading", { name: "Admin" }),
+      ).toBeVisible();
+      await expect(canvas.getByText("40 MB")).toBeVisible();
+      await expect(canvas.getByText("20 GB")).toBeVisible();
+      await expect(canvas.getByText("just now")).toBeVisible();
+      await expect(canvas.getByText("5 hours ago")).toBeVisible();
       await expect(
         canvas.getByText(/^1\.8 MB of 10 MB stored · 120 kB of 5 MB today/),
       ).toBeVisible();
@@ -131,31 +148,43 @@ export const Users = {
           /^0 B of 20 MB stored · 0 B of 1 MB today · never synced$/,
         ),
       ).toBeVisible();
-      await expect(canvas.getByText("Server database 40 MB")).toBeVisible();
     },
   }),
   beforeEach: asOwner(),
 };
 
-export const UsersPc = {
+export const OverviewPc = {
   ...pageStory({ fixture: empty, url: () => "/admin", viewport: "pc" }),
   beforeEach: asOwner(),
 };
 
-/** Over 700 MB, R2's free tier is close. */
-export const DatabaseLarge = {
+/** A stale layer and the job's last error; over 700 MB, R2's free tier is close. */
+export const ServerTrouble = {
   ...pageStory({
     fixture: empty,
     url: () => "/admin",
     theme: "dark",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      await expect(
-        await canvas.findByText(/^The server database is over 700 MB,/),
-      ).toBeVisible();
+      await expect(await canvas.findByText(/^Over 700 MB,/)).toBeVisible();
+      await expect(canvas.getByText("Stale · 3 days ago")).toBeVisible();
+      await expect(canvas.getByText("Last run failed: R2 down")).toBeVisible();
     },
   }),
-  beforeEach: asOwner(720 * MB),
+  beforeEach: asOwner({
+    ...healthy,
+    backupsOk: false,
+    databaseBytes: 720 * MB,
+    backups: {
+      ...healthy.backups,
+      dailyCopy: {
+        configured: true,
+        lastOkAt: NOW - 3 * 24 * 60 * 60 * 1000,
+        stale: true,
+        lastError: "R2 down",
+      },
+    },
+  }),
 };
 
 /** Overrides are entered in MB; an empty field is the default. */

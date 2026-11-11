@@ -416,7 +416,7 @@ export const OwnerHasNoDelete = {
   beforeEach: signedIn({ ...alice, role: "owner" }),
 };
 
-/** The owner sees the server's backup layers; a stale one is called out. */
+/** A stale server backup shows on the Admin row; the details are on /admin. */
 export const OwnerBackupsStale = {
   ...pageStory({
     fixture: empty,
@@ -424,9 +424,8 @@ export const OwnerBackupsStale = {
     theme: "dark",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      await expect(canvas.getByText("Server backups are stale")).toBeVisible();
       await expect(
-        canvas.getByText(/Daily copy: never \(stale\)/),
+        canvas.getByText("A server backup is out of date."),
       ).toBeVisible();
     },
   }),
