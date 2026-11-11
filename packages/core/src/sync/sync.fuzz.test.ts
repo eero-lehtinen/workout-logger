@@ -392,14 +392,13 @@ class World {
 
   async fingerprint() {
     const parts = [
-      String(
-        (
-          await this.server.db
-            .selectFrom("change")
-            .select((eb) => eb.fn.countAll().as("n"))
-            .executeTakeFirst()
-        )?.n,
-      ),
+      (
+        await this.server.db
+          .selectFrom("server_meta")
+          .select("value")
+          .where("key", "=", "seq")
+          .executeTakeFirstOrThrow()
+      ).value,
     ];
     for (const d of this.devices)
       parts.push(

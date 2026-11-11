@@ -249,6 +249,7 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 
 Detailed plan: [plans/multi-user.md](plans/multi-user.md).
 
+- The server keeps only the newest version of each row, about a third of the database size; history comes from backups.
 - Google sign-in instead of GitHub, which stays behind a flag.
 - Open sign-up up to an account cap sized from the R2 free tier, with a privacy notice. No invites.
 - Rate limits (per-IP before auth, per user after), body limits, trusted proxy configuration.

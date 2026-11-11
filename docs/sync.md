@@ -25,9 +25,9 @@ Therefore, if every change eventually reaches every device, all devices
 converge to the same state. The protocol only has to deliver every change at
 least once.
 
-The server keeps an append-only change log for delivery and history. It also
-keeps a head table with the current state, for snapshots and backups. Clients
-never depend on the head table for correctness.
+The server keeps the newest version of each row, numbered in the order it
+arrived, which is all delivery needs. History lives in backups and snapshot
+files, not in the sync tables ([backups.md](backups.md)).
 
 ### Granularity
 
@@ -229,66 +229,69 @@ The catalog seed, and later the Health Connect import, write through
 
 The sync part of the server is a few hundred lines. It lives in `core`
 (`@workout-logger/core/sync-server`), so the fuzz test runs the same code as
-the server: push, pull, snapshot, `newEpoch`, and the migration that creates
-the tables below. Each function takes the authenticated `user_id`. Auth and
+the server: push, pull, snapshot, `newEpoch`, and the migration steps that
+create the tables below. Each function takes the authenticated `user_id`. Auth and
 quotas are in [accounts.md](accounts.md).
 
 ```
-change (
-  seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+head (
   user_id     TEXT NOT NULL,
   table_name  TEXT NOT NULL,
   id          TEXT NOT NULL,
   hlc         TEXT NOT NULL,
   deleted     INTEGER NOT NULL,
   v           INTEGER NOT NULL,      -- schema version of data
-  data        TEXT NOT NULL,         -- JSON object of columns
-  device_id   TEXT NOT NULL,
+  data        TEXT NOT NULL,         -- canonical JSON object of columns
+  seq         INTEGER NOT NULL,      -- when this version arrived
+  device_id   TEXT NOT NULL,         -- who sent this version, and when
   received_at INTEGER NOT NULL,
-  UNIQUE (user_id, table_name, id, hlc)
-)
-INDEX change (user_id, seq)
+  PRIMARY KEY (user_id, table_name, id)
+) WITHOUT ROWID
+INDEX head (user_id, seq)
 
-head (user_id, table_name, id, hlc, deleted, v, data, seq,
-      PRIMARY KEY (user_id, table_name, id))
-
-server_meta (key PRIMARY KEY, value)   -- epoch
+server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out
 user_sync (user_id PRIMARY KEY, max_v)
 ```
 
-`change` is append-only: triggers abort every `UPDATE` and `DELETE` on it.
-Account deletion and compaction need a way past them, e.g. a migration that
-replaces them with a trigger allowing deletes of a whole user's rows.
+`head` is a `WITHOUT ROWID` table, so its rows live in the primary-key index
+instead of being stored a second time.
 
 All endpoints act only on the authenticated `user_id`.
 
 - **`POST /push`** runs in one transaction. For each change, in order:
   1. Validate the shape (table name, id, `v`, `data` a flat object of scalars) and reject anything else as `invalid`. Validate the HLC format and the future-clock bound.
-  2. If the unique key already exists:
-     - same `deleted`, and identical `data` or a different `v`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal. A different `v` is the same row version rewritten by a client migration, which keeps HLCs; this happens on re-uploads after an epoch reset or a lost push response;
-     - otherwise: `conflict`, which means a node-id or determinism bug. It is logged.
+  2. Compare with the stored version of the row, if any:
+     - the same HLC, with the same `deleted` and identical `data` or a different `v`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal. A different `v` is the same row version rewritten by a client migration, which keeps HLCs; this happens on re-uploads after an epoch reset or a lost push response;
+     - the same HLC otherwise: `conflict`, which means a node-id or determinism bug;
+     - an older HLC: `ok`, and nothing is stored. The version has already lost: every device that pulls gets the newer one. Retries of a superseded push land here.
   3. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
-  4. If the quota is used up, reject it as `quota`. Duplicates don't count, so they are still `ok`. The server passes a quota hook that reads the user's allowance before the first change and records the inserted count and bytes after the last, inside the push transaction *(phase 11)*; without one, as in the fuzz test, there is no limit. The limits are in [accounts.md](accounts.md#quotas).
-  5. `INSERT` into `change`, upsert `head` when `hlc > head.hlc`, and raise `max_v` if needed.
+  4. If the quota is used up, reject it as `quota`. Duplicates and older versions don't count, so they are still `ok`. The server passes a quota hook that reads the user's allowance in bytes before the first change and records the bytes written after the last, inside the push transaction *(phase 11)*; without one, as in the fuzz test, there is no limit. The limits are in [accounts.md](accounts.md#quotas).
+  5. Store it in `head`, replacing the older version, with the next `seq` from the counter in `server_meta`, and raise `max_v` if needed.
 
   The response carries the current `epoch`.
-- **`GET /pull?after=&limit=`**: `SELECT ... FROM change WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`, plus `epoch`.
-- **`GET /snapshot`**: `head` rows (including tombstones) plus `max(seq)`, both read in one transaction, plus `epoch`.
+- **`GET /pull?after=&limit=`**: `SELECT ... FROM head WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`, plus `epoch`. A row replaced several times since the cursor arrives once, in its newest version.
+- **`GET /snapshot`**: `head` rows (including tombstones) plus their `max(seq)`, both read in one transaction, plus `epoch`.
 
 `seq` is global, so one user's cursor skips over other users' numbers. That is
 harmless, because a cursor only needs to increase.
 
-**Single-writer assumption.** A pull must never skip a change, which requires
-that changes become visible in `seq` order. SQLite's single writer guarantees
-that. If the server ever moves to Postgres or multiple instances, this breaks.
-Pull would then need a per-user counter allocated under a row lock in the push
-transaction, or must serve only up to a commit-safe watermark.
+**Why a pull misses nothing.** A replaced row takes a `seq` above every number
+handed out before, so any device whose cursor is below it receives it.
+Deletes are rows with `deleted = 1`, which stay in `head`, so they arrive like
+any other version. This requires that versions become visible in `seq` order,
+which SQLite's single writer guarantees. If the server ever moves to Postgres
+or multiple instances, this breaks. Pull would then need a per-user counter
+allocated under a row lock in the push transaction, or must serve only up to a
+commit-safe watermark.
 
-### Why an append-only log
+### Why only the newest version
 
-- Pull needs a total order of arrival anyway. An `seq` on an append-only table gives that for free.
-- The log is the full history, so any row or account can be restored to any point in time. This is the main protection against a bad edit or a buggy client version spreading to all devices. See [backups.md](backups.md).
-- Size is small. A set row is about 300 bytes of JSON, so 100k changes are roughly 30 MB. Per-user size quotas bound it (see [accounts.md](accounts.md#quotas)). Compaction can come later: drop log entries older than N months that are no longer the head.
+Pull needs only the order of arrival, which `seq` on `head` gives. Keeping
+every version as well would allow restores to any point in time, but it more
+than doubles the database, and backups multiply its size about tenfold
+([accounts.md](accounts.md#account-cap)). History comes from the backups and
+device snapshot files instead ([backups.md](backups.md)), which cover the
+realistic case: a bad edit noticed within days.
 
 ### Server restore and epoch
 
@@ -303,22 +306,13 @@ handles this.
    - set the cursor to 0;
    - store the new epoch;
    - sync.
-3. The server dedups everything it still has via the unique key. Re-uploads within 24 h of an epoch change are exempt from the daily change quota; `server_meta` records when the epoch started *(phase 11)*.
+3. The server acknowledges every version it still has, or has a newer one of, without storing it. Re-uploads within 24 h of an epoch change are exempt from the daily write quota; `server_meta` records when the epoch started *(phase 11)*.
 
 A whole-database restore is for disasters only, such as VPS loss or
 corruption. It is not for undoing bad data: the re-upload would bring the bad
-rows back. Bad data is undone with `wl restore` (phase 10), which appends new changes
+rows back. Bad data is undone by importing an earlier snapshot with "Replace
+everything", which writes the old rows as new changes
 (see [backups.md](backups.md#restore-procedures)).
-
-## Restores through the log
-
-Phase 10. `wl restore` reads old versions from `change` and writes them back as new
-changes:
-
-- **HLC:** `max(now, max hlc in the user's log)⁺` with node `restore`. The restored version always wins, even against a future-dated bad write.
-- **Whole-account or whole-table restore** also writes tombstones for rows that didn't exist at the target time.
-- **Schema version:** rows keep their original `v`. Clients upgrade them on apply.
-- **Permissions:** this requires a write-scoped API key. Keys are read-only by default.
 
 ## Schema evolution
 
@@ -391,6 +385,6 @@ older version on the server and every device alike.
 | **Linear-style engine** ([reverse-engineered write-up](https://github.com/wzhudev/reverse-linear-sync-engine)) | Server-authoritative total order (`lastSyncId`), operation-based transactions with per-field updates, WebSocket delta packets, an in-memory MobX object pool persisted to IndexedDB, partial and lazy bootstrap. | It is built for shared, permissioned workspaces with mostly-online clients. Arrival order deciding the winner is wrong for us: a phone that was offline for days would overwrite newer edits made elsewhere. A domain-aware server doubles the schema work, and an in-memory graph doesn't help SQL analytics. Borrowed ideas: push notification of new changes (planned), per-field updates (the upgrade path above), and transaction-based undo ([features.md](features.md#data)). |
 
 Decision: the custom protocol. It is small (a clock, an outbox, two endpoints,
-a head table) and every part of it can be tested in isolation. The server data
+one server table) and every part of it can be tested in isolation. The server data
 stays plain JSON rows that the CLI, restores, and backups can read directly.
 End-to-end encryption is out of scope (see [accounts.md](accounts.md#privacy)).

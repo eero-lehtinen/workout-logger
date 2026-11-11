@@ -312,8 +312,9 @@ async function applyChanges(
 }
 
 /**
- * After a server restore: queue every local row for re-upload and pull the
- * whole log again. The server dedups what it still has.
+ * After a server restore: queue every local row for re-upload and pull
+ * everything again. The server acknowledges without storing every version it
+ * already has or has a newer one of.
  */
 async function resetForEpoch(trx: Trx, epoch: string, touched: Set<TableName>) {
   await queueEveryRow(trx);

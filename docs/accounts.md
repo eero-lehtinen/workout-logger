@@ -64,22 +64,29 @@ the total, because every account's data is copied many times into R2.
 - Sign-up lands on Settings with a welcome toast. Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
 
 **Why 30.** The binding limit is R2's free tier, 10 GB of storage, which
-other projects on the account share; about 8 GB is left for this server. Each
-MB of server database becomes about 10 MB in R2 once retention fills:
-Litestream keeps ~4 daily snapshots and 3 days of incremental files, and the
-daily job keeps 7 daily and 3 monthly gzipped copies at about 0.45× the size
-([backups.md](backups.md#layers)). That allows a database of about 800 MB.
-The owner's 2.5 years of FitNotes history is 2.8 MB of database; with in-app
-edits, assume 2 MB per active user per year, so 30 accounts last about 13
-years. The [storage quota](#quotas) bounds a runaway account. Everything else is far from a limit: Litestream's R2 writes are
+other projects on the account share; about 8 GB is left for this server.
+Once retention fills, R2 holds about 3–6× the server database: Litestream
+keeps ~4 daily snapshots and 3 days of incremental files, compressed with LZ4,
+and the daily job keeps 7 daily and 3 monthly gzipped copies
+([backups.md](backups.md#layers)). A model with synthetic data gives 3×;
+the owner's real data compresses worse. Even at 6×, the database can grow to
+about 1.3 GB. The owner's 2.5 years of FitNotes history was a 2.8 MB
+Litestream snapshot and a 1.3 MB daily copy while the server also kept every
+version in a log; keeping only the newest version in a `WITHOUT ROWID` table
+makes it about a third of that
+([sync.md](sync.md#why-only-the-newest-version)). Assume 0.5 MB of database
+per active user per year: 30 accounts take decades to fill the budget, so the
+cap is about strangers, not storage, and could rise. The
+[storage quota](#quotas) bounds a runaway account. Everything else is far from a limit: Litestream's R2 writes are
 bounded by its sync interval (at most ~350k of the 1M free Class A operations
 a month, whatever the user count), and the VPS and the Cloudflare Tunnel
 carry a few hundred MB of SQLite and a sync a minute per open app without
 effort. The owner's status warns when the database passes 700 MB.
 
 Retention is short because the data isn't critical: a whole-database restore
-reaches back 3 days point-in-time and 7 days by daily copy. Each device holds
-its account's full state, and the change log keeps every row's history.
+reaches back 3 days point-in-time, 7 days by daily copy, and 3 months by
+monthly copy. Each device holds its account's full state, and Android keeps a
+snapshot file of each of the last 10 sessions.
 
 ### Without an account
 
@@ -125,22 +132,23 @@ Defaults for `user`, changeable by the owner per user. The owner has none.
 
 | Quota | Default | Reason |
 | --- | --- | --- |
-| Changes inserted per day | 2,000 | A heavy session plus routine editing is well under 500. |
-| Stored change-log size | 10 MB of `data` | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). Check the ratio of database size to stored `data` on the live server before fixing the number. |
+| Bytes written per day | 5 MB of `data` | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 200 KB. |
+| Stored data size | 10 MB of `data` | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). Check the ratio of database size to stored `data` on the live server before fixing the number. |
 | Requests per minute | 60 | Normal sync runs once a minute plus on writes. Stops runaway clients. |
 | Snapshot downloads per day | 10 | Snapshots are the most expensive reads. |
 
 Enforcement:
 
-- Only **newly inserted** changes count. Duplicates from retries are free.
-- The push checks and records the change and byte counts inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Once either limit is reached, the remaining changes are rejected individually as `quota`. Local logging keeps working.
-- **Exempt from the daily change limit**, never from the storage limit:
+- Both limits count bytes of `data`, not rows: what costs disk and R2 is size, and a row count would treat a setting and a long note alike.
+- Only versions the server **stores** count toward bytes written: ones newer than the stored row. Duplicates from retries and versions that already lost are free.
+- The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are `sum(length(data))` of the user's `head` rows, read at the start of the push. Once either limit is reached, the remaining changes are rejected individually as `quota`. Local logging keeps working.
+- **Exempt from the daily limit**, never from the storage limit:
   - the first 24 h after the account is created, for the upload of data logged before sign-up;
   - the first 24 h after a server epoch change, for the re-upload;
   - until `quota.exempt_until`, which the owner sets for 24 h from the admin page, e.g. before a user imports a snapshot of years of history.
 - A snapshot over the daily limit gets 429 `quota`.
 - The request limit is counted in memory only.
-- `GET /api/me/usage` returns today's changes and the stored bytes with their limits. Settings shows them under Sync, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner).
+- `GET /api/me/usage` returns today's bytes written and the stored bytes with their limits. Settings shows them under Sync, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner).
 - `usage` rows older than 90 days are pruned daily.
 
 Quotas exist to protect the shared VPS and the backup buckets from a runaway
@@ -153,7 +161,7 @@ client or a misused account.
 `/admin` in the web app, linked from Settings for the owner, over
 `/api/admin/*` (403 for anyone else).
 
-- **Users:** name, email, created, last sync (the newest `received_at`), changes today, stored bytes. Per user: edit quota overrides, allow unlimited uploads for 24 h, disable or enable, delete.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes. Per user: edit quota overrides, allow unlimited uploads for 24 h, disable or enable, delete.
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect).
 - **Delete** is the same as the user's own [account deletion](#privacy).
 
@@ -164,7 +172,7 @@ client or a misused account.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.
 - **Account deletion** *(phase 11)*: a user can delete their account in Settings. The dialog states what is deleted and the retention periods below, offers Export snapshot first, and asks for the account's email typed in.
-  - `DELETE /api/me` hard-deletes, in one transaction, the user's `change`, `head`, `user_sync`, `usage`, `quota`, and `stored` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. `change` is append-only by trigger ([sync.md](sync.md#server-side)); a server migration replaces its delete trigger with one that allows deleting only a user that is marked for deletion in the same transaction (a `deleting_user` row), so a stray `DELETE` still fails. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days.
+  - `DELETE /api/me` hard-deletes, in one transaction, the user's `head`, `user_sync`, `usage`, and `quota` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days.
   - The owner can't delete their own account.
   - The device keeps its local data and signs out. Signing in with another account later asks to merge or discard, as for any account change.
   - Copies made before the deletion persist until they expire:
@@ -178,14 +186,11 @@ client or a misused account.
 
 ```
 job_run (name PK, last_run_at, last_ok_at?, last_error?)   -- scheduled jobs, see deployment.md
-usage   (user_id, day, changes_inserted, bytes_inserted, snapshots,
+usage   (user_id, day, bytes_written, snapshots,
          PRIMARY KEY (user_id, day))                        -- phase 11
-stored  (user_id PK, bytes)                                 -- phase 11; running total of change.data
-quota   (user_id PK, changes_per_day?, max_bytes?, requests_per_minute?,
+quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
          snapshots_per_day?, exempt_until?)                 -- phase 11; NULL = default
 ```
 
-`stored` is backfilled from `change` by the migration that creates it.
-`role` and `disabled` live on the auth user record. The sync tables
-(`change`, `head`, `server_meta`, `user_sync`) are in
-[sync.md](sync.md#server-side).
+`role` and `disabled` live on the auth user record. The sync tables (`head`,
+`server_meta`, `user_sync`) are in [sync.md](sync.md#server-side).

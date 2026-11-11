@@ -46,7 +46,7 @@ and, on Android, the system bar style.
            │  bearer token on Android)
            ▼                                 ▼
       ┌──────────────────────────────────────────────┐       ┌─────────┐
-      │ Server (Hono): auth, per-user change log,    │◀──────│   CLI   │
+      │ Server (Hono): auth, each user's rows,       │◀──────│   CLI   │
       │ snapshots. VPS (Dokploy) + SQLite            │       └─────────┘
       └──────────────────────┬───────────────────────┘
                              │ Litestream replica + daily DB copies
@@ -58,7 +58,7 @@ Principles:
 
 - **Local-first.** Every read and write goes to the on-device SQLite database. The network is used for login and sync only. The app is fully usable without an account; an account adds sync and server backups.
 - **One UI codebase.** The web build is the product. Android is the same build inside a Capacitor shell, plus a few native plugins.
-- **Server stores data, not domain logic.** The server handles accounts, quotas (phase 11), and a per-user change log of opaque rows. It never interprets workout data, so app schema changes never need server migrations.
+- **Server stores data, not domain logic.** The server handles accounts, quotas (phase 11), and the newest version of each user's rows as opaque JSON. It never interprets workout data, so app schema changes never need server migrations.
 - **Small data.** Years of training for one user are on the order of 10^4-10^5 sets. Analytics run on-device with plain SQL. No server-side aggregation.
 - **Several isolated accounts, not a production service.** Each user's data is separate and private. Robustness targets are "a few users the owner knows", not the public internet. See [accounts.md](accounts.md).
 
@@ -364,7 +364,7 @@ build. Telemetry is disabled.
 
 ## Sync
 
-Each user's devices push and pull through that user's change log on the server. Row-level last-writer-wins by HLC. Full design: [sync.md](sync.md).
+Each user's devices push and pull that user's rows through the server. Row-level last-writer-wins by HLC. Full design: [sync.md](sync.md).
 
 ## Deployment
 
@@ -378,7 +378,6 @@ An owner role without limits; open sign-up up to an account cap and per-user quo
 
 Layered:
 
-- the server change log
 - a Litestream replica
 - daily full-DB copies in R2
 - the owner's encrypted PC copy (phase 10)
@@ -492,7 +491,7 @@ wl measurements --metric "Body weight" --json
 wl export --format json|csv|sqlite
 wl sql "select ..."                       # raw read-only SQL on the mirror
 wl backup <dir> [--all]                   # snapshot files, see backups.md
-wl restore --at <time> [--table] [--id]   # append-only restore, needs write-scoped key
+wl restore <file>                         # replace the account's data with a snapshot, needs write-scoped key
 ```
 
 The JSON output uses denormalized, readable names, so AI tools can consume it

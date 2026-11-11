@@ -10,6 +10,7 @@ import type { Flag } from "./schema/tables.ts";
 import { openStore, type Store, type StoreOptions } from "./store/store.ts";
 import {
   type ServerSyncTables,
+  serverHeadOnlyMigration,
   serverSyncMigration,
 } from "./sync/server/schema.ts";
 import type { ServerDb } from "./sync/server/sync.ts";
@@ -25,7 +26,10 @@ export async function openTestServer(bytes?: Uint8Array): Promise<{
 }> {
   const sqlite = new Database(bytes ? Buffer.from(bytes) : ":memory:");
   const db = createKysely<ServerSyncTables>(nodeDriver(sqlite));
-  if (!bytes) await serverSyncMigration.up(db as unknown as UntypedKysely);
+  if (!bytes) {
+    await serverSyncMigration.up(db as unknown as UntypedKysely);
+    await serverHeadOnlyMigration.up(db as unknown as UntypedKysely);
+  }
   return { db, serialize: () => sqlite.serialize(), close: () => db.destroy() };
 }
 

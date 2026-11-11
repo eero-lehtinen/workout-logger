@@ -1,5 +1,8 @@
 import type { UntypedKysely } from "@workout-logger/core";
-import { serverSyncMigration } from "@workout-logger/core/sync-server";
+import {
+  serverHeadOnlyMigration,
+  serverSyncMigration,
+} from "@workout-logger/core/sync-server";
 import { getMigrations } from "better-auth/db/migration";
 import type { Kysely } from "kysely";
 import { type Migration, Migrator } from "kysely/migration";
@@ -23,6 +26,10 @@ const MIGRATIONS: Record<string, Migration> = {
         .addColumn("last_error", "text")
         .execute();
     },
+  },
+  "0003_sync_head_only": {
+    up: (db: Kysely<unknown>) =>
+      serverHeadOnlyMigration.up(db as unknown as UntypedKysely),
   },
 };
 

@@ -9,10 +9,11 @@ import type {
   PushResult,
   SnapshotResponse,
 } from "../protocol.ts";
-import type { ChangeTable, HeadTable, ServerSyncTables } from "./schema.ts";
+import type { HeadTable, ServerSyncTables } from "./schema.ts";
 
-// The server stores and orders changes; it never interprets `data`. Every
-// function takes the authenticated user's id and every query filters by it.
+// The server keeps the newest version of each row and orders them by `seq`;
+// it never interprets `data`. Every function takes the authenticated user's
+// id and every query filters by it.
 
 export type ServerDb = Kysely<ServerSyncTables>;
 type ServerTrx = Transaction<ServerSyncTables>;
@@ -27,10 +28,18 @@ export interface PushOptions {
   /** Server time, epoch ms. */
   now: number;
   /**
-   * Changes this push may insert. Duplicates don't count. Once used up, the
-   * remaining new changes are rejected as `quota`.
+   * Newer versions this push may store. Duplicates and older versions don't
+   * count. Once used up, the remaining newer versions are rejected as `quota`.
    */
   quotaRemaining?: number;
+}
+
+interface PushState {
+  maxV: number;
+  inserted: number;
+  quotaRemaining: number;
+  /** The last `seq` handed out, read from `server_meta`. */
+  seq: number;
 }
 
 /** Stores a batch of changes in one transaction. Results are in request order. */
@@ -46,10 +55,12 @@ export async function push(
       .select("max_v")
       .where("user_id", "=", userId)
       .executeTakeFirst();
-    const state = {
+    const lastSeq = await readMeta(trx, "seq");
+    const state: PushState = {
       maxV: userSync?.max_v ?? 0,
       inserted: 0,
       quotaRemaining: options.quotaRemaining ?? Number.POSITIVE_INFINITY,
+      seq: Number(lastSeq),
     };
     const results: PushResult[] = [];
     for (const change of request.changes) {
@@ -73,6 +84,13 @@ export async function push(
         )
         .execute();
     }
+    if (state.seq !== Number(lastSeq)) {
+      await trx
+        .updateTable("server_meta")
+        .set({ value: String(state.seq) })
+        .where("key", "=", "seq")
+        .execute();
+    }
     return { epoch: await readEpoch(trx), results, inserted: state.inserted };
   });
 }
@@ -83,7 +101,7 @@ async function pushOne(
   deviceId: string,
   change: Change,
   now: number,
-  state: { maxV: number; inserted: number; quotaRemaining: number },
+  state: PushState,
 ): Promise<PushResult> {
   if (!isWellFormed(change)) return reject("invalid");
   if (parseHlc(change.hlc).wall > now + FUTURE_CLOCK_LIMIT_MS) {
@@ -91,64 +109,46 @@ async function pushOne(
   }
   const data = canonicalJson(change.data);
   const deleted = change.deleted ? 1 : 0;
-  const existing = await trx
-    .selectFrom("change")
-    .select(["data", "deleted", "v"])
+  const head = await trx
+    .selectFrom("head")
+    .select(["hlc", "data", "deleted", "v"])
     .where("user_id", "=", userId)
     .where("table_name", "=", change.table)
     .where("id", "=", change.id)
-    .where("hlc", "=", change.hlc)
     .executeTakeFirst();
-  if (existing) {
+  if (head && change.hlc === head.hlc) {
     // Migrations rewrite data but keep the HLC, so the same HLC at another
     // schema version is the same row version, not a conflict.
     const duplicate =
-      existing.deleted === deleted &&
-      (existing.v !== change.v || existing.data === data);
+      head.deleted === deleted && (head.v !== change.v || head.data === data);
     return duplicate ? { status: "ok" } : reject("conflict");
   }
+  // A version older than the stored one has already lost everywhere: devices
+  // that pull get the newer one. A retry of a superseded push lands here too.
+  if (head && change.hlc < head.hlc) return { status: "ok" };
   // An older app would reset columns it doesn't know about.
   if (change.v < state.maxV) return reject("schema_outdated");
   if (state.inserted >= state.quotaRemaining) return reject("quota");
 
-  const { seq } = await trx
-    .insertInto("change")
-    .values({
-      user_id: userId,
-      table_name: change.table,
-      id: change.id,
-      hlc: change.hlc,
-      deleted,
-      v: change.v,
-      data,
-      device_id: deviceId,
-      received_at: now,
-    })
-    .returning("seq")
-    .executeTakeFirstOrThrow();
+  const row = {
+    hlc: change.hlc,
+    deleted,
+    v: change.v,
+    data,
+    seq: ++state.seq,
+    device_id: deviceId,
+    received_at: now,
+  };
   await trx
     .insertInto("head")
     .values({
       user_id: userId,
       table_name: change.table,
       id: change.id,
-      hlc: change.hlc,
-      deleted,
-      v: change.v,
-      data,
-      seq,
+      ...row,
     })
     .onConflict((oc) =>
-      oc
-        .columns(["user_id", "table_name", "id"])
-        .doUpdateSet((eb) => ({
-          hlc: eb.ref("excluded.hlc"),
-          deleted: eb.ref("excluded.deleted"),
-          v: eb.ref("excluded.v"),
-          data: eb.ref("excluded.data"),
-          seq: eb.ref("excluded.seq"),
-        }))
-        .where((eb) => eb("excluded.hlc", ">", eb.ref("head.hlc"))),
+      oc.columns(["user_id", "table_name", "id"]).doUpdateSet(row),
     )
     .execute();
   state.inserted++;
@@ -199,7 +199,10 @@ export function canonicalJson(data: Record<string, unknown>): string {
   );
 }
 
-/** Changes after `after` in `seq` order. */
+/**
+ * Rows whose newest version came after `after`, in `seq` order. A row
+ * replaced several times since then arrives once, in its newest version.
+ */
 export async function pull(
   db: ServerDb,
   userId: string,
@@ -209,7 +212,7 @@ export async function pull(
   const pageSize = Math.min(Math.max(Math.trunc(limit), 1), MAX_PULL_LIMIT);
   return db.transaction().execute(async (trx) => {
     const rows = await trx
-      .selectFrom("change")
+      .selectFrom("head")
       .select(["seq", "table_name", "id", "hlc", "deleted", "v", "data"])
       .where("user_id", "=", userId)
       .where("seq", ">", after)
@@ -240,7 +243,7 @@ export async function snapshot(
       .where("user_id", "=", userId)
       .execute();
     const max = await trx
-      .selectFrom("change")
+      .selectFrom("head")
       .select((eb) => eb.fn.max("seq").as("seq"))
       .where("user_id", "=", userId)
       .executeTakeFirst();
@@ -253,7 +256,7 @@ export async function snapshot(
 }
 
 type ChangeRow = Pick<
-  Selectable<ChangeTable> | Selectable<HeadTable>,
+  Selectable<HeadTable>,
   "table_name" | "id" | "hlc" | "deleted" | "v" | "data"
 >;
 
@@ -268,11 +271,18 @@ function toChange(row: ChangeRow): Change {
   };
 }
 
-export async function readEpoch(db: ServerDb | ServerTrx): Promise<string> {
+export function readEpoch(db: ServerDb | ServerTrx): Promise<string> {
+  return readMeta(db, "epoch");
+}
+
+async function readMeta(
+  db: ServerDb | ServerTrx,
+  key: "epoch" | "seq",
+): Promise<string> {
   const row = await db
     .selectFrom("server_meta")
     .select("value")
-    .where("key", "=", "epoch")
+    .where("key", "=", key)
     .executeTakeFirstOrThrow();
   return row.value;
 }

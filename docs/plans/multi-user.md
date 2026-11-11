@@ -18,26 +18,26 @@ warning dot (phase 11b). Data export already exists.
 One commit each, on one branch for the phase. Each commit passes `pnpm check`
 on its own.
 
+0. **Head-only server sync.** The server keeps only `head`, `WITHOUT ROWID`, with a `seq` counter; migration `0003_sync_head_only` drops `change` ([sync.md](../sync.md#server-side)). Done, and the 5,000-run fuzz test passes. After the deploy, compare the size of the next `daily/` copy with the last one: dropping `change` frees pages but doesn't shrink `app.db` itself until a `VACUUM`, while the daily copy is made with `VACUUM INTO`.
 1. **Google sign-in.** `SIGN_IN_PROVIDERS`, the Google provider, `signIn` in `/api/status` and the buttons, the `provider` parameter of native auth, `set-email`. Sign-up stays off. After the branch deploys, switch the owner on the live server ([deployment.md](../deployment.md#google-oauth-client)).
 2. **Request limits.** Per-IP and per-user limits, body limits.
-3. **Quotas.** The tables with the `stored` backfill, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Run the long fuzz test.
+3. **Quotas.** The tables, the `core` push hook, `epoch_started_at`, snapshot counting, exemptions, pruning, `/api/me/usage` and the Settings rows. Run the long fuzz test.
 4. **Admin page.** Users, usage, quota overrides, exemption windows, disable, the 700 MB database warning.
-5. **Account deletion.** Including the migration that lets a marked user's `change` rows be deleted.
+5. **Account deletion.**
 6. **Sign-up.** `MAX_ACCOUNTS`, the user-create hook, the sign-in row's notice, `/privacy`. Last, so nobody can sign up before quotas, the admin page, and deletion exist.
 7. **Onboard the first other user**, which is the exit: sign-up in their browser or the Android app, a logged session that syncs.
 
 ## Risks to check first
 
 - **Counting accounts in Better Auth's transaction.** Better Auth 1.7.18 runs `createOAuthUser` in `runWithTransaction` and the user-create hooks inside it. The count must use that transaction (`getCurrentAdapter`): our own Kysely instance shares the one better-sqlite3 connection and would wait on it. First test: two concurrent sign-ups for the last place create one user.
-- **`change` is append-only by trigger.** Account deletion needs the migration in [accounts.md](../accounts.md#privacy); test that an unmarked `DELETE` still fails.
-- **Storage quota calibration.** Before fixing the 5 MB, compare the live database size with `sum(length(data))` of `change`.
+- **Storage quota calibration.** Before fixing the 10 MB, compare the live database size with `sum(length(data))` of `head`.
 - **`hono-rate-limiter`:** check that it is maintained and supports Hono 4 before adopting it; otherwise a fixed-window map.
 - **Google consent screen:** check that basic scopes still publish without verification.
 
 ## Tests
 
 - Server: sign-up below the cap creates a user and its provider account; at the cap it is refused with `signup_closed` and leaves no rows; two concurrent sign-ups for the last place create one user; `create-owner` works at the cap; an existing account signs in at the cap.
-- Server: push over the daily limit rejects the rest as `quota`, duplicates stay `ok`, the owner is unlimited, each exemption window lifts the daily limit and not the storage one; the snapshot limit; `stored` equals `sum(length(data))` after pushes; pruning.
+- Server: push over the daily bytes-written limit rejects the rest as `quota`, duplicates and older versions stay `ok` and cost nothing, the owner is unlimited, each exemption window lifts the daily limit and not the storage one; the storage limit counts a replaced row's new size, not both versions; the snapshot limit; pruning.
 - Server: per-IP and per-user 429s; body limits; admin routes refuse a non-owner; disable removes sessions and refuses sign-in; deletion removes every row of that user and none of another's.
 - `SYNC_FUZZ_RUNS=5000 pnpm test fuzz` after the `core` push change.
 - Stories: the sign-in row with its notice, `/privacy`, the admin page, the deletion dialog, the quota rows in Settings.

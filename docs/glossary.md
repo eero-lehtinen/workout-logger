@@ -84,13 +84,12 @@ See [sync.md](sync.md) and [backups.md](backups.md).
 | **Change** | The full state of one row after a write: table, id, HLC, deleted flag, and data. Sync moves changes, not diffs. |
 | **LWW** (last writer wins) | The merge rule: of two versions of a row, the one with the greater HLC wins. |
 | **Outbox** | A local table listing rows written on this device that the server hasn't acknowledged yet. |
-| **Change log** | The server's append-only list of all changes ever received. Each entry has an increasing sequence number (`seq`). |
 | **Cursor** | The highest `seq` a device has pulled and applied. |
-| **Head table** | The server's current state per row: the latest change by HLC. Used for snapshots and backups. |
+| **Head table** | The server's only sync table: the newest version of each row by HLC, with the sequence number (`seq`) it got when it arrived. Pulls read it by `seq`; snapshots read all of it. |
 | **Server epoch** | A random id that changes when the server database is restored. A client that sees a new epoch re-uploads everything and re-pulls. |
 | **Pseudo-node** | A fixed HLC node id (`seed`, `hc`, `fitnotes`, `restore`) used for deterministic writes, so the same import produces identical changes on every device. |
 | **Snapshot** | The full current state of all synced rows as one file. |
-| **Server** | Handles accounts, quotas, and each user's change log. It stores and orders changes; all merging happens on the clients. |
+| **Server** | Handles accounts, quotas, and each user's rows. It stores the newest version of each row and orders them; all merging happens on the clients. |
 
 ## Accounts
 
@@ -101,6 +100,6 @@ See [accounts.md](accounts.md).
 | **Account** (user) | A login. Each account's data is fully isolated; accounts never share rows. |
 | **Owner** | The admin account (you). No quotas. Manages users and quotas. |
 | **Account cap** | The most accounts the server allows, the owner included. Sign-up is open until it is reached. |
-| **Quota** | A per-user limit on server usage: changes pushed per day, stored bytes, request rate, snapshots per day. Hitting one pauses sync, never local use. |
+| **Quota** | A per-user limit on server usage: bytes written per day, bytes stored, request rate, snapshots per day. Hitting one pauses sync, never local use. |
 | **Disabled account** | An account the owner has switched off: its sign-ins and Android tokens are revoked and it can't sign in or sync. Its data stays on the server and on its devices. |
 | **API key** | A personal, revocable token the CLI uses instead of a login session. |

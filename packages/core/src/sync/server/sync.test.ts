@@ -41,8 +41,17 @@ async function pushAs(
   );
 }
 
+async function lastSeq(db: Awaited<ReturnType<typeof openTestServer>>["db"]) {
+  const row = await db
+    .selectFrom("server_meta")
+    .select("value")
+    .where("key", "=", "seq")
+    .executeTakeFirstOrThrow();
+  return Number(row.value);
+}
+
 describe("push", () => {
-  it("appends to the log and updates the head", async () => {
+  it("keeps the newest version of each row with a new seq", async () => {
     const { db } = await openTestServer();
     const result = await pushAs(db, "u1", [
       change(),
@@ -53,15 +62,6 @@ describe("push", () => {
       results: [{ status: "ok" }, { status: "ok" }],
       inserted: 2,
     });
-    const log = await db
-      .selectFrom("change")
-      .selectAll()
-      .orderBy("seq")
-      .execute();
-    expect(log.map((c) => [c.seq, c.hlc, c.device_id, c.received_at])).toEqual([
-      [1, hlc(NOW), "dev", NOW],
-      [2, hlc(NOW + 1), "dev", NOW],
-    ]);
     const head = await db.selectFrom("head").selectAll().execute();
     expect(head).toEqual([
       {
@@ -73,8 +73,27 @@ describe("push", () => {
         v: 1,
         data: '{"value_json":"\\"lb\\""}',
         seq: 2,
+        device_id: "dev",
+        received_at: NOW,
       },
     ]);
+    expect(await lastSeq(db)).toBe(2);
+  });
+
+  it("acknowledges an older version without storing it or using quota", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ hlc: hlc(NOW + 5) })]);
+    const older = await pushAs(
+      db,
+      "u1",
+      [change({ hlc: hlc(NOW + 1), data: { value_json: '"lb"' } })],
+      0,
+    );
+    expect(older).toMatchObject({ results: [{ status: "ok" }], inserted: 0 });
+    expect(
+      await db.selectFrom("head").select(["hlc", "seq"]).execute(),
+    ).toEqual([{ hlc: hlc(NOW + 5), seq: 1 }]);
+    expect(await lastSeq(db)).toBe(1);
   });
 
   it("keeps the greatest HLC in the head regardless of arrival order", async () => {
@@ -99,7 +118,8 @@ describe("push", () => {
       results: [{ status: "ok" }, { status: "rejected", reason: "conflict" }],
       inserted: 0,
     });
-    expect(await db.selectFrom("change").selectAll().execute()).toHaveLength(1);
+    expect(await db.selectFrom("head").selectAll().execute()).toHaveLength(1);
+    expect(await lastSeq(db)).toBe(1);
   });
 
   it("treats a re-sent row upgraded by a migration as a duplicate", async () => {
@@ -156,6 +176,15 @@ describe("push", () => {
     ]);
   });
 
+  it("acknowledges an older version from an outdated app instead of refusing it", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ hlc: hlc(NOW + 5), v: 2 })]);
+    const { results } = await pushAs(db, "u1", [
+      change({ hlc: hlc(NOW), v: 1 }),
+    ]);
+    expect(results).toEqual([{ status: "ok" }]);
+  });
+
   it("rejects older schema versions once a newer one was accepted", async () => {
     const { db } = await openTestServer();
     await pushAs(db, "u1", [change({ id: "a", v: 2 })]);
@@ -192,7 +221,21 @@ describe("push", () => {
 });
 
 describe("pull and snapshot", () => {
-  it("pages through one user's log in seq order", async () => {
+  it("sends a row replaced since the cursor once, in its newest version", async () => {
+    const { db } = await openTestServer();
+    await pushAs(db, "u1", [change({ id: "a" }), change({ id: "b" })]);
+    const cursor = (await pull(db, "u1", 0)).cursor;
+    await pushAs(db, "u1", [
+      change({ id: "a", hlc: hlc(NOW + 1) }),
+      change({ id: "a", hlc: hlc(NOW + 2), deleted: true }),
+    ]);
+    const next = await pull(db, "u1", cursor);
+    expect(next.changes.map((c) => [c.seq, c.id, c.hlc, c.deleted])).toEqual([
+      [4, "a", hlc(NOW + 2), true],
+    ]);
+  });
+
+  it("pages through one user's rows in seq order", async () => {
     const { db } = await openTestServer();
     await pushAs(db, "u1", [change({ id: "a" })]);
     await pushAs(db, "u2", [change({ id: "x" })]);

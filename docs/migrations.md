@@ -6,10 +6,10 @@ Data exists in several places, at different schema versions, at the same time:
 | --- | --- | --- |
 | Local DB on each device | `SCHEMA_VERSION` of the web build the device runs | Client migrations, on app start |
 | Rows arriving via sync | `v` of the app that wrote them | Row upgrade on apply |
-| Server change log and head table | Each row's original `v`, kept forever | Never upgraded on the server. Readers upgrade. |
+| Server `head` table | Each row's original `v` | Never upgraded on the server. Readers upgrade. |
 | Snapshots and backups | `schema_version` in their `meta` table | Row upgrade on import |
 | CLI mirror (phase 10) | `SCHEMA_VERSION` of the CLI build | The same client migrations |
-| Server's own tables (auth, `change`, `head`, `job_run`, ...) | Server schema | Server migrations, on startup |
+| Server's own tables (auth, `head`, `job_run`, ...) | Server schema | Server migrations, on startup |
 
 The domain schema has one version number, `SCHEMA_VERSION` in `packages/core`.
 It is the same number as the `v` on synced rows. Server tables have their own
@@ -113,7 +113,7 @@ A data fix is a named, versioned function in `packages/core/src/fixes/` that rea
 a user's data and returns rows to write. Only one place runs it, so devices
 can't race:
 
-- **Users with an account:** a server job (`server run-fix <name>`) runs it over each user's head state using `core`. It appends the results as changes with node `fix` and HLC `max(now, max hlc in the user's log)⁺`, the same rule as `wl restore`. Clients receive them through normal pulls. This is the one place server code interprets domain data, and only through `core`.
+- **Users with an account:** a server job (`server run-fix <name>`) runs it over each user's head state using `core`. It writes the results as changes with node `fix` and HLC `max(now, max hlc in the user's head rows)⁺`, so they win over every version stored. Clients receive them through normal pulls. This is the one place server code interprets domain data, and only through `core`.
 - **Local-only users** (no account, one device): the app runs pending fixes on startup and records them in a local `_applied_fix` table.
 
 Every fix is idempotent: running it on already-fixed data writes nothing.
@@ -132,9 +132,10 @@ current revision are skipped.
 
 ## Server migrations
 
-Server tables (`change`, `head`, `server_meta`, `user_sync`, `job_run`, and
-in phase 11 `usage`, `quota`, `stored`) use Kysely's migrator, with the steps in
-`apps/server/src/db/migrations.ts` (`0001_sync`, `0002_job_run`, ...). Better
+Server tables (`head`, `server_meta`, `user_sync`, `job_run`, and in phase 11
+`usage` and `quota`) use Kysely's migrator, with the steps in
+`apps/server/src/db/migrations.ts` (`0001_sync`, `0002_job_run`,
+`0003_sync_head_only`, ...). Better
 Auth's tables are migrated by its `getMigrations` API right after, from the
 same configuration the server runs with.
 
@@ -143,7 +144,7 @@ same configuration the server runs with.
 - **Not transactional.** Kysely runs SQLite migrations without a transaction (its SQLite adapter reports no transactional DDL), so a step that fails halfway leaves its earlier statements applied. Recover with the pre-migration copy.
 - **Forward only.** To roll back: restore the pre-migration copy, run `server new-epoch`, and redeploy the previous SHA ([deployment.md](deployment.md#recovery-procedures)).
 - No expand/contract dance: there is one instance and a few seconds of downtime, and clients are offline-tolerant.
-- Server migrations never touch `data` in `change` or `head`. Domain data changes go through data fixes.
+- Server migrations never touch `data` in `head`. Domain data changes go through data fixes.
 
 ## Protocol changes
 
