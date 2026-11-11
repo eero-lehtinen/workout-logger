@@ -18,7 +18,7 @@ These are human estimates. AI agents can do large phases very quickly.
 
 | Milestone | After phase | Meaning |
 | --- | --- | --- |
-| **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, measurements, and all FitNotes history imported. Workouts are logged only here from now on. |
+| **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, and measurements. Workouts are logged only here from now on. |
 | **M2: other users** | 11 | Google sign-in, sign-up up to an account cap, quotas, admin, account deletion. |
 
 ## Phase 0: Scaffolding (S) [done]
@@ -101,7 +101,7 @@ responses now carry the epoch ([sync.md](sync.md#push)). Module layout is in
   - substitution picker;
   - minimal routine editor: routines, days, slots, alternatives;
   - minimal exercise browser and custom exercise creation;
-  - settings: units, increments, rest default, idle threshold, e1RM cap.
+  - settings: units, weight steps, rest default, idle end, e1RM rep limit.
 - Web rest timer (in-page).
 - Snapshot export/import (file) and the undo snackbar.
 - PWA: installable, offline, updates applied when no session is running.
@@ -220,12 +220,13 @@ deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
 - Curate the mapping by hand: chart each exercise's progression to find technique or equipment changes to split by date, fix inconsistent names, and merge duplicates ([fitnotes-import.md](fitnotes-import.md#exercise-mapping)).
 - Convert a backup taken on cutover day, check set counts, sessions, and best e1RM against it, and import the snapshot with Settings → Import snapshot.
 
-**Exit:** **M1.** All FitNotes history is visible on every synced device, and markers and records look right on real data. A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
+**Exit:** **M1.** A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
 
 Status: built before phase 8. The conversion and the mapping are in the
 private `workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it
 matches FitNotes per exercise on set count, session count, and best e1RM.
-Left: the real import, the check on the phone, and the cutover.
+No further import is planned. Left: the check on the phone, and the
+cutover.
 
 ## Phase 9b: Android live updates (S) [done]
 
@@ -270,6 +271,7 @@ Moved out of phase 11: they protect the owner's backups, not other users.
 - Analytics page: weekly weighted sets per muscle over time, durations, PR list.
 - Multi-step undo/redo, year heatmap, scatter plots, relative strength, kg/lb display polish.
 - Server push notifications (SSE) instead of polling.
+- Prepared-statement cache in the client drivers (`node-driver.ts`, `wasm-driver.ts`), keyed by SQL with a bounded LRU. Measured on synthetic data: applying a 30k-row snapshot drops from 1.4 s to 0.6 s natively and 0.9 s on WASM, and every UI query gets a little faster. The WASM driver finalizes statements after each use today; a cache needs `reset()` and rebinding instead. Don't cache statements used through `iterate()`, where a nested use of the same SQL would clash.
 
 ## Ways of working
 

@@ -218,8 +218,8 @@ Notes:
 
 - Weight is stored in kg as REAL. See [units and rounding](#units-and-rounding).
 - The routine's active day is not stored. It is derived (see [features.md](features.md#starting-a-session)), so the derived state cannot get out of sync with the logs.
-- **Session end.** `ended_at` is written only by a manual stop. Idle auto-end is derived at query time, not stored:
-  - effective end = `ended_at`, or else the last `set_log.logged_at` (or `started_at` without sets) if `now` minus that time exceeds the idle threshold, or else still running;
+- **Session end.** `ended_at` is written only by a manual stop. Idle end is derived at query time, not stored:
+  - effective end = `ended_at`, or else the last `set_log.logged_at` (or `started_at` without sets) if `now` minus that time exceeds the idle end time (`idle_threshold_s`), or else still running;
   - deriving it means nothing is written in the background and no device can overwrite another's edits with a computed value.
 - **Logging into an idle-ended session.** Opening a session whose effective end has passed and logging a set asks "continue that session or start a new one?". Continuing writes nothing extra; the idle rule then simply measures from the new last set.
 - **Calendar date** of a session is the local date of `started_at` in the session's `tz`. Weeks start on Monday (a setting).
@@ -235,10 +235,10 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 - **Input.** A value entered in lb is converted with the exact factor (1 lb = 0.45359237 kg) and stored unrounded. Converting it back for display gives the entered value again, e.g. 225 lb → 102.0582 kg → 225 lb.
 - **Display.** Weights are converted to the display unit, rounded to 2 decimals, and trailing zeros are trimmed (`100`, `102.5`, `220.46`). e1RM and other derived values are rounded to 1 decimal.
-- **Increment.**
+- **Weight step.**
   - Defaults: the `weight_increment_kg` and `weight_increment_lb` settings (2.5 kg and 5 lb unless changed), by display unit. The value is overridable per exercise (`weight_increment_kg`), e.g. 1 kg for dumbbells.
-  - The +/- buttons snap to the nearest multiple of the increment first, then step. A converted 220.46 lb becomes 225 after +, not 225.46.
-- **Prefill.** The prefilled weight is kept unrounded and shown in display units with at most 2 decimals, not snapped to the increment. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
+  - The +/- buttons snap to the nearest multiple of the step first, then step. A converted 220.46 lb becomes 225 after +, not 225.46.
+- **Prefill.** The prefilled weight is kept unrounded and shown in display units with at most 2 decimals, not snapped to the weight step. If the unit changed since the value was logged, it shows as e.g. 220.46 lb; the first +/- press snaps it.
 - **Comparisons** for set records and PRs run on kg values with a small epsilon (1e-6). Unit conversion then cannot create false records.
 
 ## Client runtime
@@ -300,7 +300,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 
 ### Updates and version compatibility
 
-- **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode, so a new version waits until the app switches to it. The app does that without asking (`WebUpdate`): when a new version has finished installing, no session is running, and the page is hidden (another tab or app, or the screen off). The reload happens out of sight and never mid-workout. During a session the new version waits until the session ends, manually or by idle auto-end. Logged sets are in the database either way; a reload would only lose what is on screen. Closing every tab of the app also switches.
+- **PWA:** `vite-plugin-pwa` precaches the app shell, fonts, icons, and the SQLite WASM file, in prompt mode, so a new version waits until the app switches to it. The app does that without asking (`WebUpdate`): when a new version has finished installing, no session is running, and the page is hidden (another tab or app, or the screen off). The reload happens out of sight and never mid-workout. During a session the new version waits until the session ends, manually or by idle end. Logged sets are in the database either way; a reload would only lose what is on screen. Closing every tab of the app also switches.
 - **Build identity:** every web build carries its commit SHA and build time (`import.meta.env.BUILD_COMMIT`, `BUILD_TIME`), shown in Settings → About on every platform. Docker passes the commit as `GIT_COMMIT`, the APK build has `GITHUB_SHA`, and a local build asks `git`. The commit is also the version of the [live-update](#live-updates) bundle.
 - **Android, web build:** replaced by [live updates](#live-updates), without an APK and without a prompt. The app registers no service worker.
 - **Android, shell (APK):** asks the server for the latest release on start and offers a newer one as a toast; Settings can check again. "Download" opens the APK in the phone's browser, and Android installs it over the app. Needed only for native changes. See [deployment.md](deployment.md#android-releases).

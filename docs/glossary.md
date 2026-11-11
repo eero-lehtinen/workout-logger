@@ -44,14 +44,14 @@ previous performance, not by prescribing.
 
 | Term | Meaning |
 | --- | --- |
-| **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. Defined only up to the **e1RM cap** (default 12 reps); above it the estimate is too unreliable. |
+| **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. Defined only up to the **e1RM rep limit** (default 12 reps; `e1rm_rep_cap` in code); above it the estimate is too unreliable. |
 | **Reference set** | The set with the same index in the previous performance. Set 2 today is compared with set 2 last time. |
 | **Progress marker** | At most one per set: PR, set record, or weight increase. Full rules in [features.md](features.md#progress-markers). |
 | **PR** (personal record, trophy) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
-| **Set record** (star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM cap, at least as much weight and reps with one of them strictly more. |
+| **Set record** (star) | A set that beats its reference set: higher e1RM, or, when either set is above the e1RM rep limit, at least as much weight and reps with one of them strictly more. |
 | **Weight increase** (up arrow) | A set with more weight than its reference set that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
 | **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |
-| **Weight increment** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. |
+| **Weight step** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. `weight_increment_kg` and `weight_increment_lb` in code. |
 | **Weighted sets** | A set count per muscle, where each set counts by the muscle target factor. 3 sets of rows = 3 lats, 3 upper back, 1.5 biceps, 1.5 rear delts. For a muscle group, each set counts once, by its largest factor in the group: the same rows are 3 back sets and 1.5 arm sets. |
 
 ## Measurements (custom data)
@@ -69,8 +69,8 @@ previous performance, not by prescribing.
 | Term | Meaning |
 | --- | --- |
 | **Rest timer** | A countdown that starts when a set is logged. When it ends, the phone vibrates and plays a sound, even when the app is in the background or music is playing. Can be turned off in settings. |
-| **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle auto-end. Its display can be hidden in settings. |
-| **Idle auto-end** | If no set has been logged for the idle threshold (default 15 min, configurable), the session counts as ended at the timestamp of its last set, or at its start if it has no sets. |
+| **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle end. Its display can be hidden in settings. |
+| **Idle end** | If no set has been logged for the idle end time (default 15 min, configurable; `idle_threshold_s` in code), the session counts as ended at the timestamp of its last set, or at its start if it has no sets. |
 
 ## Data, sync, and backups
 

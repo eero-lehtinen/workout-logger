@@ -69,7 +69,7 @@ Breaking these causes data loss or leaks. Don't take shortcuts here.
 - Check current library docs instead of relying on memory. Several dependencies (Capacitor, Better Auth, SQLite WASM) change between major versions.
 - Comments only for constraints, non-obvious reasons, and known risks. No comments that restate code or record history.
 - Keep files focused. Split modules that accumulate unrelated responsibilities.
-- Domain logic (e1RM, records, next day, idle auto-end, sync merge) lives in `packages/core`, is pure where possible, and has unit tests.
+- Domain logic (e1RM, records, next day, idle end, sync merge) lives in `packages/core`, is pure where possible, and has unit tests.
 
 ## Commits
 

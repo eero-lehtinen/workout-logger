@@ -331,7 +331,7 @@ Full rules, including data fixes and server migrations: [migrations.md](migratio
 | The same entity is created on two offline devices | Deterministic ids and HLCs wherever there is a natural key (see above). Real user-created duplicates are rare; a merge tool comes later if needed. |
 | Concurrent reordering or inserting at the same position | Fractional index keys; ties broken by `id`. |
 | A row is edited after it was deleted elsewhere | The greater HLC wins. If that is the edit, the row comes back, along with its children (deletes don't cascade). |
-| The same session is open on two devices | Each set is its own row, so all sets are kept. Idle auto-end is derived at query time, not written (see [architecture.md](architecture.md#data-model-client)), so it can't overwrite anything. |
+| The same session is open on two devices | Each set is its own row, so all sets are kept. Idle end is derived at query time, not written (see [architecture.md](architecture.md#data-model-client)), so it can't overwrite anything. |
 | Uniqueness rules (e.g. exercise names) | Not enforced in the database. The UI warns. |
 
 ## Failure modes
