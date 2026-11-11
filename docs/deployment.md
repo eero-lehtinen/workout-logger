@@ -95,6 +95,29 @@ redeploys, and the application webhook refuses any tag but the configured
 one), so CI uses the API. Its key belongs to a Dokploy member user that can
 reach only this service, because Dokploy API keys can't be scoped themselves.
 
+### Deploying without CI
+
+When GitHub Actions can't run (runs stuck in "queued" with no jobs), deploy
+the commit on `main` from a workstation. Run `pnpm check` on it first,
+because this skips the `check` job.
+
+1. Export the commit to a clean directory: `git archive <sha> | tar -x -C <dir>`.
+2. Build the image with the commit and the live-update key, which the
+   Android release notes keep: `LIVE_UPDATE_PRIVATE_KEY=$(cat <key.pem>) docker build --platform linux/amd64 --build-arg GIT_COMMIT=<sha> --secret id=live_update_private_key,env=LIVE_UPDATE_PRIVATE_KEY -t ghcr.io/eero-lehtinen/workout-logger:<sha> <dir>`.
+   Check that `/app/web/live-bundle/manifest.json` in the image has the
+   SHA as `version` and a `signature`.
+3. Load it straight onto the VPS instead of pushing it to GHCR:
+   `docker save <image> | gzip | ssh root@<vps> 'gunzip | docker load'`.
+   Compose finds the tag locally and doesn't pull.
+4. Do what the `deploy` job does: `compose.update` with the SHA in
+   `deploy/compose.yaml`, then `compose.deploy`, with the Dokploy API or
+   CLI, and wait for `/api/status` to report the commit.
+
+A stuck run that starts later deploys the same commit again: a restart of a
+few seconds. A stuck run for an older commit would roll production back, so
+cancel it, or push to `main` so that its run cancels the older one through
+the workflow's concurrency group.
+
 The image is two stages on `node:24-slim`. The build stage installs the
 workspace from the lockfile, builds the web app, bundles the server, and
 `pnpm deploy`s the server package with production dependencies only. The
