@@ -203,6 +203,14 @@ export const withHistory: Fixture = async (db) => {
     [125, 5],
     [125, 5],
   ]);
+  await db.run("updateSessionNotes", {
+    sessionId: last.sessionId,
+    notes: "Short on sleep, kept it easy.",
+  });
+  await db.run("updateSessionExerciseNotes", {
+    sessionExerciseId: last.ids.back_squat ?? "",
+    notes: "Set 3: knee felt off",
+  });
   return { routineId, pastSessionId: last.sessionId };
 };
 

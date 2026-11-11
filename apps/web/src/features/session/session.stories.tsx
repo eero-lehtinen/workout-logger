@@ -27,6 +27,10 @@ export const PastSessionReadOnly = pageStory({
       canvas.getByRole("link", { name: /^Squat \(Barbell\)/ }),
     ).toHaveAttribute("href", expect.stringMatching(/\/history\?sessionId=/));
     await expect(
+      canvas.getByText("Short on sleep, kept it easy."),
+    ).toBeVisible();
+    await expect(canvas.getByText("Set 3: knee felt off")).toBeVisible();
+    await expect(
       canvas.queryByRole("button", { name: "Add exercise" }),
     ).toBeNull();
     await userEvent.click(canvas.getByRole("button", { name: "Edit" }));
@@ -297,6 +301,32 @@ export const RemoveFromSession = pageStory({
     await waitFor(() =>
       expect(canvas.queryByRole("link", { name: /^Bench Press/ })).toBeNull(),
     );
+  },
+});
+
+export const EditNotes = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      await canvas.findByRole("textbox", {
+        name: /^Notes on Bench Press .* in this session$/,
+      }),
+      "Elbow ok",
+    );
+    await userEvent.tab();
+    await userEvent.click(
+      canvas.getByRole("link", { name: "Back to session" }),
+    );
+    await canvas.findByRole("heading", { name: "Upper" });
+    await expect(await canvas.findByText("Elbow ok")).toBeVisible();
+
+    const notes = canvas.getByRole("textbox", { name: "Session notes" });
+    await userEvent.type(notes, "Gym was busy");
+    await userEvent.tab();
+    // The field shows the stored value again once its edit is saved.
+    await waitFor(() => expect(notes).toHaveValue("Gym was busy"));
   },
 });
 

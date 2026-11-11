@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, buttonClass, IconButton } from "../../components/button.tsx";
+import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
@@ -389,6 +390,18 @@ function Logger({ log }: { log: ExerciseLog }) {
             First time logging this exercise.
           </p>
         )}
+        <NotesField
+          label={`Notes on ${exercise.name} in this session`}
+          value={log.notes}
+          placeholder="Notes on this exercise today"
+          onSave={(notes) =>
+            command("updateSessionExerciseNotes", {
+              sessionExerciseId: log.sessionExerciseId,
+              notes,
+            })
+          }
+          className="mt-6"
+        />
         <Button
           variant="danger"
           size="sm"

@@ -249,6 +249,29 @@ describe("logging", () => {
 });
 
 describe("session exercises", () => {
+  it("keeps notes on the session and on each of its exercises", async () => {
+    const { query, run, ids } = await setup();
+    const sessionId = await run("startSession", {
+      routineId: null,
+      dayId: null,
+    });
+    const se = await run("addSessionExercise", {
+      sessionId,
+      exerciseId: ids.squat,
+    });
+    await run("updateSessionNotes", { sessionId, notes: "Slept badly" });
+    await run("updateSessionExerciseNotes", {
+      sessionExerciseId: se,
+      notes: "Set 2: knee",
+    });
+    const view = await query("sessionView", { sessionId });
+    expect(view?.session.notes).toBe("Slept badly");
+    expect(view?.exercises.map((e) => e.notes)).toEqual(["Set 2: knee"]);
+    expect((await query("exerciseLog", { sessionExerciseId: se }))?.notes).toBe(
+      "Set 2: knee",
+    );
+  });
+
   it("substitutes in place before any set, and alongside after", async () => {
     const { query, run, ids } = await setup();
     const sessionId = await run("startSession", {

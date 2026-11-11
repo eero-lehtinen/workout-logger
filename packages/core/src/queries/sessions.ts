@@ -181,6 +181,8 @@ export interface SessionExerciseItem {
   slotId: string | null;
   /** The slot's default exercise, when this one substitutes it. */
   substitutesName: string | null;
+  /** About this exercise in this session, e.g. imported set comments. */
+  notes: string;
   /** With the markers they earned against the exercise's earlier history. */
   sets: (SetValues & { id: string; marker: ProgressMarker | null })[];
 }
@@ -219,6 +221,7 @@ export const sessionView = defineQuery(
         "se.position",
         "se.exercise_id as exerciseId",
         "se.slot_id as slotId",
+        "se.notes",
         "e.name",
         "e.type",
         "slot.exercise_id as slotExerciseId",
@@ -265,6 +268,7 @@ export const sessionView = defineQuery(
           e.slotExerciseId && e.slotExerciseId !== e.exerciseId
             ? e.slotExerciseName
             : null,
+        notes: e.notes,
         sets: sets
           .filter((s) => s.session_exercise_id === e.id)
           .map(({ id, weight_kg, reps, duration_s, distance_m }) => ({

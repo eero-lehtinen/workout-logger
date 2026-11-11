@@ -30,6 +30,8 @@ export interface ExerciseLog {
   slotId: string | null;
   /** The routine's reminder for the slot, e.g. "heavy, 6-10". */
   slotNote: string | null;
+  /** About this exercise in this session; `exercise.notes` is about the exercise. */
+  notes: string;
   exercise: {
     id: string;
     name: string;
@@ -64,6 +66,7 @@ export const exerciseLog = defineQuery(
       .select([
         "se.id",
         "se.slot_id as slotId",
+        "se.notes as sessionExerciseNotes",
         "s.id as sessionId",
         "s.routine_id as routineId",
         "s.day_id as dayId",
@@ -116,6 +119,7 @@ export const exerciseLog = defineQuery(
       },
       slotId: row.slotId,
       slotNote: row.slotNote,
+      notes: row.sessionExerciseNotes,
       exercise: {
         id: row.exerciseId,
         name: row.name,

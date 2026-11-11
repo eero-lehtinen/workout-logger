@@ -11,6 +11,7 @@ export const COMMANDS = {
   resumeSession: sessions.resumeSession,
   deleteSession: sessions.deleteSession,
   updateSessionNotes: sessions.updateSessionNotes,
+  updateSessionExerciseNotes: sessions.updateSessionExerciseNotes,
   addSessionExercise: sessions.addSessionExercise,
   substituteExercise: sessions.substituteExercise,
   removeSessionExercise: sessions.removeSessionExercise,

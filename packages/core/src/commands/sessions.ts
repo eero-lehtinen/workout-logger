@@ -112,6 +112,17 @@ export const updateSessionNotes = defineCommand(
   },
 );
 
+export const updateSessionExerciseNotes = defineCommand(
+  async (
+    w,
+    args: { sessionExerciseId: string; notes: string },
+  ): Promise<void> => {
+    await w.update("session_exercise", args.sessionExerciseId, {
+      notes: args.notes,
+    });
+  },
+);
+
 async function lastSetAt(w: Writer, sessionId: string) {
   const row = await w.db
     .selectFrom("set_log")

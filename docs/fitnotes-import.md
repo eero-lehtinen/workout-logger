@@ -31,7 +31,7 @@ a different version.
 
 - **Nothing is silently dropped.** Every FitNotes field ends up in one of three places:
   1. a matching field;
-  2. the nearest notes field, as text the user can edit later. The app doesn't show or edit `session.notes` and `session_exercise.notes` yet, so these are stored and synced but not visible;
+  2. the nearest notes field, as text the user can edit later;
   3. the report: listed for the user instead of imported.
 
   Exceptions are values that FitNotes derives or that only hold FitNotes UI state. They are listed under [Skipped](#skipped).

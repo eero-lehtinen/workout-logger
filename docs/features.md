@@ -85,7 +85,7 @@ The app is shared with a few other users, each with their own private data. See
 | Hide the session timer in settings | P1 | Hides only the running elapsed time; the session keeps its start and end, and ended sessions still show their duration. |
 | Keep the screen on while a session runs | P1 | A setting, off by default. Android, and browsers with the Screen Wake Lock API. |
 | Web app open in several tabs | P0 | Only one tab holds the database; the others offer "use here". |
-| Session notes | P1 | |
+| Session notes | P1 | One for the session, edited under its exercise list, and one per exercise in it, edited in the logging view and shown in the exercise's row. Both save on leaving the field. A past session shows them read-only. |
 
 ## Exercise logging view
 

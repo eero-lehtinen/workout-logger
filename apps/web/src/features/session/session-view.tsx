@@ -16,6 +16,7 @@ import { Check, ChevronRight, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
+import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { GripHandle, SortableList } from "../../components/sortable.tsx";
@@ -230,6 +231,11 @@ function SessionPanel(props: {
                       for {exercise.substitutesName}
                     </p>
                   )}
+                  {exercise.notes && (
+                    <p className="truncate text-sm text-ink-muted">
+                      {exercise.notes}
+                    </p>
+                  )}
                   {exercise.sets.length > 0 && (
                     <div className="pt-0.5">
                       <SetLine
@@ -245,6 +251,25 @@ function SessionPanel(props: {
             </div>
           )}
         />
+      )}
+
+      {readOnly ? (
+        session.notes && (
+          <p className="whitespace-pre-wrap px-4 pt-4 text-[0.9375rem] lg:px-0">
+            {session.notes}
+          </p>
+        )
+      ) : (
+        <div className="px-4 pt-4 lg:px-0">
+          <NotesField
+            label="Session notes"
+            value={session.notes}
+            placeholder="Notes on this session"
+            onSave={(notes) =>
+              command("updateSessionNotes", { sessionId: session.id, notes })
+            }
+          />
+        </div>
       )}
 
       {!readOnly && (
@@ -340,6 +365,11 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
                     type={exercise.type}
                     unit={unit}
                   />
+                )}
+                {exercise.notes && (
+                  <p className="whitespace-pre-wrap pt-1 text-sm text-ink-muted">
+                    {exercise.notes}
+                  </p>
                 )}
               </div>
               <ChevronRight size={18} className="shrink-0 text-ink-muted" />
