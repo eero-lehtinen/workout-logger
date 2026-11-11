@@ -1,7 +1,7 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
-  type CalendarSession,
   type IsoDate,
+  type ListedSession,
   localDate,
   type WeekStart,
 } from "@workout-logger/core";
@@ -11,8 +11,7 @@ import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { deviceTimeZone, todayIso } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
-import { SessionRow } from "../session/session-row.tsx";
-import { dayDotClass } from "./day-colors.ts";
+import { SessionRow, spansRoutines } from "../session/session-row.tsx";
 import { FrequencySection } from "./frequency-section.tsx";
 import { MonthCalendar, monthGrid } from "./month-calendar.tsx";
 
@@ -84,7 +83,7 @@ function MonthSessions(props: {
     from: edge(grid[0] ?? props.today, -1),
     to: edge(grid.at(-1) ?? props.today, 2),
   });
-  const byDate = new Map<IsoDate, CalendarSession[]>();
+  const byDate = new Map<IsoDate, ListedSession[]>();
   for (const s of sessions) {
     const date = localDate(s.startedAt, s.tz);
     byDate.set(date, [...(byDate.get(date) ?? []), s]);
@@ -123,13 +122,8 @@ function MonthSessions(props: {
                     now={now}
                     idleThresholdS={settings.idle_threshold_s}
                     when="time"
+                    showRoutine={spansRoutines(sessions)}
                     fromCalendar
-                    mark={
-                      <span
-                        aria-hidden
-                        className={`size-3 shrink-0 rounded-full ${dayDotClass(s.dayIndex)}`}
-                      />
-                    }
                   />
                 </li>
               ))}

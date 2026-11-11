@@ -90,6 +90,42 @@ export function toSummary(row: {
   } as SessionSummary;
 }
 
+export interface ListedSession extends SessionSummary {
+  /**
+   * The day's index in its routine's cycle, for its color; null for ad hoc
+   * sessions and deleted days.
+   */
+  dayIndex: number | null;
+}
+
+export async function withDayIndexes(
+  db: Kysely<Database>,
+  sessions: SessionSummary[],
+): Promise<ListedSession[]> {
+  const routineIds = [...new Set(sessions.flatMap((s) => s.routineId ?? []))];
+  const index = new Map<string, number>();
+  if (routineIds.length > 0) {
+    const days = await db
+      .selectFrom("routine_day")
+      .select(["id", "routine_id", "position"])
+      .where("routine_id", "in", routineIds)
+      .where("deleted", "=", 0)
+      .execute();
+    for (const id of routineIds) {
+      days
+        .filter((d) => d.routine_id === id)
+        .sort(compareOrder)
+        .forEach((d, i) => {
+          index.set(d.id, i);
+        });
+    }
+  }
+  return sessions.map((s) => ({
+    ...s,
+    dayIndex: (s.dayId !== null ? index.get(s.dayId) : null) ?? null,
+  }));
+}
+
 export const recentSessions = defineQuery(
   [
     "session",
@@ -99,13 +135,13 @@ export const recentSessions = defineQuery(
     "routine",
     "routine_day",
   ],
-  async (db, args: { limit: number }): Promise<SessionSummary[]> => {
+  async (db, args: { limit: number }): Promise<ListedSession[]> => {
     const rows = await sessionSummaries(db)
       .orderBy("s.started_at", "desc")
       .orderBy("s.id", "desc")
       .limit(args.limit)
       .execute();
-    return rows.map(toSummary);
+    return withDayIndexes(db, rows.map(toSummary));
   },
 );
 

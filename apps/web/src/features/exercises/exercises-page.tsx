@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import type { ExerciseItem, MuscleItem } from "@workout-logger/core";
-import { ChevronRight, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { clsx } from "clsx";
+import { Plus, Search } from "lucide-react";
+import { type CSSProperties, useState } from "react";
 import { Button, buttonClass } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -99,22 +100,37 @@ export function ExercisesPage() {
               : `Show ${archived.length} archived ${archived.length === 1 ? "exercise" : "exercises"}`}
           </Button>
         </div>
-      )}{" "}
+      )}
     </Screen>
   );
 }
 
+/**
+ * One list that, on wide screens, flows top to bottom into two columns. Each
+ * column is its own card: the rows carry the card's background and corners,
+ * since the list itself spans both columns.
+ */
 function ExerciseList(props: {
   exercises: ExerciseItem[];
   muscles: Map<string, MuscleItem>;
 }) {
+  const count = props.exercises.length;
+  const half = Math.ceil(count / 2);
   return (
-    // In two columns, the second item starts the first row and gets no line.
     <ul
-      className={`${listClass} lg:grid lg:grid-cols-2 lg:gap-x-2 lg:[&>li:nth-child(2)]:before:hidden`}
+      className={`${listClass} lg:grid lg:grid-flow-col lg:grid-rows-(--rows) lg:gap-x-4 lg:overflow-visible lg:rounded-none lg:bg-transparent`}
+      style={{ "--rows": `repeat(${half}, auto)` } as CSSProperties}
     >
-      {props.exercises.map((e) => (
-        <li key={e.id}>
+      {props.exercises.map((e, i) => (
+        <li
+          key={e.id}
+          className={clsx(
+            "lg:overflow-clip lg:bg-raised",
+            (i === 0 || i === half) && "lg:rounded-t-2xl",
+            (i === half - 1 || i === count - 1) && "lg:rounded-b-2xl",
+            i === half && "lg:before:hidden",
+          )}
+        >
           <Link
             to="/exercises/$exerciseId/history"
             params={{ exerciseId: e.id }}
@@ -126,7 +142,6 @@ function ExerciseList(props: {
                 {primaryMuscles(e, props.muscles) || "No muscles set"}
               </p>
             </div>
-            <ChevronRight size={18} className="text-ink-muted" />
           </Link>
         </li>
       ))}

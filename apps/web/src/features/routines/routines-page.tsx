@@ -5,7 +5,6 @@ import {
   ROUTINES,
   routineContent,
 } from "@workout-logger/exercises";
-import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -73,10 +72,7 @@ export function RoutinesPage() {
         </h2>
         <ul className={listClass}>
           {ROUTINES.map((routine) => (
-            <li
-              key={routine.key}
-              className="flex items-center gap-3 rounded-xl px-3 py-3"
-            >
+            <li key={routine.key} className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{routine.name}</p>
                 <p className="text-sm text-ink-muted">{routine.description}</p>
@@ -124,7 +120,6 @@ function RoutineList({ routines }: { routines: RoutineItem[] }) {
                   : r.dayNames.join(", ")}
               </p>
             </div>
-            <ChevronRight size={18} className="text-ink-muted" />
           </Link>
         </li>
       ))}

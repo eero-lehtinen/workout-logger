@@ -15,9 +15,10 @@ import {
   stripSessionExercise,
 } from "./performances.ts";
 import {
-  type SessionSummary,
+  type ListedSession,
   sessionSummaries,
   toSummary,
+  withDayIndexes,
 } from "./sessions.ts";
 
 export interface ExerciseHistory {
@@ -61,14 +62,6 @@ export const exerciseHistory = defineQuery(
   },
 );
 
-export interface CalendarSession extends SessionSummary {
-  /**
-   * The day's index in its routine's cycle, for its color; null for ad hoc
-   * sessions and deleted days.
-   */
-  dayIndex: number | null;
-}
-
 /** Sessions that started in `[from, to)`, oldest first. */
 export const sessionsInRange = defineQuery(
   [
@@ -79,52 +72,16 @@ export const sessionsInRange = defineQuery(
     "routine",
     "routine_day",
   ],
-  async (
-    db,
-    args: { from: number; to: number },
-  ): Promise<CalendarSession[]> => {
+  async (db, args: { from: number; to: number }): Promise<ListedSession[]> => {
     const rows = await sessionSummaries(db)
       .where("s.started_at", ">=", args.from)
       .where("s.started_at", "<", args.to)
       .orderBy("s.started_at")
       .orderBy("s.id")
       .execute();
-    const sessions = rows.map(toSummary);
-    const dayIndex = await dayIndexes(
-      db,
-      sessions.flatMap((s) => s.routineId ?? []),
-    );
-    return sessions.map((s) => ({
-      ...s,
-      dayIndex: (s.dayId !== null ? dayIndex.get(s.dayId) : null) ?? null,
-    }));
+    return withDayIndexes(db, rows.map(toSummary));
   },
 );
-
-/** Live day id → index in its routine's cycle. */
-async function dayIndexes(
-  db: Parameters<typeof sessionSummaries>[0],
-  routineIds: string[],
-): Promise<Map<string, number>> {
-  const ids = [...new Set(routineIds)];
-  if (ids.length === 0) return new Map();
-  const days = await db
-    .selectFrom("routine_day")
-    .select(["id", "routine_id", "position"])
-    .where("routine_id", "in", ids)
-    .where("deleted", "=", 0)
-    .execute();
-  const map = new Map<string, number>();
-  for (const id of ids) {
-    days
-      .filter((d) => d.routine_id === id)
-      .sort(compareOrder)
-      .forEach((d, i) => {
-        map.set(d.id, i);
-      });
-  }
-  return map;
-}
 
 export interface TrainingStats {
   sessions: {

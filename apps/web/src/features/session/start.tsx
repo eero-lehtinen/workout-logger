@@ -1,7 +1,7 @@
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -35,7 +35,6 @@ function StartRow(props: {
         )}
       </span>
       {props.note}
-      <ChevronRight size={18} className="shrink-0 text-ink-muted" />
     </button>
   );
 }

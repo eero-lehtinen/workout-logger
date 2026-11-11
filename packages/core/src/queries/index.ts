@@ -56,7 +56,6 @@ export type {
   SubstitutionOptions,
 } from "./exercises.ts";
 export type {
-  CalendarSession,
   ExerciseHistory,
   TrainingStats,
 } from "./history.ts";
@@ -67,6 +66,7 @@ export type {
 } from "./performances.ts";
 export type { RoutineDetail, RoutineItem } from "./routines.ts";
 export type {
+  ListedSession,
   SessionExerciseItem,
   SessionSummary,
   SessionView,

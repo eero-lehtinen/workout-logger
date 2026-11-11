@@ -1,7 +1,7 @@
 import {
   addDays,
-  type CalendarSession,
   type IsoDate,
+  type ListedSession,
   type WeekStart,
   weekOf,
 } from "@workout-logger/core";
@@ -36,7 +36,7 @@ const dayLabel = utc({ weekday: "long", day: "numeric", month: "long" });
 export function MonthCalendar(props: {
   month: string;
   weekStart: WeekStart;
-  sessionsByDate: ReadonlyMap<IsoDate, CalendarSession[]>;
+  sessionsByDate: ReadonlyMap<IsoDate, ListedSession[]>;
   today: IsoDate;
   selected: IsoDate | null;
   onSelect: (date: IsoDate) => void;

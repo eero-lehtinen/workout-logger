@@ -9,7 +9,7 @@ import { formatDuration, formatTime } from "../../lib/format.ts";
 import { useMediaQuery, WIDE } from "../../lib/use-media-query.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { RECENT_LIMIT } from "./running.ts";
-import { SessionRow } from "./session-row.tsx";
+import { SessionRow, spansRoutines } from "./session-row.tsx";
 
 export function TodayPage() {
   const sessions = useDbQuery("recentSessions", { limit: RECENT_LIMIT });
@@ -61,6 +61,7 @@ export function TodayPage() {
                     now={now}
                     idleThresholdS={settings.idle_threshold_s}
                     when="date"
+                    showRoutine={spansRoutines(past)}
                   />
                 </li>
               ))}

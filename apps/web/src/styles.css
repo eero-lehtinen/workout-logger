@@ -107,9 +107,8 @@
 }
 
 /*
- * Lines between a list's rows, inset to the rows' text. A highlighted
- * `.row` (hovered, or the open one) hides the lines on both of its edges,
- * which would otherwise cut through its rounded highlight.
+ * Lines between a list's rows. They sit above the rows, so a highlighted row
+ * keeps them.
  */
 @layer components {
   .dividers > li + li {
@@ -120,13 +119,8 @@
     content: "";
     position: absolute;
     top: 0;
-    inset-inline: var(--divider-inset, 0.75rem);
+    inset-inline: 0;
     border-top: 1px solid var(--rule);
-  }
-
-  .dividers > li:has(.row:hover, .row[data-status="active"])::before,
-  .dividers > li:has(.row:hover, .row[data-status="active"]) + li::before {
-    opacity: 0;
   }
 }
 

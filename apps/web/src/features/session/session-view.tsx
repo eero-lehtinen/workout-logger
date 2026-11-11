@@ -12,7 +12,7 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { Check, ChevronRight, ListOrdered, Pencil, Plus } from "lucide-react";
+import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -214,14 +214,14 @@ function SessionPanel(props: {
             command("moveSessionExercise", { sessionExerciseId, toIndex })
           }
           render={(exercise, _index, handle) => (
-            <div className="flex items-center">
+            <>
               <Link
                 to="/sessions/$sessionId/$sessionExerciseId"
                 params={{
                   sessionId: session.id,
                   sessionExerciseId: exercise.id,
                 }}
-                className={`${rowClass} flex min-w-0 flex-1 items-center gap-3 py-3 data-[status=active]:bg-surface`}
+                className={`${rowClass} flex items-center gap-3 py-3 pr-13 data-[status=active]:bg-surface`}
               >
                 <DoneMark done={exercise.sets.length > 0} />
                 <div className="min-w-0 flex-1">
@@ -247,8 +247,11 @@ function SessionPanel(props: {
                   )}
                 </div>
               </Link>
-              <GripHandle handle={handle} />
-            </div>
+              {/* Over the row's end rather than beside it, so the row's highlight spans the card. */}
+              <div className="absolute inset-y-0 right-1 flex items-center">
+                <GripHandle handle={handle} />
+              </div>
+            </>
           )}
         />
       )}
@@ -372,7 +375,6 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
                   </p>
                 )}
               </div>
-              <ChevronRight size={18} className="shrink-0 text-ink-muted" />
             </Link>
           </li>
         ))}
