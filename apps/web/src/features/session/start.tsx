@@ -61,7 +61,12 @@ export function StartPage() {
     });
     setStarting(false);
     if (sessionId) {
-      await navigate({ to: "/sessions/$sessionId", params: { sessionId } });
+      // In place of the start screen, so back from the session goes to Today.
+      await navigate({
+        to: "/sessions/$sessionId",
+        params: { sessionId },
+        replace: true,
+      });
     }
   }
 

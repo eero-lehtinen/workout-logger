@@ -6,13 +6,14 @@ import {
   ListOrdered,
   Settings,
 } from "lucide-react";
-import { Suspense, useEffect } from "react";
+import { type MouseEvent, Suspense, useEffect } from "react";
 import { KeepScreenAwake } from "../features/session/keep-screen-awake.tsx";
 import { RestBar } from "../features/session/rest-bar.tsx";
 import { useRunningSession } from "../features/session/running.ts";
 import { AccountChoice } from "../features/settings/account-section.tsx";
 import { AutoSnapshot } from "../features/settings/auto-snapshot.tsx";
 import { markAppReady } from "../lib/live-update.ts";
+import { isPlainClick, type Tab, useSwitchTab } from "../lib/navigation.ts";
 import { isNative } from "../lib/platform.ts";
 import { useBackupWarning } from "../lib/server-status.ts";
 import { AppUpdatePrompt } from "./app-update-prompt.tsx";
@@ -68,7 +69,17 @@ export function AppShell() {
   );
 }
 
+function useTabClick() {
+  const switchTab = useSwitchTab();
+  return (tab: Tab) => (e: MouseEvent) => {
+    if (!isPlainClick(e)) return;
+    e.preventDefault();
+    void switchTab(tab);
+  };
+}
+
 function Sidebar() {
+  const onTab = useTabClick();
   return (
     <nav
       aria-label="Main"
@@ -82,6 +93,7 @@ function Sidebar() {
           key={item.to}
           to={item.to}
           activeOptions={{ exact: item.exact }}
+          onClick={onTab(item.to)}
           className="flex h-10 items-center gap-3 rounded-xl px-3 font-medium text-ink-muted hover:bg-surface data-[status=active]:bg-surface data-[status=active]:text-ink"
         >
           <item.icon size={19} />
@@ -95,6 +107,7 @@ function Sidebar() {
 }
 
 function BottomNav() {
+  const onTab = useTabClick();
   return (
     <nav
       aria-label="Main"
@@ -106,6 +119,7 @@ function BottomNav() {
           key={item.to}
           to={item.to}
           activeOptions={{ exact: item.exact }}
+          onClick={onTab(item.to)}
           className="relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-muted data-[status=active]:text-ink"
         >
           <item.icon size={22} />

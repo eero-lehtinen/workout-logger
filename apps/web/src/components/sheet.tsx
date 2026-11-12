@@ -2,6 +2,7 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { useCloseOnBack } from "../lib/navigation.ts";
 import { Button } from "./button.tsx";
 
 const backdropClass =
@@ -17,6 +18,7 @@ export function Sheet(props: {
   title: string;
   children: ReactNode;
 }) {
+  useCloseOnBack(props.open, () => props.onOpenChange(false));
   return (
     <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <Dialog.Portal>
@@ -40,6 +42,7 @@ export function FullScreen(props: {
   title: string;
   children: ReactNode;
 }) {
+  useCloseOnBack(props.open, () => props.onOpenChange(false));
   return (
     <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <Dialog.Portal>
@@ -85,6 +88,7 @@ export function Confirm(props: {
   /** The cancel button only, not Escape or a press outside. */
   onCancel?: () => void;
 }) {
+  useCloseOnBack(props.open, () => props.onOpenChange(false));
   return (
     <AlertDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <AlertDialog.Portal>

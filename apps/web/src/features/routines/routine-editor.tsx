@@ -19,6 +19,7 @@ import { MoreMenu } from "../../components/more-menu.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
+import { useGoBack } from "../../lib/navigation.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { DayCard } from "./day-card.tsx";
 import { ReorderDaysSheet } from "./reorder-days-sheet.tsx";
@@ -116,6 +117,7 @@ function Editor({
   }, [highlightDayId]);
   const command = useCommand();
   const navigate = useNavigate();
+  const goBack = useGoBack();
   const settings = useDbQuery("settings");
   const [pick, setPick] = useState<PickTarget | null>(null);
   const [openSlotId, setOpenSlotId] = useState<string | null>(null);
@@ -310,7 +312,7 @@ function Editor({
                 { routineId: routine.id },
                 { undoLabel: `Deleted ${routine.name}` },
               );
-              await navigate({ to: "/routines" });
+              await goBack(back);
             },
           },
         ]}

@@ -34,6 +34,7 @@ import {
   formatTime,
   todayIso,
 } from "../../lib/format.ts";
+import { useGoBack } from "../../lib/navigation.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { markResumed } from "./running.ts";
@@ -141,6 +142,7 @@ function SessionPanel(props: {
   const settings = useDbQuery("settings");
   const command = useCommand();
   const navigate = useNavigate();
+  const goBack = useGoBack();
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const unit = settings.weight_unit as WeightUnit;
@@ -353,7 +355,7 @@ function SessionPanel(props: {
                 { sessionId: session.id },
                 { undoLabel: "Session deleted" },
               );
-              await navigate({ to: "/" });
+              await goBack(back);
             },
           },
         ]}

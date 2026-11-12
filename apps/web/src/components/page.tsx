@@ -1,7 +1,11 @@
-import { Link, type LinkProps } from "@tanstack/react-router";
+import { Link, type LinkProps, useRouter } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import { isPlainClick, useGoesBack } from "../lib/navigation.ts";
+
+/** Where a screen's back arrow leads, and its accessible name. */
+export type BackTarget = LinkProps & { label: string };
 
 const WIDTHS = {
   narrow: "max-w-2xl",
@@ -71,7 +75,7 @@ export function Screen(props: {
 export function PageHeader(props: {
   title: ReactNode;
   subtitle?: ReactNode;
-  back?: LinkProps & { label: string };
+  back?: BackTarget;
   actions?: ReactNode;
   /** Lets a long title take two lines instead of truncating. */
   wrap?: boolean;
@@ -84,16 +88,7 @@ export function PageHeader(props: {
       className={clsx("pt-[env(safe-area-inset-top)] lg:pt-6", props.className)}
     >
       <div className="flex min-h-14 items-center gap-1 px-2 lg:px-0">
-        {back && (
-          <Link
-            {...back}
-            aria-label={back.label}
-            title={back.label}
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl hover:bg-surface"
-          >
-            <ChevronLeft size={22} />
-          </Link>
-        )}
+        {back && <BackLink back={back} />}
         <div className={clsx("min-w-0 flex-1", !back && "pl-2 lg:pl-0")}>
           <h1
             className={clsx(
@@ -120,6 +115,30 @@ export function PageHeader(props: {
         </div>
       )}
     </header>
+  );
+}
+
+/** Behaves like `useGoBack`; a modified click still opens a new tab. */
+function BackLink(props: { back: BackTarget }) {
+  const { label, ...target } = props.back;
+  const goesBack = useGoesBack(target);
+  const router = useRouter();
+  return (
+    <Link
+      {...target}
+      replace
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        if (goesBack && isPlainClick(e)) {
+          e.preventDefault();
+          router.history.back();
+        }
+      }}
+      className="flex size-10 shrink-0 items-center justify-center rounded-xl hover:bg-surface"
+    >
+      <ChevronLeft size={22} />
+    </Link>
   );
 }
 

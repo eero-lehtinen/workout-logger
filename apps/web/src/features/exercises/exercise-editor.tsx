@@ -19,6 +19,7 @@ import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
+import { useGoBack } from "../../lib/navigation.ts";
 import { backToOrigin, type Origin, originOf } from "./origin.ts";
 
 const route = getRouteApi("/exercises/$exerciseId");
@@ -110,7 +111,8 @@ function ExerciseForm({
   const unit = settings.weight_unit;
   const command = useCommand();
   const navigate = useNavigate();
-  const goBack = () => navigate(back);
+  const returnTo = useGoBack();
+  const goBack = () => returnTo(back);
 
   const [name, setName] = useState(start?.name ?? "");
   const [type, setType] = useState<ExerciseType>(start?.type ?? "weight_reps");

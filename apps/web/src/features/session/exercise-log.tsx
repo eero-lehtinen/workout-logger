@@ -25,6 +25,7 @@ import { Confirm } from "../../components/sheet.tsx";
 import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { formatSessionDate, formatSet, formatTime } from "../../lib/format.ts";
+import { useGoBack } from "../../lib/navigation.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
@@ -68,6 +69,7 @@ function Logger({ log }: { log: ExerciseLog }) {
   const unit = settings.weight_unit;
   const command = useCommand();
   const navigate = useNavigate();
+  const goBack = useGoBack();
   const { exercise } = log;
 
   // Reset the entry to the prefill after each logged or removed set.
@@ -202,6 +204,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     await navigate({
       to: "/sessions/$sessionId/$sessionExerciseId",
       params: { sessionId, sessionExerciseId },
+      replace: true,
     });
   }
 
@@ -211,7 +214,7 @@ function Logger({ log }: { log: ExerciseLog }) {
       { sessionExerciseId: log.sessionExerciseId },
       { undoLabel: `Removed ${exercise.name}` },
     );
-    await navigate({
+    await goBack({
       to: "/sessions/$sessionId",
       params: { sessionId: log.session.id },
     });
@@ -481,6 +484,7 @@ function Logger({ log }: { log: ExerciseLog }) {
             await navigate({
               to: "/sessions/$sessionId/$sessionExerciseId",
               params: { sessionId: log.session.id, sessionExerciseId: id },
+              replace: true,
             });
           }
         }}

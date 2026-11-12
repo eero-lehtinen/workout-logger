@@ -364,6 +364,24 @@ The Android app downloads newer web builds from the server and runs them instead
   - Built around Capgo's service: the update, statistics, and channel URLs default to Capgo's servers and each has to be turned off or redirected.
   - Its manual-update guide leaves checksum and signature checks of a self-hosted bundle to the app.
 
+## Navigation and back
+
+Back (the browser's, and Android's button and gesture, which Capacitor maps
+to the WebView's history) walks the history the app builds, so the app keeps
+that history short and free of loops:
+
+- **Tabs** (`switchTab` in `lib/navigation.ts`) leave Today, then the tab: back from a tab goes to Today, back from Today leaves the app. Switching goes back through the history to the entry after Today and replaces it with the tab.
+- **Back arrows** (`goBack`) go back through the history when the screen was opened from the arrow's target, so the target keeps its filters and scroll position. Otherwise they replace the screen with the target, never push it. Returning after a save or a delete works the same way.
+- **Dialogs** (`Sheet`, `FullScreen`, `Confirm`, through `useCloseOnBack`) push an entry for the same URL while open, so back closes the dialog instead of leaving the screen. Closing a dialog any other way goes back over its entry.
+- **Screens that stand in for another** replace it instead of pushing: a new session replaces the start screen, a substituted exercise the one it replaced.
+
+Each history entry records the path it was pushed from (`from` in the
+history state, `lib/history-stack.ts`); a back arrow compares it with its
+target. A browser `back` or `go` lands later, on `popstate`, so pushes and
+replaces wait for it, e.g. a picker that closes and then opens the logging
+screen. Leaving a screen while one of its dialogs has an entry replaces that
+entry.
+
 ## Charts
 
 - **API.** Screens use `TimeChart` and `BarChart` from `components/chart`, whose props don't mention ECharts. The library is loaded with a dynamic import when a chart first renders, so the logging screens never download it; the PWA precaches it in the background.

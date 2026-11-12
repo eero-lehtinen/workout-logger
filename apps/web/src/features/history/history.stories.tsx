@@ -138,8 +138,9 @@ export const ExerciseHistoryPeriod = pageStory({
       canvas.getByRole("heading", { name: "Records in the last 3 months" }),
     ).toBeVisible();
     await userEvent.click(canvas.getByRole("link", { name: "History" }));
+    await canvas.findByRole("heading", { name: "History" });
     await expect(
-      await canvas.findByRole("button", { name: "3 months", pressed: true }),
+      canvas.getByRole("button", { name: "3 months", pressed: true }),
     ).toBeVisible();
   },
 });
