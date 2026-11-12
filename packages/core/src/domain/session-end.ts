@@ -1,6 +1,6 @@
 import type { SessionEndReason, SessionTable } from "../schema/tables.ts";
 
-export const DEFAULT_IDLE_THRESHOLD_MS = 15 * 60 * 1000;
+export const DEFAULT_IDLE_THRESHOLD_MS = 30 * 60 * 1000;
 
 export type EffectiveEnd =
   | { running: true }
