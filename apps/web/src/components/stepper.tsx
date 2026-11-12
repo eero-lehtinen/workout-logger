@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { Minus, Plus } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface StepperProps {
@@ -22,7 +22,8 @@ export interface StepperProps {
  * While the field has focus it shows the typed text; otherwise `format`.
  * The first character typed after focusing replaces the value, like a
  * select-all, without selecting: on phones a selection brings up handles and
- * the copy/paste bar over the entry panel.
+ * the copy/paste bar over the entry panel. Until then a highlight drawn
+ * behind the number looks like the selection would.
  */
 export function Stepper(props: StepperProps) {
   const { t } = useTranslation();
@@ -30,9 +31,12 @@ export function Stepper(props: StepperProps) {
   const format = props.format ?? String;
   const parse = props.parse ?? parseNumber;
   const [draft, setDraft] = useState<string | null>(null);
-  const fresh = useRef(false);
+  const [fresh, setFresh] = useState(false);
   const text = draft ?? (props.value === null ? "" : format(props.value));
   const large = props.size !== "md";
+  const font = large
+    ? "numerals text-[1.75rem]"
+    : "tabular text-lg font-semibold";
 
   const press = (direction: 1 | -1) => {
     setDraft(null);
@@ -63,35 +67,56 @@ export function Stepper(props: StepperProps) {
             </span>
           )}
         </label>
-        <input
-          id={id}
-          type="text"
-          inputMode={props.inputMode ?? "decimal"}
-          autoComplete="off"
-          enterKeyHint="done"
-          value={text}
-          onFocus={() => {
-            setDraft(text);
-            fresh.current = true;
-          }}
-          onChange={(e) => {
-            const input = e.nativeEvent as InputEvent;
-            const typed = input.inputType?.startsWith("insert")
-              ? input.data
-              : null;
-            const next = fresh.current
-              ? replaceOnInsert(text, e.target.value, typed)
-              : e.target.value;
-            fresh.current = false;
-            setDraft(next);
-            props.onChange(parse(next));
-          }}
-          onBlur={() => setDraft(null)}
-          className={clsx(
-            "h-full w-full min-w-0 bg-transparent text-center text-ink outline-none",
-            large ? "numerals text-[1.75rem]" : "tabular text-lg font-semibold",
+        <div className="relative h-full min-w-0 flex-1">
+          {fresh && text !== "" && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            >
+              <span
+                data-testid="stepper-replace-hint"
+                className={clsx(
+                  "rounded-md bg-rule px-1.5 text-transparent",
+                  font,
+                )}
+              >
+                {text}
+              </span>
+            </span>
           )}
-        />
+          <input
+            id={id}
+            type="text"
+            inputMode={props.inputMode ?? "decimal"}
+            autoComplete="off"
+            enterKeyHint="done"
+            value={text}
+            onFocus={() => {
+              setDraft(text);
+              setFresh(true);
+            }}
+            onChange={(e) => {
+              const input = e.nativeEvent as InputEvent;
+              const typed = input.inputType?.startsWith("insert")
+                ? input.data
+                : null;
+              const next = fresh
+                ? replaceOnInsert(text, e.target.value, typed)
+                : e.target.value;
+              setFresh(false);
+              setDraft(next);
+              props.onChange(parse(next));
+            }}
+            onBlur={() => {
+              setDraft(null);
+              setFresh(false);
+            }}
+            className={clsx(
+              "relative h-full w-full min-w-0 bg-transparent text-center text-ink outline-none",
+              font,
+            )}
+          />
+        </div>
         {props.unit && (
           <span aria-hidden className="shrink-0">
             {props.unit}

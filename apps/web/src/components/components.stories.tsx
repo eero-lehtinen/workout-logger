@@ -40,6 +40,21 @@ export const StepperWeight: StoryObj = {
   },
 };
 
+export const StepperReplaceHint: StoryObj = {
+  render: () => <WeightStepper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Weight in kg");
+    await userEvent.click(input);
+    await expect(canvas.getByTestId("stepper-replace-hint")).toHaveTextContent(
+      "100",
+    );
+    await userEvent.keyboard("8");
+    await expect(input).toHaveValue("8");
+    await expect(canvas.queryByTestId("stepper-replace-hint")).toBeNull();
+  },
+};
+
 export const Markers: StoryObj = {
   render: () => (
     <ul className="flex flex-col gap-2">
