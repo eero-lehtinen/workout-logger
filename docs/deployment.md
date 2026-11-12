@@ -195,7 +195,7 @@ The debug build has its own application id and database, so it never touches the
 
 ## Live updates
 
-The Android app replaces its web build without an APK. It downloads the server's web build as a zip and switches to it from the same origin ([architecture.md](architecture.md#live-updates)). A push to `main` reaches a phone in two steps: the app downloads the build when it starts or returns to the front (at most hourly), and switches the next time it goes to the background with no session running, or at its next cold start.
+The Android app replaces its web build without an APK. It downloads the server's web build as a zip and switches to it from the same origin ([architecture.md](architecture.md#live-updates)). A push to `main` reaches a phone in two steps: the app downloads the build when it starts or returns to the front (at most hourly), and switches the next time it goes to the background with no session running, reopening on the same screen, or at its next cold start.
 
 **Bundle.** `pnpm build` runs `apps/web/scripts/build-bundle.ts` after Vite. It writes `apps/web/live-bundle/`, which the image holds as `web/live-bundle`:
 

@@ -5,6 +5,7 @@ import { appVersion } from "./app-update.ts";
 import { planAfterReady, planUpdate } from "./live-update-plan.ts";
 import { isNative } from "./platform.ts";
 import { SERVER_URL } from "./server.ts";
+import { forgetRoute, rememberRoute, takeRoute } from "./switch-route.ts";
 
 const BUNDLE_URL = `${SERVER_URL}/api/android/bundle`;
 
@@ -184,10 +185,29 @@ export function markAppReady(): void {
 
 /**
  * Switches to the waiting build by reloading the WebView, which loses what
- * is on screen. Only for moments when nothing is in progress.
+ * is on screen apart from the route. Only for moments when nothing is in
+ * progress.
  */
 export async function switchToWaitingBuild(): Promise<void> {
-  await LiveUpdate.reload();
+  rememberRoute(
+    sessionStorage,
+    location.pathname + location.search + location.hash,
+  );
+  try {
+    await LiveUpdate.reload();
+  } catch (error) {
+    forgetRoute(sessionStorage);
+    throw error;
+  }
+}
+
+/**
+ * The route the app was on before the switch reloaded it at the root;
+ * call before the router is created.
+ */
+export function routeBeforeSwitch(): string | null {
+  if (!isNative) return null;
+  return takeRoute(sessionStorage);
 }
 
 /** Checks for a build and switches to it right away. */

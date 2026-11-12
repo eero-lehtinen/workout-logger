@@ -6,12 +6,15 @@ import { SyncRunner } from "./components/sync-runner.tsx";
 import { DatabaseProvider } from "./db/react.tsx";
 import { initAccount } from "./lib/account.ts";
 import { runningInstalled, watchInstall } from "./lib/install.ts";
-import { startLiveUpdates } from "./lib/live-update.ts";
+import { routeBeforeSwitch, startLiveUpdates } from "./lib/live-update.ts";
 import { isNative } from "./lib/platform.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
 import { initTheme } from "./lib/theme.ts";
 import { createAppRouter } from "./router.ts";
 import "./styles.css";
+
+const route = routeBeforeSwitch();
+if (route) history.replaceState(null, "", route);
 
 const router = createAppRouter();
 
