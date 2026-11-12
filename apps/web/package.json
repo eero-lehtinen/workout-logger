@@ -48,6 +48,7 @@
     "@hono/node-server": "^2.1.6",
     "@playwright/test": "^1.65.0",
     "@rolldown/plugin-babel": "^0.3.0",
+    "@sinonjs/fake-timers": "^15.4.0",
     "@storybook/addon-a11y": "^10.6.6",
     "@storybook/addon-vitest": "^10.6.6",
     "@storybook/react-vite": "^10.6.6",

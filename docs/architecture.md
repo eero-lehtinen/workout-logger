@@ -385,7 +385,10 @@ Screen stories don't mock data. They render the real router at a URL over
 `openMemoryDb()`: the real `core` store on an in-memory SQLite in the page,
 seeded with the catalog and filled by fixtures (`apps/web/src/stories/fixtures.ts`)
 through the real commands at past timestamps. Story data therefore can't
-drift from what the queries return.
+drift from what the queries return. `Date` and `Temporal.Now` are faked
+(`@sinonjs/fake-timers`, `apps/web/src/stories/clock.ts`): each story starts
+at the same midday instant, `STORY_NOW`, and the clock ticks from there, so
+screens don't depend on when the tests run.
 
 Storybook keeps the PWA plugin's virtual modules but drops its service worker
 build. Telemetry is disabled.

@@ -1,7 +1,10 @@
 import type { Preview } from "@storybook/react-vite";
+import { resetStoryClock } from "../src/stories/clock.ts";
 import "../src/styles.css";
 
 const preview: Preview = {
+  // Runs before each story's own loaders, which build its fixture.
+  loaders: [resetStoryClock],
   parameters: {
     layout: "fullscreen",
     // Accessibility violations fail the story's test.

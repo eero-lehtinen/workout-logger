@@ -6,6 +6,7 @@ import {
   type OwnerStatus,
   setOwnerStatusForStory,
 } from "../../lib/server-status.ts";
+import { STORY_NOW as NOW } from "../../stories/clock.ts";
 import { empty } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
@@ -14,7 +15,6 @@ export default {
 } satisfies Meta;
 
 const MB = 1024 * 1024;
-const NOW = Date.now();
 
 const owner: AccountUser = {
   id: "owner",
