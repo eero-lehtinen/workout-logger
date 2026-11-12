@@ -14,11 +14,12 @@ import {
   type WeightUnit,
   weeklySets,
 } from "@workout-logger/core";
-import { Pencil } from "lucide-react";
+import { Maximize2, Pencil } from "lucide-react";
 import { useState } from "react";
-import { Button } from "../../components/button.tsx";
+import { Button, IconButton } from "../../components/button.tsx";
 import {
   BarChart,
+  type ChartHeight,
   TimeChart,
   type TimeSeries,
 } from "../../components/chart/index.tsx";
@@ -28,6 +29,7 @@ import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { Select } from "../../components/select.tsx";
+import { FullScreen } from "../../components/sheet.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import {
@@ -206,50 +208,79 @@ function ProgressChart(props: {
     String(mostUsed?.weightKg ?? ""),
   );
   const weightKg = mostUsed ? Number(weight) : undefined;
+  const [fullScreen, setFullScreen] = useState(false);
+  const controls = (
+    <>
+      <Select
+        label="Metric"
+        value={metric}
+        onChange={setMetric}
+        options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
+      />
+      {metric === "reps_at_weight" && (
+        <Select
+          label="Weight"
+          value={weight}
+          onChange={setWeight}
+          options={weights.map((w) => ({
+            value: String(w.weightKg),
+            label: `${formatWeightWithUnit(w.weightKg, unit)} (${w.sessions} ${w.sessions === 1 ? "session" : "sessions"})`,
+          }))}
+        />
+      )}
+      {metric !== "weekly_sets" && metric !== "set_e1rm" && (
+        <span className="flex items-center gap-3">
+          <Switch label="Trend line" checked={trend} onChange={setTrend} />
+          <span aria-hidden className="text-ink-muted">
+            Trend line
+          </span>
+        </span>
+      )}
+    </>
+  );
+  const chart = (height: ChartHeight) =>
+    metric === "weekly_sets" ? (
+      <WeeklySetsChart history={history} from={props.from} height={height} />
+    ) : (
+      <MetricChart
+        history={history}
+        metric={metric}
+        weightKg={weightKg}
+        trend={trend}
+        unit={unit}
+        height={height}
+      />
+    );
   return (
     <section className="px-4 pt-2 lg:px-0">
       <h2 className="sr-only">Progress</h2>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]">
-        <Select
-          label="Metric"
-          value={metric}
-          onChange={setMetric}
-          options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
-        />
-        {metric === "reps_at_weight" && (
-          <Select
-            label="Weight"
-            value={weight}
-            onChange={setWeight}
-            options={weights.map((w) => ({
-              value: String(w.weightKg),
-              label: `${formatWeightWithUnit(w.weightKg, unit)} (${w.sessions} ${w.sessions === 1 ? "session" : "sessions"})`,
-            }))}
-          />
-        )}
-        {metric !== "weekly_sets" && metric !== "set_e1rm" && (
-          <span className="flex items-center gap-3">
-            <Switch label="Trend line" checked={trend} onChange={setTrend} />
-            <span aria-hidden className="text-ink-muted">
-              Trend line
-            </span>
-          </span>
-        )}
+      <div className={controlsClass}>
+        {controls}
+        <IconButton
+          label="Full screen"
+          className="-my-1 ml-auto"
+          onClick={() => setFullScreen(true)}
+        >
+          <Maximize2 size={19} />
+        </IconButton>
       </div>
-      {metric === "weekly_sets" ? (
-        <WeeklySetsChart history={history} from={props.from} />
-      ) : (
-        <MetricChart
-          history={history}
-          metric={metric}
-          weightKg={weightKg}
-          trend={trend}
-          unit={unit}
-        />
-      )}
+      {chart(CHART_HEIGHT)}
+      <FullScreen
+        open={fullScreen}
+        onOpenChange={setFullScreen}
+        title={exercise.name}
+      >
+        <div className="flex min-h-0 flex-1 flex-col px-4 pt-3 pb-4 lg:px-8">
+          <div className={controlsClass}>{controls}</div>
+          {chart("fill")}
+        </div>
+      </FullScreen>
     </section>
   );
 }
+
+const controlsClass =
+  "flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]";
 
 const sessionDate = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
@@ -295,12 +326,15 @@ function chartSeries(
   ];
 }
 
+const CHART_HEIGHT = 360;
+
 function MetricChart(props: {
   history: ExerciseHistory;
   metric: ValueMetric;
   weightKg: number | undefined;
   trend: boolean;
   unit: WeightUnit;
+  height: ChartHeight;
 }) {
   const { history, metric, unit } = props;
   const series = chartSeries(history, metric, props.weightKg, props.trend);
@@ -316,7 +350,7 @@ function MetricChart(props: {
   return (
     <TimeChart
       label={METRIC_LABELS[metric]}
-      height={260}
+      height={props.height}
       series={series}
       formatValue={(v) => formatMetric(metric, v, unit)}
       formatTrend={(perDay) => formatTrendRate(metric, perDay, unit)}
@@ -340,6 +374,7 @@ const average = new Intl.NumberFormat(undefined, {
 function WeeklySetsChart(props: {
   history: ExerciseHistory;
   from: IsoDate | null;
+  height: ChartHeight;
 }) {
   const settings = useDbQuery("settings");
   const { weeks, average: mean } = weeklySets(
@@ -351,7 +386,7 @@ function WeeklySetsChart(props: {
     <BarChart
       label="Sets per week"
       xKind="time"
-      height={260}
+      height={props.height}
       bars={weeks.map((w) => ({ x: dateFromIso(w.week), v: w.count }))}
       formatX={(x) => `Week of ${weekLabel.format(x)}`}
       formatValue={(v) => `${v} ${v === 1 ? "set" : "sets"}`}

@@ -1,5 +1,7 @@
+import { clsx } from "clsx";
 import type { Ref } from "react";
 import { Button } from "../button.tsx";
+import type { ChartHeight } from "./types.ts";
 
 export const DEFAULT_HEIGHT = 240;
 
@@ -9,14 +11,15 @@ export const DEFAULT_HEIGHT = 240;
  */
 export function ChartFrame(props: {
   label: string;
-  height: number | undefined;
+  height: ChartHeight | undefined;
   chartRef?: Ref<HTMLDivElement>;
   onReset?: (() => void) | undefined;
 }) {
+  const fill = props.height === "fill";
   return (
     <div
-      className="relative"
-      style={{ height: props.height ?? DEFAULT_HEIGHT }}
+      className={clsx("relative", fill && "min-h-0 flex-1")}
+      style={fill ? undefined : { height: props.height ?? DEFAULT_HEIGHT }}
     >
       <div
         ref={props.chartRef}

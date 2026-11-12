@@ -5,6 +5,12 @@ import type { ChartColor } from "./theme.ts";
  * so screens don't change if the library does.
  */
 
+/**
+ * CSS pixels, or `fill` for the height a flex column leaves over. Text
+ * below the chart, such as a trend's rate, comes out of that height too.
+ */
+export type ChartHeight = number | "fill";
+
 export interface TimePoint {
   /** Epoch ms. */
   t: number;
@@ -36,8 +42,7 @@ export interface TimeChartProps {
   formatTime: (t: number) => string;
   /** Text for a trend's rate of change per day, e.g. "+0.8 kg per month". */
   formatTrend?: (perDay: number) => string;
-  /** CSS pixels. */
-  height?: number;
+  height?: ChartHeight;
   /** Tapping or clicking a point. */
   onSelect?: (seriesId: string, index: number) => void;
 }
@@ -63,5 +68,5 @@ export interface BarChartProps {
   /** A horizontal line across the chart, e.g. the average. */
   reference?: { value: number; label: string };
   color?: ChartColor;
-  height?: number;
+  height?: ChartHeight;
 }

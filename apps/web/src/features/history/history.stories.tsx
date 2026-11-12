@@ -96,6 +96,33 @@ export const ExerciseHistoryTrend = pageStory({
   },
 });
 
+/** The full-screen chart shares the metric with the page's chart. */
+export const ExerciseHistoryFullScreen = pageStory({
+  fixture: withHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const inline = canvas.getByRole("img", { name: "Best e1RM" });
+    await userEvent.click(canvas.getByRole("button", { name: "Full screen" }));
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole("dialog", {
+      name: "Barbell Bench Press",
+    });
+    const full = await within(dialog).findByRole("img", { name: "Best e1RM" });
+    await expect(full.clientHeight).toBeGreaterThan(inline.clientHeight);
+    await choose(dialog, "Metric", "Sets per week");
+    await expect(
+      await within(dialog).findByRole("img", { name: "Sets per week" }),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Close" }),
+    );
+    await expect(
+      await canvas.findByRole("img", { name: "Sets per week" }),
+    ).toBeVisible();
+  },
+});
+
 /** The period filters the page and carries over to the history tab. */
 export const ExerciseHistoryPeriod = pageStory({
   fixture: withHistory,

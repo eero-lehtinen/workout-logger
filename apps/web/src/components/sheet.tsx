@@ -22,21 +22,49 @@ export function Sheet(props: {
       <Dialog.Portal>
         <Dialog.Backdrop className={backdropClass} />
         <Dialog.Popup className={popupClass}>
-          <div className="flex items-center gap-2 border-b border-rule py-2 pr-2 pl-4">
-            <Dialog.Title className="flex-1 text-lg font-semibold">
-              {props.title}
-            </Dialog.Title>
-            <Dialog.Close
-              aria-label="Close"
-              className="flex size-10 items-center justify-center rounded-xl hover:bg-surface"
-            >
-              <X size={20} />
-            </Dialog.Close>
-          </div>
+          <TitleBar title={props.title} />
           <div className="min-h-0 flex-1 overflow-y-auto">{props.children}</div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/**
+ * Covers the whole window, for content that wants all the room there is.
+ * `children` go in a flex column that doesn't scroll.
+ */
+export function FullScreen(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Popup className="fixed inset-0 z-40 flex flex-col bg-chalk pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-ink outline-none transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0">
+          <TitleBar title={props.title} />
+          <div className="flex min-h-0 flex-1 flex-col">{props.children}</div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function TitleBar(props: { title: string }) {
+  return (
+    <div className="flex items-center gap-2 border-b border-rule py-2 pr-2 pl-4">
+      <Dialog.Title className="flex-1 text-lg font-semibold">
+        {props.title}
+      </Dialog.Title>
+      <Dialog.Close
+        aria-label="Close"
+        className="flex size-10 items-center justify-center rounded-xl hover:bg-surface"
+      >
+        <X size={20} />
+      </Dialog.Close>
+    </div>
   );
 }
 
