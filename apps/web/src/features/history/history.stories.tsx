@@ -3,7 +3,12 @@ import { localDate } from "@workout-logger/core";
 import { exerciseId } from "@workout-logger/exercises";
 import { expect, userEvent, within } from "storybook/test";
 import { deviceTimeZone } from "../../lib/format.ts";
-import { empty, running, withHistory } from "../../stories/fixtures.ts";
+import {
+  empty,
+  running,
+  withBusyDays,
+  withHistory,
+} from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 import { choose } from "../../stories/select.ts";
 
@@ -221,6 +226,21 @@ export const CalendarPc = pageStory({
   fixture: withHistory,
   url: () => `/history?month=${lowerDay().slice(0, 7)}&day=${lowerDay()}`,
   viewport: "pc",
+});
+
+export const CalendarBusyDays = pageStory({
+  fixture: withBusyDays,
+  url: () => `/history?month=${lowerDay().slice(0, 7)}`,
+});
+
+/** Two marks share a day; the third is "+1". */
+export const CalendarBusyDaysPc = pageStory({
+  fixture: withBusyDays,
+  url: () => `/history?month=${lowerDay().slice(0, 7)}`,
+  viewport: "pc",
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("+1")).toBeVisible();
+  },
 });
 
 export const CalendarDark = pageStory({

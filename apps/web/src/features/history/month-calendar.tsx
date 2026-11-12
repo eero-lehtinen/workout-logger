@@ -133,12 +133,12 @@ export function MonthCalendar(props: {
                 {Number(d.slice(8))}
               </span>
               {dots ? (
-                <span className="flex items-center gap-1 pt-0.5">
+                <span className="flex w-full flex-1 items-center justify-center gap-0.5 px-1">
                   {sessions.slice(0, VISIBLE_DOTS).map((s) => (
                     <span
                       key={s.id}
                       className={clsx(
-                        "size-1.5 rounded-full",
+                        "h-1.5 max-w-6 min-w-0 flex-1 rounded-full",
                         dayDotClass(s.dayIndex),
                       )}
                     >
@@ -150,10 +150,12 @@ export function MonthCalendar(props: {
                 sessions.slice(0, VISIBLE_MARKS).map((s) => (
                   <span
                     key={s.id}
-                    // Clipped, not ellipsized: on a phone an ellipsis would
-                    // leave a letter or two, while clipping shows what fits.
+                    // Marks share the height under the day number, so a
+                    // single session fills the day. Long names wrap, and what
+                    // doesn't fit is clipped: an ellipsis in a narrow cell
+                    // would leave only a letter or two.
                     className={clsx(
-                      "w-full overflow-hidden rounded-sm border-l-2 pl-0.5 text-[0.6875rem] leading-4 whitespace-nowrap lg:border-l-[3px] lg:px-1 lg:text-xs lg:leading-5",
+                      "min-h-0 w-full flex-1 overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-sm leading-5 font-medium",
                       dayChipClass(s.dayIndex),
                     )}
                   >

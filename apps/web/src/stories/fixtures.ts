@@ -215,6 +215,30 @@ export const withHistory: Fixture = async (db) => {
 };
 
 /**
+ * History plus ad hoc sessions early on the days of the last two: two
+ * sessions on the last Upper day, three on the last Lower day.
+ */
+export const withBusyDays: Fixture = async (db) => {
+  const ids = await withHistory(db);
+  for (const [daysAgo, extra] of [
+    [5, 1],
+    [3, 2],
+  ] as const) {
+    for (let i = 0; i < extra; i++) {
+      const startedAt = new Date(Date.now() - daysAgo * DAY);
+      startedAt.setHours(1 + i, 0, 0, 0);
+      await session(db, {
+        routineId: null,
+        dayId: null,
+        startedAt: startedAt.getTime(),
+        sets: { side_plank: [seconds(60)] },
+      });
+    }
+  }
+  return ids;
+};
+
+/**
  * History plus an Upper session in progress: bench has a PR and a weight
  * increase logged and a third set to go, rows have set records.
  */
