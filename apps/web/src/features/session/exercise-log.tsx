@@ -18,7 +18,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, quietButtonClass } from "../../components/button.tsx";
+import {
+  Button,
+  IconButton,
+  quietButtonClass,
+} from "../../components/button.tsx";
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -372,9 +376,14 @@ function Logger({ log }: { log: ExerciseLog }) {
           />
           {editing ? (
             <div className="flex gap-2">
-              <Button variant="danger" size="lg" onClick={deleteEdited}>
-                {t("session.log.deleteSet")}
-              </Button>
+              <IconButton
+                label={t("session.log.deleteSet")}
+                variant="danger"
+                size="lg"
+                onClick={deleteEdited}
+              >
+                <Trash2 size={22} />
+              </IconButton>
               <Button
                 variant="primary"
                 size="lg"
