@@ -96,7 +96,7 @@ export const SlotNoteAndRest = pageStory({
     const row = canvas.getByRole("button", {
       name: /^Bench Press \(Barbell\)/,
     });
-    await expect(row).toHaveTextContent("1 alternative");
+    await expect(row).toHaveTextContent("or Bench Press (Dumbbell)");
     await userEvent.click(row);
     const sheet = within(
       await body.findByRole("dialog", { name: "Bench Press (Barbell)" }),
@@ -113,7 +113,9 @@ export const SlotNoteAndRest = pageStory({
     await expect(note).toHaveValue("heavy, 6-10");
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
-      expect(row).toHaveTextContent("1 alternative · heavy, 6-10 · Rest 3:00"),
+      expect(row).toHaveTextContent(
+        "heavy, 6-10 · Rest 3:00 · or Bench Press (Dumbbell)",
+      ),
     );
   },
 });
