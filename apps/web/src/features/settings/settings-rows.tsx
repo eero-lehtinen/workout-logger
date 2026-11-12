@@ -28,7 +28,7 @@ export function Row(props: {
         props.stacked ? "flex-col lg:flex-row lg:items-center" : "items-center",
       )}
     >
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 wrap-anywhere">
         <p className="font-medium">{props.label}</p>
         {props.hint && <p className="text-sm text-ink-muted">{props.hint}</p>}
       </div>
