@@ -1,6 +1,11 @@
 import type { Preview } from "@storybook/react-vite";
+import { configure } from "storybook/test";
 import { resetStoryClock } from "../src/stories/clock.ts";
 import "../src/styles.css";
+
+// The first navigation to a route makes Vite transform its lazily split
+// chunk, which on a cold CI runner takes longer than the default 1 s.
+configure({ asyncUtilTimeout: 5_000 });
 
 const preview: Preview = {
   // Runs before each story's own loaders, which build its fixture.
