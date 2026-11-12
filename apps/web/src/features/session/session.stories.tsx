@@ -369,12 +369,27 @@ async function expectNoteBeforeEarlier(canvasElement: HTMLElement) {
   await expectBefore(addNote, earlier);
 
   await userEvent.click(addNote);
-  const notes = canvas.getByRole("textbox", {
-    name: "Notes on Barbell Bench Press in this session",
+  const notes = () =>
+    canvas.queryByRole("textbox", {
+      name: "Notes on Barbell Bench Press in this session",
+    });
+  await expectBefore(notes() as HTMLElement, earlier);
+
+  // Pressing blurs the empty note. The release goes to whatever is under the
+  // pointer by then, as in a browser, so the press must not move the row.
+  const box = earlier.getBoundingClientRect();
+  const user = userEvent.setup();
+  await user.pointer({ keys: "[MouseLeft>]", target: earlier });
+  const under = canvasElement.ownerDocument.elementFromPoint(
+    box.x + box.width / 2,
+    box.y + box.height / 2,
+  );
+  await user.pointer({
+    keys: "[/MouseLeft]",
+    target: under as HTMLElement,
   });
-  await expectBefore(notes, earlier);
-  await userEvent.keyboard("Elbow ok");
-  await userEvent.click(earlier);
+  await expect(earlier).toHaveAttribute("aria-expanded", "true");
+  await waitFor(() => expect(notes()).toBeNull());
   const [earlierSet] = canvas.getAllByRole("button", {
     name: /^Use set 1 95 × 8 from/,
   });

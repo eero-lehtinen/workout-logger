@@ -429,7 +429,22 @@ function Logger({ log }: { log: ExerciseLog }) {
                 notes,
               })
             }
-            onBlur={(text) => text === "" && setAddingNote(false)}
+            onBlur={(text) => {
+              if (text !== "") return;
+              // A press blurs the field before its click. Closing the field
+              // then would move the buttons below it from under the pointer,
+              // and the click would miss.
+              const done = new AbortController();
+              const close = () => {
+                done.abort();
+                if (!(document.activeElement instanceof HTMLTextAreaElement)) {
+                  setAddingNote(false);
+                }
+              };
+              const { signal } = done;
+              document.addEventListener("click", close, { signal });
+              document.addEventListener("keyup", close, { signal });
+            }}
             className="mt-4"
           />
         )}
