@@ -206,8 +206,9 @@ function StepButton(props: {
 }
 
 /**
- * Whether the hold's `tick`th tick (0 is the press, then one every
- * `REPEAT_TICK_MS`) steps. Repeats start slow enough to stop on a value
+ * Whether the hold's `tick`th tick steps. Tick 0 is the press; the hook
+ * waits 400 ms and then ticks every `REPEAT_TICK_MS`, so tick 1 comes
+ * 450 ms after the press. Repeats start slow enough to stop on a value
  * and speed up the longer the button is held: every 150 ms for the first
  * second, every 100 ms for the next, then every tick.
  */
