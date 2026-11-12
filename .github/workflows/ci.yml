@@ -113,7 +113,7 @@ jobs:
           git log --no-merges --format='- %s' --extended-regexp --grep='^(feat|fix)(\(.+\))?!?:' \
             ${previous:+"$previous.."}"$GITHUB_REF_NAME" > "$notes"
           if [ ! -s "$notes" ]; then echo "No user-facing changes." > "$notes"; fi
-          gh release create "$GITHUB_REF_NAME" "$apk" --verify-tag --notes-file "$notes"
+          gh release create "$GITHUB_REF_NAME" "$apk" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$notes"
   image:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
