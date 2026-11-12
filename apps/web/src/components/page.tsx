@@ -8,11 +8,16 @@ import { isPlainClick, useGoesBack } from "../lib/navigation.ts";
 export type BackTarget = LinkProps & { label: string };
 
 const WIDTHS = {
-  narrow: "max-w-2xl",
-  medium: "max-w-3xl",
-  wide: "max-w-6xl",
-  /** Fills its pane, e.g. the session list next to the logging pane. */
-  pane: "",
+  narrow: "mx-auto max-w-2xl lg:px-8",
+  medium: "mx-auto max-w-3xl lg:px-8",
+  wide: "mx-auto max-w-6xl lg:px-8",
+  /** Fills its pane: the session list beside the logging pane. */
+  listPane: "lg:px-6",
+  /**
+   * The logging pane, at the start of its pane on PC so it sits next to the
+   * session list. `SessionPanes` sizes the panes to center the two.
+   */
+  logPane: "mx-auto max-w-2xl lg:ml-0 lg:px-8",
 } as const;
 
 /**
@@ -31,11 +36,7 @@ export function Screen(props: {
   /** `bottom` pushes a short body to the bottom on phones, in thumb reach. */
   align?: "top" | "bottom";
 }) {
-  const width = clsx(
-    "mx-auto w-full",
-    props.width === "pane" ? "lg:px-6" : "lg:px-8",
-    WIDTHS[props.width ?? "wide"],
-  );
+  const width = clsx("w-full", WIDTHS[props.width ?? "wide"]);
   return (
     <div className="flex h-full min-h-0 flex-col [timeline-scope:--screen]">
       <div className="z-10 shrink-0 bg-chalk scroll-edge">

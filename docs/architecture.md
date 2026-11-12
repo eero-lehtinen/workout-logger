@@ -4,7 +4,8 @@ The UI targets two screens: logging is phone-first, while history, routine
 editing, settings, and charts must be comfortable on a PC screen.
 Narrow screens get one pane with bottom navigation; wide screens (Tailwind
 `lg`) get a sidebar and side-by-side panes, e.g. the session's exercise list
-next to the logging pane.
+next to the logging pane, their content centered together like a single
+screen's.
 
 The window never scrolls. Every screen is a `Screen`: a fixed header, a body
 that alone scrolls, and an optional fixed footer (the set entry while

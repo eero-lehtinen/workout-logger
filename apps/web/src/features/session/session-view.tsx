@@ -80,12 +80,13 @@ function SessionPanes(props: { view: SessionView; logging: boolean }) {
     );
   }
   // Wide screens: the list and the logging pane side by side, each scrolling
-  // on its own.
+  // on its own. An empty first column centers their content (24rem + 42rem).
+  // The list's left border overlaps the sidebar's while that column is empty.
   return (
-    <div className="h-full lg:grid lg:grid-cols-[24rem_minmax(0,1fr)]">
+    <div className="h-full lg:grid lg:grid-cols-[max(0rem,calc(50%-33rem))_24rem_minmax(0,1fr)]">
       <div
         className={clsx(
-          "h-full lg:border-r lg:border-rule",
+          "h-full lg:col-start-2 lg:-ml-px lg:border-x lg:border-rule",
           logging && "hidden lg:block",
         )}
       >
@@ -126,7 +127,7 @@ function useReadOnly(view: SessionView, editing: boolean): boolean {
 /** The right-hand pane on wide screens before an exercise is picked. */
 export function SessionIndex() {
   return (
-    <p className="hidden pt-32 text-center text-ink-muted lg:block">
+    <p className="hidden max-w-2xl pt-32 text-center text-ink-muted lg:block">
       Pick an exercise to log its sets.
     </p>
   );
@@ -178,7 +179,7 @@ function SessionPanel(props: {
   return (
     <Screen
       scrollId="session"
-      width={readOnly ? "narrow" : "pane"}
+      width={readOnly ? "narrow" : "listPane"}
       header={
         <PageHeader
           title={session.dayName ?? "Ad hoc session"}

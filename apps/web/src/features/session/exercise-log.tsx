@@ -55,7 +55,7 @@ export function ExerciseLogPage() {
           />
         }
         scrollId="exercise-removed"
-        width="narrow"
+        width="logPane"
       >
         <Empty>This exercise was removed from the session.</Empty>
       </Screen>
@@ -329,7 +329,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     <Screen
       header={header}
       scrollId="logging"
-      width="narrow"
+      width="logPane"
       footer={
         <div className="flex flex-col gap-3 px-4 py-3 lg:px-0">
           {editing ? (
