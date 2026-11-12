@@ -412,8 +412,12 @@ export const RemoveFromSession = pageStory({
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
-      await canvas.findByRole("button", { name: "Remove from session" }),
+      await canvas.findByRole("button", { name: "More actions" }),
+    );
+    await userEvent.click(
+      await body.findByRole("menuitem", { name: "Remove from session" }),
     );
     await canvas.findByRole("heading", { name: "Upper" });
     await waitFor(() =>
@@ -427,13 +431,23 @@ export const EditNotes = pageStory({
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(
-      await canvas.findByRole("textbox", {
+    const exerciseNotes = () =>
+      canvas.queryByRole("textbox", {
         name: /^Notes on Bench Press .* in this session$/,
-      }),
-      "Elbow ok",
-    );
+      });
+    const addNote = await canvas.findByRole("button", { name: "Add note" });
+    await expect(exerciseNotes()).toBeNull();
+
+    // Leaving an opened note empty closes it again.
+    await userEvent.click(addNote);
+    await expect(exerciseNotes()).toHaveFocus();
     await userEvent.tab();
+    await expect(exerciseNotes()).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add note" }));
+    await userEvent.keyboard("Elbow ok");
+    await userEvent.tab();
+    await expect(exerciseNotes()).toHaveValue("Elbow ok");
     await userEvent.click(
       canvas.getByRole("link", { name: "Back to session" }),
     );

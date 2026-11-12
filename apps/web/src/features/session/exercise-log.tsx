@@ -8,21 +8,23 @@ import {
   type SetValues,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { ArrowLeftRight, ChartLine, ChevronDown, Pencil } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ChartLine,
+  ChevronDown,
+  NotebookPen,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, dangerAlignClass } from "../../components/button.tsx";
+import { Button } from "../../components/button.tsx";
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
-import {
-  formatSessionDate,
-  formatSet,
-  formatTime,
-  setUnit,
-} from "../../lib/format.ts";
+import { formatSessionDate, formatSet, formatTime } from "../../lib/format.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
@@ -137,6 +139,8 @@ function Logger({ log }: { log: ExerciseLog }) {
     { running: false }
   > | null>(null);
   const [showEarlier, setShowEarlier] = useState(false);
+  const [addingNote, setAddingNote] = useState(false);
+  const showNotes = addingNote || log.notes !== "";
   const values = setFromEntry(entry, exercise.type, unit);
 
   async function logInto(
@@ -201,6 +205,24 @@ function Logger({ log }: { log: ExerciseLog }) {
     });
   }
 
+  async function removeFromSession() {
+    await command(
+      "removeSessionExercise",
+      { sessionExerciseId: log.sessionExerciseId },
+      { undoLabel: `Removed ${exercise.name}` },
+    );
+    await navigate({
+      to: "/sessions/$sessionId",
+      params: { sessionId: log.session.id },
+    });
+  }
+  const removeItem = {
+    label: "Remove from session",
+    icon: <Trash2 size={18} />,
+    danger: true,
+    onClick: () => void removeFromSession(),
+  };
+
   const previous = log.previous[0];
   const earlier = log.previous.slice(1);
 
@@ -259,6 +281,7 @@ function Logger({ log }: { log: ExerciseLog }) {
                   icon: <ArrowLeftRight size={18} />,
                   onClick: () => setSubstituting(true),
                 },
+                removeItem,
               ]}
             />
           </>
@@ -288,14 +311,13 @@ function Logger({ log }: { log: ExerciseLog }) {
             <ArrowLeftRight size={20} />
           </button>
         </IconTip>
+        <MoreMenu label="More actions" items={[removeItem]} />
       </div>
-      {log.slotNote && (
-        <p className="px-4 pb-1 font-medium lg:px-0">{log.slotNote}</p>
-      )}
-      {exercise.notes && (
-        <p className="px-4 pb-1 text-sm text-ink-muted lg:px-0">
-          {exercise.notes}
-        </p>
+      {(log.slotNote || exercise.notes) && (
+        <div className="flex flex-col gap-1 px-4 pb-3 text-ink-muted lg:px-0">
+          {log.slotNote && <p className="font-medium">{log.slotNote}</p>}
+          {exercise.notes && <p className="text-sm">{exercise.notes}</p>}
+        </div>
       )}
     </>
   );
@@ -380,13 +402,13 @@ function Logger({ log }: { log: ExerciseLog }) {
           onStopEditing={() => setEditing(null)}
           onCopy={fillFrom}
         />
-        {earlier.length > 0 && (
-          <div className="mt-4">
+        <div className="mt-3 flex flex-wrap gap-x-5">
+          {earlier.length > 0 && (
             <button
               type="button"
               onClick={() => setShowEarlier(!showEarlier)}
               aria-expanded={showEarlier}
-              className="flex h-10 items-center gap-1 text-[0.9375rem] font-medium text-ink-muted hover:text-ink"
+              className={toggleClass}
             >
               <ChevronDown
                 size={18}
@@ -397,55 +419,52 @@ function Logger({ log }: { log: ExerciseLog }) {
               />
               Earlier sessions
             </button>
-            {showEarlier && (
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-5 pt-2 pb-2 sm:grid-cols-3">
-                {earlier.map((p) => (
-                  <EarlierPerformance
-                    key={p.sessionId}
-                    performance={p}
-                    log={log}
-                    unit={unit}
-                    onCopy={fillFrom}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
+          {!showNotes && (
+            <button
+              type="button"
+              onClick={() => setAddingNote(true)}
+              className={toggleClass}
+            >
+              <NotebookPen size={17} />
+              Add note
+            </button>
+          )}
+        </div>
+        {showEarlier && (
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-5 pt-2 pb-2 sm:grid-cols-3">
+            {earlier.map((p) => (
+              <EarlierPerformance
+                key={p.sessionId}
+                performance={p}
+                log={log}
+                unit={unit}
+                onCopy={fillFrom}
+              />
+            ))}
+          </ul>
         )}
         {!previous && log.sets.length === 0 && (
           <p className="pt-4 text-[0.9375rem] text-ink-muted">
             First time logging this exercise.
           </p>
         )}
-        <NotesField
-          label={`Notes on ${exercise.name} in this session`}
-          value={log.notes}
-          placeholder="Notes on this exercise today"
-          onSave={(notes) =>
-            command("updateSessionExerciseNotes", {
-              sessionExerciseId: log.sessionExerciseId,
-              notes,
-            })
-          }
-          className="mt-6"
-        />
-        <Button
-          variant="danger"
-          className={`mt-6 ${dangerAlignClass}`}
-          onClick={async () => {
-            await command(
-              "removeSessionExercise",
-              { sessionExerciseId: log.sessionExerciseId },
-              { undoLabel: `Removed ${exercise.name}` },
-            );
-            await navigate({
-              to: "/sessions/$sessionId",
-              params: { sessionId: log.session.id },
-            });
-          }}
-        >
-          Remove from session
-        </Button>
+        {showNotes && (
+          <NotesField
+            label={`Notes on ${exercise.name} in this session`}
+            value={log.notes}
+            placeholder="Notes on this exercise today"
+            focusOnMount={addingNote && log.notes === ""}
+            onSave={(notes) =>
+              command("updateSessionExerciseNotes", {
+                sessionExerciseId: log.sessionExerciseId,
+                notes,
+              })
+            }
+            onBlur={(text) => text === "" && setAddingNote(false)}
+            className="mt-4"
+          />
+        )}
       </div>
 
       <ExercisePicker
@@ -487,6 +506,9 @@ function Logger({ log }: { log: ExerciseLog }) {
   );
 }
 
+const toggleClass =
+  "flex h-10 items-center gap-1.5 text-[0.9375rem] font-medium text-ink-muted hover:text-ink";
+
 /**
  * Today's sets next to last time's, row by row. Set n is judged against set
  * n of the previous performance, so the pairing is the comparison.
@@ -503,7 +525,6 @@ function Ledger(props: {
   const { log, unit } = props;
   const previous = log.previous[0];
   const rows = Math.max(log.sets.length + 1, previous?.sets.length ?? 0);
-  const suffix = setUnit(log.exercise.type, unit);
 
   return (
     <table className="w-full table-fixed border-collapse">
@@ -556,14 +577,14 @@ function Ledger(props: {
                   <button
                     type="button"
                     onClick={props.onStopEditing}
-                    className="-ml-2 flex h-12 items-center rounded-xl px-2 text-ink-muted hover:bg-surface hover:text-ink"
+                    className="-ml-2 flex h-12 items-center rounded-xl px-2 text-2xl text-ink-muted hover:bg-surface hover:text-ink"
                   >
                     <span className="sr-only">Stop editing, back to the </span>
                     next
                     <span className="sr-only"> set</span>
                   </button>
                 ) : (
-                  <span className="flex h-12 items-center text-ink-muted">
+                  <span className="flex h-12 items-center text-2xl text-ink-muted">
                     {isNext ? "next" : ""}
                   </span>
                 )}
@@ -594,11 +615,6 @@ function Ledger(props: {
           );
         })}
       </tbody>
-      {suffix && (
-        <caption className="caption-bottom pt-1 text-left text-xs text-ink-muted">
-          Weights in {suffix}. Tap last time's set to use it.
-        </caption>
-      )}
     </table>
   );
 }
