@@ -6,6 +6,7 @@ import {
   idleEnded,
   inPounds,
   running,
+  substituted,
   timed,
   timersOff,
   withHistory,
@@ -245,6 +246,65 @@ export const LoggingPc = pageStory({
     const tip = await body.findByText("Edit exercise");
     await waitFor(() => expect(tip).toBeVisible());
   },
+});
+
+/** Visible copies only: on phones the session list stays mounted, hidden. */
+async function expectNamedOriginal(canvasElement: HTMLElement, count: number) {
+  const canvas = within(canvasElement);
+  await canvas.findByRole("button", { name: "Log set 1" });
+  const named = canvas
+    .getAllByText(
+      (_, el) => el?.textContent === "Instead of Overhead Press (Barbell)",
+    )
+    .filter((el) => el.checkVisibility());
+  await expect(named).toHaveLength(count);
+}
+
+/**
+ * The logging screen names the slot's default exercise, as the session list
+ * does, and pressing it reopens the substitution picker.
+ */
+export const LoggingSubstitute = pageStory({
+  fixture: substituted,
+  url: (ids) => `/sessions/${ids.sessionId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      canvas.getByRole("link", {
+        name: "Not started Seated Shoulder Press (Dumbbell) Instead of Overhead Press (Barbell)",
+      }),
+    );
+    await expectNamedOriginal(canvasElement, 1);
+
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Instead of Overhead Press (Barbell)",
+      }),
+    );
+    const picker = await body.findByRole("dialog", {
+      name: "Instead of Seated Shoulder Press (Dumbbell)",
+    });
+    await userEvent.click(
+      await within(picker).findByRole("button", {
+        name: /^Overhead Press \(Barbell\)/,
+      }),
+    );
+    await expect(
+      await canvas.findByRole("heading", { name: "Overhead Press (Barbell)" }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: /^Instead of/ }),
+    ).toBeNull();
+  },
+});
+
+/** Beside the session list, which names it too. */
+export const LoggingSubstitutePc = pageStory({
+  fixture: substituted,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.substituteId}`,
+  viewport: "pc",
+  play: async ({ canvasElement }) => expectNamedOriginal(canvasElement, 2),
 });
 
 export const LoggingDark = pageStory({
