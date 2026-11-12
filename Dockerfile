@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 ENV CI=true
 WORKDIR /repo
 
@@ -24,7 +24,7 @@ RUN pnpm --filter @workout-logger/server build
 RUN pnpm --filter @workout-logger/server deploy --prod /out/server
 
 
-FROM node:24-slim
+FROM node:26-slim
 ENV NODE_ENV=production PORT=3000 DATABASE_PATH=/data/app.db
 WORKDIR /app
 

@@ -206,7 +206,7 @@ choices are remembered on the device. Exercises open their history screen;
 a History tab holds the calendar and the frequency stats; past sessions open
 read-only.
 Only routines can be archived: days and slots have no archived flag, and
-deleting them is undoable. Dates use `Temporal`, so tests need Node 26.
+deleting them is undoable. Dates use `Temporal`, so everything needs Node 26.
 
 ## Phase 8: Measurements (M)
 

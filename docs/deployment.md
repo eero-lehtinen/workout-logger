@@ -118,7 +118,7 @@ few seconds. A stuck run for an older commit would roll production back, so
 cancel it, or push to `main` so that its run cancels the older one through
 the workflow's concurrency group.
 
-The image is two stages on `node:24-slim`. The build stage installs the
+The image is two stages on `node:26-slim`, the Node version CI tests on. The build stage installs the
 workspace from the lockfile, builds the web app, bundles the server, and
 `pnpm deploy`s the server package with production dependencies only. The
 runtime stage holds the server, `web/dist`, and `web/live-bundle`, runs as
