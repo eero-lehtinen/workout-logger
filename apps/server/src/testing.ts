@@ -67,7 +67,6 @@ export async function openTestApp(
     webRoot: "unused",
     bundleRoot: "unused",
     databasePath: ":memory:",
-    backupsConfigured: false,
     ...appOverrides,
     db: database.db,
     auth,

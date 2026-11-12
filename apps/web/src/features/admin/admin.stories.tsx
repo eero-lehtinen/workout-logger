@@ -1,7 +1,11 @@
 import type { Meta } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { type AccountUser, setAccountForStory } from "../../lib/account.ts";
-import type { AdminUser, AdminUsers } from "../../lib/admin-api.ts";
+import type {
+  AdminUser,
+  AdminUsers,
+  BackupStorage,
+} from "../../lib/admin-api.ts";
 import {
   type OwnerStatus,
   setOwnerStatusForStory,
@@ -100,8 +104,24 @@ const healthy: OwnerStatus = {
   },
 };
 
-/** The owner, with the server answering `/api/admin/*` from `users`. */
-function asOwner(status: OwnerStatus = healthy) {
+const storage: BackupStorage = {
+  bytes: 330 * MB,
+  objects: 11,
+  groups: [
+    { prefix: "daily", bytes: 210 * MB, objects: 7 },
+    { prefix: "monthly", bytes: 90 * MB, objects: 3 },
+    { prefix: "pre-migration", bytes: 30 * MB, objects: 1 },
+  ],
+};
+
+/**
+ * The owner, with the server answering `/api/admin/*` from `users` and
+ * `storage`; a null `storage` makes the bucket listing fail.
+ */
+function asOwner(
+  status: OwnerStatus = healthy,
+  backupStorage: BackupStorage | null = storage,
+) {
   return () => {
     requests.mockClear();
     setAccountForStory({ status: "signed-in", user: owner, offline: false });
@@ -111,6 +131,14 @@ function asOwner(status: OwnerStatus = healthy) {
         const url = String(input);
         requests(init?.method ?? "GET", url, init?.body ?? null);
         if (url.endsWith("/api/admin/users")) return Response.json(users);
+        if (url.endsWith("/api/admin/backup-storage")) {
+          return backupStorage
+            ? Response.json(backupStorage)
+            : Response.json(
+                { error: "backup_listing_failed" },
+                { status: 502 },
+              );
+        }
         if (url.includes("/api/admin/"))
           return new Response(null, { status: 204 });
         return new Response(null, { status: 404 });
@@ -139,6 +167,12 @@ export const Overview = {
       await expect(canvas.getByText("20 GB")).toBeVisible();
       await expect(canvas.getByText("just now")).toBeVisible();
       await expect(canvas.getByText("5 hours ago")).toBeVisible();
+      await expect(await canvas.findByText("330 MB")).toBeVisible();
+      await expect(
+        canvas.getByText(
+          /: 7 daily \(210 MB\), 3 monthly \(90 MB\), 1 pre-migration \(30 MB\)\./,
+        ),
+      ).toBeVisible();
       await expect(
         canvas.getByText(/^1\.8 MB of 10 MB stored · 120 kB of 5 MB today/),
       ).toBeVisible();
@@ -158,7 +192,10 @@ export const OverviewPc = {
   beforeEach: asOwner(),
 };
 
-/** A stale layer and the job's last error; over 700 MB, R2's free tier is close. */
+/**
+ * A stale layer and the job's last error; over 700 MB, R2's free tier is
+ * close. The bucket can't be listed.
+ */
 export const ServerTrouble = {
   ...pageStory({
     fixture: empty,
@@ -169,22 +206,31 @@ export const ServerTrouble = {
       await expect(await canvas.findByText(/^Over 700 MB,/)).toBeVisible();
       await expect(canvas.getByText("Stale · 3 days ago")).toBeVisible();
       await expect(canvas.getByText("Last run failed: R2 down")).toBeVisible();
+      await expect(
+        await canvas.findByText(
+          "Couldn't list the bucket: The server answered 502",
+        ),
+      ).toBeVisible();
+      await expect(canvas.getByText("Unknown")).toBeVisible();
     },
   }),
-  beforeEach: asOwner({
-    ...healthy,
-    backupsOk: false,
-    databaseBytes: 720 * MB,
-    backups: {
-      ...healthy.backups,
-      dailyCopy: {
-        configured: true,
-        lastOkAt: NOW - 3 * 24 * 60 * 60 * 1000,
-        stale: true,
-        lastError: "R2 down",
+  beforeEach: asOwner(
+    {
+      ...healthy,
+      backupsOk: false,
+      databaseBytes: 720 * MB,
+      backups: {
+        ...healthy.backups,
+        dailyCopy: {
+          configured: true,
+          lastOkAt: NOW - 3 * 24 * 60 * 60 * 1000,
+          stale: true,
+          lastError: "R2 down",
+        },
       },
     },
-  }),
+    null,
+  ),
 };
 
 /** Overrides are entered in MB; an empty field is the default. */

@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch";
+import { XMLParser } from "fast-xml-parser";
 
 export interface R2Config {
   /** `https://<account id>.r2.cloudflarestorage.com` */
@@ -8,9 +9,15 @@ export interface R2Config {
   secretAccessKey: string;
 }
 
+export interface StoredObject {
+  key: string;
+  size: number;
+}
+
 /** Where backup files go. An interface so tests can keep them in memory. */
 export interface BackupStore {
   put(key: string, body: Uint8Array): Promise<void>;
+  list(): Promise<StoredObject[]>;
 }
 
 export function r2Store(config: R2Config): BackupStore {
@@ -35,5 +42,45 @@ export function r2Store(config: R2Config): BackupStore {
         );
       }
     },
+
+    async list() {
+      const objects: StoredObject[] = [];
+      let token: string | undefined;
+      do {
+        const url = new URL(base);
+        url.searchParams.set("list-type", "2");
+        if (token) url.searchParams.set("continuation-token", token);
+        const res = await client.fetch(url.toString());
+        if (!res.ok) {
+          throw new Error(
+            `R2 listing failed: ${res.status} ${await res.text()}`,
+          );
+        }
+        const page = parseListPage(await res.text());
+        objects.push(...page.objects);
+        token = page.nextToken;
+      } while (token);
+      return objects;
+    },
+  };
+}
+
+const listParser = new XMLParser({
+  parseTagValue: false,
+  isArray: (name) => name === "Contents",
+});
+
+/** One page of an S3 `ListObjectsV2` response. */
+export function parseListPage(xml: string): {
+  objects: StoredObject[];
+  nextToken: string | undefined;
+} {
+  const result = listParser.parse(xml)?.ListBucketResult;
+  if (!result) throw new Error("R2 listing: not a ListBucketResult");
+  const contents: { Key: string; Size: string }[] = result.Contents ?? [];
+  return {
+    objects: contents.map((c) => ({ key: c.Key, size: Number(c.Size) })),
+    nextToken:
+      result.IsTruncated === "true" ? result.NextContinuationToken : undefined,
   };
 }

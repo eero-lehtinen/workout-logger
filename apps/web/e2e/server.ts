@@ -26,7 +26,6 @@ export async function ownServer() {
     auth,
     limitCache,
     databasePath: config.databasePath,
-    backupsConfigured: false,
   });
   const server = serve({ fetch: app.fetch, port: 0 });
   await new Promise((resolve) => server.once("listening", resolve));

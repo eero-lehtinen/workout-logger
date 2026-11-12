@@ -21,7 +21,7 @@ const app = createApp({
   auth,
   limitCache,
   databasePath: config.databasePath,
-  backupsConfigured: backups !== undefined,
+  backups,
   litestreamSocket: config.litestreamSocket,
   minClientVersion: config.minClientVersion,
 });

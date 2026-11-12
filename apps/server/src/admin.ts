@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { sql } from "kysely";
 import { deleteAccount } from "./account-deletion.ts";
 import { type AuthEnv, requireOwner } from "./auth/middleware.ts";
+import type { BackupStore } from "./backup/r2.ts";
+import { summarizeStorage } from "./backup/storage.ts";
 import type { ServerKysely } from "./db/database.ts";
 import { DEFAULT_MAX_ACCOUNTS, type LimitCache } from "./limit-cache.ts";
 import {
@@ -131,6 +133,7 @@ function parseOverrides(body: unknown): QuotaOverrides | null {
 export function adminRoutes(
   db: ServerKysely,
   limitCache: LimitCache,
+  backups: BackupStore | undefined,
   now: () => number = Date.now,
 ) {
   const app = new Hono<AuthEnv>();
@@ -144,6 +147,21 @@ export function adminRoutes(
       defaultMaxAccounts: DEFAULT_MAX_ACCOUNTS,
     } satisfies AdminUsers),
   );
+
+  /**
+   * The DB copies in the backup bucket; null when none is configured. Not on
+   * `/api/status`: a listing is a billed R2 operation, and the status is
+   * fetched far more often than this page is opened.
+   */
+  app.get("/backup-storage", async (c) => {
+    if (!backups) return c.json(null);
+    try {
+      return c.json(summarizeStorage(await backups.list()));
+    } catch (e) {
+      console.error("Backup storage listing failed:", e);
+      return c.json({ error: "backup_listing_failed" }, 502);
+    }
+  });
 
   /** The account cap; null is the default. Below the account count, it only stops sign-ups. */
   app.put("/limits", async (c) => {

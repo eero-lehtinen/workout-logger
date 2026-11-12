@@ -20,6 +20,7 @@ import {
   requireUser,
 } from "./auth/middleware.ts";
 import { nativeAuthRoutes } from "./auth/native-auth.ts";
+import type { BackupStore } from "./backup/r2.ts";
 import type { ServerKysely } from "./db/database.ts";
 import type { LimitCache } from "./limit-cache.ts";
 import { ipLimit, requestBodyLimit, userLimit } from "./limits.ts";
@@ -40,7 +41,8 @@ export interface AppOptions {
   auth: Auth;
   limitCache: LimitCache;
   databasePath: string;
-  backupsConfigured: boolean;
+  /** The `wl-backups` bucket; unset when the DB copies are off. */
+  backups?: BackupStore | undefined;
   litestreamSocket?: string | undefined;
   minClientVersion?: string | undefined;
   now?: () => number;
@@ -112,7 +114,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     version: pkg.version,
     commit: options.commit ?? null,
     databasePath: options.databasePath,
-    backupsConfigured: options.backupsConfigured,
+    backupsConfigured: options.backups !== undefined,
     litestreamSocket: options.litestreamSocket,
     signIn: signInProviders(auth),
     now,
@@ -156,7 +158,10 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     return c.body(null, 204);
   });
   app.route("/api/sync/v1", syncRoutes(options.db, now));
-  app.route("/api/admin", adminRoutes(options.db, options.limitCache, now));
+  app.route(
+    "/api/admin",
+    adminRoutes(options.db, options.limitCache, options.backups, now),
+  );
 
   // Before the APK routes, which answer everything under /api/android with
   // 503 when no release token is configured.

@@ -37,6 +37,18 @@ export interface AdminUsers {
   defaultMaxAccounts: number;
 }
 
+/** The DB copies in the `wl-backups` bucket, by key prefix. */
+export interface BackupStorage {
+  bytes: number;
+  objects: number;
+  groups: { prefix: string; bytes: number; objects: number }[];
+}
+
+/** Null when the server has no backup bucket. */
+export async function fetchBackupStorage(): Promise<BackupStorage | null> {
+  return (await (await call("/backup-storage")).json()) as BackupStorage | null;
+}
+
 /** Sets the account cap; null returns it to the default. */
 export async function saveMaxAccounts(maxAccounts: number | null) {
   await call("/limits", {

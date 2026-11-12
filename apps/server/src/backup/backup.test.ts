@@ -18,7 +18,7 @@ import {
 import { DAILY_COPY_JOB } from "../status.ts";
 import { openTestApp } from "../testing.ts";
 import { compressCopy, dailyKeys, unpackCopy } from "./db-copy.ts";
-import type { BackupStore } from "./r2.ts";
+import { type BackupStore, parseListPage } from "./r2.ts";
 
 function memoryStore() {
   const files = new Map<string, Uint8Array>();
@@ -26,9 +26,17 @@ function memoryStore() {
     async put(key, body) {
       files.set(key, body);
     },
+    async list() {
+      return [...files].map(([key, body]) => ({ key, size: body.length }));
+    },
   };
   return { files, store };
 }
+
+const failingStore: BackupStore = {
+  put: () => Promise.reject(new Error("R2 down")),
+  list: () => Promise.reject(new Error("R2 down")),
+};
 
 function tablesIn(copy: Uint8Array): string[] {
   const db = new Database(unpackCopy("copy.db.br", Buffer.from(copy)));
@@ -60,10 +68,9 @@ describe("daily DB copy", () => {
     const { db } = await openTestApp();
     const { store } = memoryStore();
     await runJob(db, dailyCopyJob(db, store), () => 1000);
-    const failing: BackupStore = {
-      put: () => Promise.reject(new Error("R2 down")),
-    };
-    expect(await runJob(db, dailyCopyJob(db, failing), () => 2000)).toBe(false);
+    expect(await runJob(db, dailyCopyJob(db, failingStore), () => 2000)).toBe(
+      false,
+    );
     expect(await readJob(db, DAILY_COPY_JOB)).toEqual({
       lastRunAt: 2000,
       lastOkAt: 1000,
@@ -145,12 +152,9 @@ describe("pre-migration copy", () => {
   it("blocks the migration when the copy fails", async () => {
     const { db, sqlite } = openDatabase(":memory:");
     sqlite.exec("create table legacy (x)");
-    const failing: BackupStore = {
-      put: () => Promise.reject(new Error("R2 down")),
-    };
-    await expect(prepareDatabase(db, settings(db), failing)).rejects.toThrow(
-      "R2 down",
-    );
+    await expect(
+      prepareDatabase(db, settings(db), failingStore),
+    ).rejects.toThrow("R2 down");
     expect(
       sqlite.prepare("select name from sqlite_master").pluck().all(),
     ).toEqual(["legacy"]);
@@ -176,9 +180,82 @@ describe("restored database", () => {
   });
 });
 
+describe("R2 listing", () => {
+  const page = (contents: string, truncated = "") => `<?xml version="1.0"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>wl-backups</Name>${contents}${truncated}
+</ListBucketResult>`;
+  const object = (key: string, size: number) =>
+    `<Contents><Key>${key}</Key><Size>${size}</Size></Contents>`;
+
+  it("reads keys and sizes, one object or many", () => {
+    expect(parseListPage(page(object("daily/1.db.br", 10)))).toEqual({
+      objects: [{ key: "daily/1.db.br", size: 10 }],
+      nextToken: undefined,
+    });
+    expect(
+      parseListPage(
+        page(
+          object("daily/1.db.br", 10) + object("monthly/2.db.br", 20),
+          "<IsTruncated>true</IsTruncated><NextContinuationToken>abc</NextContinuationToken>",
+        ),
+      ),
+    ).toEqual({
+      objects: [
+        { key: "daily/1.db.br", size: 10 },
+        { key: "monthly/2.db.br", size: 20 },
+      ],
+      nextToken: "abc",
+    });
+  });
+
+  it("reads an empty bucket and refuses anything else", () => {
+    expect(parseListPage(page("<KeyCount>0</KeyCount>"))).toEqual({
+      objects: [],
+      nextToken: undefined,
+    });
+    expect(() => parseListPage("<Error><Code>x</Code></Error>")).toThrow();
+  });
+});
+
+describe("/api/admin/backup-storage", () => {
+  async function ownerGet(backups: BackupStore | undefined) {
+    const { app, signIn } = await openTestApp({ backups });
+    const { token, userId } = await signIn("owner@example.com", "owner");
+    return app.request("/api/admin/backup-storage", {
+      headers: { authorization: `Bearer ${token}`, "x-expected-user": userId },
+    });
+  }
+
+  it("sums the copies by prefix", async () => {
+    const { files, store } = memoryStore();
+    files.set("daily/a.db.br", new Uint8Array(10));
+    files.set("daily/b.db.br", new Uint8Array(30));
+    files.set("pre-migration/c.db.br", new Uint8Array(5));
+    files.set("monthly/d.db.br", new Uint8Array(20));
+    const res = await ownerGet(store);
+    expect(await res.json()).toEqual({
+      bytes: 65,
+      objects: 4,
+      groups: [
+        { prefix: "daily", bytes: 40, objects: 2 },
+        { prefix: "monthly", bytes: 20, objects: 1 },
+        { prefix: "pre-migration", bytes: 5, objects: 1 },
+      ],
+    });
+  });
+
+  it("is null without a bucket, and 502 when R2 fails", async () => {
+    expect(await (await ownerGet(undefined)).json()).toBeNull();
+    expect((await ownerGet(failingStore)).status).toBe(502);
+  });
+});
+
 describe("/api/status", () => {
   it("shows the owner the backup layers", async () => {
-    const { app, signIn } = await openTestApp({ backupsConfigured: true });
+    const { app, signIn } = await openTestApp({
+      backups: memoryStore().store,
+    });
     const { token } = await signIn("owner@example.com", "owner");
     const owner = await app.request("/api/status", {
       headers: { authorization: `Bearer ${token}` },
@@ -194,7 +271,9 @@ describe("/api/status", () => {
   });
 
   it("shows others only the summary", async () => {
-    const { app, signIn } = await openTestApp({ backupsConfigured: true });
+    const { app, signIn } = await openTestApp({
+      backups: memoryStore().store,
+    });
     const { token } = await signIn("user@example.com");
     const variants: Record<string, string>[] = [
       {},

@@ -305,7 +305,7 @@ Two buckets in the owner's Cloudflare account, in the default (automatic)
 location and Standard storage, which is what the free tier covers:
 
 - `wl-litestream`, with an R2 API token that has Object Read & Write on that bucket only, for the `LITESTREAM_R2_*` variables.
-- `wl-backups`, with another such token on that bucket only, for the `BACKUP_R2_*` variables.
+- `wl-backups`, with another such token on that bucket only, for the `BACKUP_R2_*` variables. The app uploads the DB copies with it and lists them for the admin page.
 
 Their lifecycle rules are in [`deploy/r2/`](../deploy/r2/), one file per
 bucket. CI doesn't apply them. After creating a bucket, or after changing a

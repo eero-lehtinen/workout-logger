@@ -91,7 +91,12 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 Settings shows the user's own last sync time and unsynced changes, and on
 Android, the time of the last snapshot file. The owner's
 [admin page](accounts.md#admin-page) shows the server backup layers, free
-disk, and the database size.
+disk, the database size, and the size of the DB copies in `wl-backups` by
+prefix (`daily`, `monthly`, `pre-migration`), which shows whether the
+lifecycle rules keep up. The server lists the bucket with its own token
+only when the page is opened, not on `/api/status`: a listing is a billed
+R2 operation. The Litestream replica isn't counted, since the app has no
+token for `wl-litestream`.
 
 The Settings tab shows a warning dot when (the owner's two also show on the
 Admin row in Settings):

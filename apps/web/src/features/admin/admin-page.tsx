@@ -6,7 +6,11 @@ import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useAccount } from "../../lib/account.ts";
-import { type AdminUser, fetchUsers } from "../../lib/admin-api.ts";
+import {
+  type AdminUser,
+  fetchBackupStorage,
+  fetchUsers,
+} from "../../lib/admin-api.ts";
 import { formatAgo, formatBytes } from "../../lib/format.ts";
 import { matchesSearch } from "../../lib/search.ts";
 import { refreshOwnerStatus, useOwnerStatus } from "../../lib/server-status.ts";
@@ -28,6 +32,12 @@ export function AdminPage() {
   const users = useQuery({
     queryKey: ADMIN_USERS_KEY,
     queryFn: fetchUsers,
+    enabled: isOwner,
+    staleTime: 0,
+  });
+  const storage = useQuery({
+    queryKey: ["admin", "backup-storage"],
+    queryFn: fetchBackupStorage,
     enabled: isOwner,
     staleTime: 0,
   });
@@ -60,7 +70,7 @@ export function AdminPage() {
         <Empty>Only the owner can see this page.</Empty>
       ) : (
         <>
-          <ServerSection status={status} now={now} />
+          <ServerSection status={status} storage={storage} now={now} />
           <SectionHeading className="pt-6 pb-1">Accounts</SectionHeading>
           {users.isError ? (
             <Empty>Couldn't load the accounts: {users.error.message}</Empty>
