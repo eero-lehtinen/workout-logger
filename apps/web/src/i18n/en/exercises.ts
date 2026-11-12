@@ -50,7 +50,7 @@ export const exercises = {
     builtIn: "Built in. Your changes are kept when the catalog updates.",
     name: "Name",
     nameError: "Enter a name.",
-    namePlaceholder: "e.g. Row (Chest Supported)",
+    namePlaceholder: "e.g. Chest-Supported Row",
     type: "What a set records",
     muscles: "Muscles",
     musclesHint:

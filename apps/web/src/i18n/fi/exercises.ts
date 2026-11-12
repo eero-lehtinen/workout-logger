@@ -55,7 +55,7 @@ export const exercises = {
       "Sovelluksen valmis liike. Muutoksesi säilyvät, vaikka liikeluettelo päivittyisi.",
     name: "Nimi",
     nameError: "Anna nimi.",
-    namePlaceholder: "esim. Soutu (rinnan tuettu)",
+    namePlaceholder: "esim. Rintatuettu soutu",
     type: "Mitä sarjasta kirjataan",
     muscles: "Lihakset",
     musclesHint:
