@@ -23,7 +23,7 @@ interface Loaded {
 export function pageStory(options: {
   fixture: Fixture;
   url: (ids: FixtureIds) => string;
-  viewport?: "phone" | "pc";
+  viewport?: "phone" | "phoneNarrow" | "pc";
   theme?: "light" | "dark";
   language?: Language;
   play?: StoryObj["play"];

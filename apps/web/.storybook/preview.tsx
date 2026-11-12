@@ -22,6 +22,13 @@ const preview: Preview = {
           styles: { width: "390px", height: "844px" },
           type: "mobile",
         },
+        // The narrowest width layouts must fit (WCAG reflow), reached by
+        // Android phones with a larger display size setting.
+        phoneNarrow: {
+          name: "Narrow phone",
+          styles: { width: "320px", height: "700px" },
+          type: "mobile",
+        },
         pc: {
           name: "PC",
           styles: { width: "1366px", height: "860px" },

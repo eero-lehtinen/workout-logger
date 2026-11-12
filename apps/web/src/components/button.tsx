@@ -70,21 +70,30 @@ export function Button({
   );
 }
 
+/** Matches the heights of `Button` sizes `md` and `lg`. */
+const iconSizes = { md: "size-10", lg: "size-14" };
+
 /** A square icon button. `label` is its accessible name. */
 export function IconButton({
   label,
   variant = "ghost",
+  size = "md",
   className,
   type = "button",
   ...props
-}: ComponentProps<"button"> & { label: string; variant?: ButtonVariant }) {
+}: ComponentProps<"button"> & {
+  label: string;
+  variant?: ButtonVariant;
+  size?: keyof typeof iconSizes;
+}) {
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
       className={clsx(
-        "inline-flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-30",
+        "inline-flex shrink-0 items-center justify-center rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-30",
+        iconSizes[size],
         iconVariants[variant],
         className,
       )}

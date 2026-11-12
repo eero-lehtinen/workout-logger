@@ -660,6 +660,81 @@ export const EditSetInFooter = pageStory({
   },
 });
 
+/**
+ * Every control in the logging footer ends inside its padding and shows all
+ * of its content, which a flex row would otherwise hide by squeezing it.
+ */
+async function expectFooterFits(inFooter: HTMLElement) {
+  // The fallback font is wider than Archivo.
+  await document.fonts.ready;
+  const footer = inFooter.closest("[data-bottom-chrome]")?.firstElementChild
+    ?.firstElementChild as HTMLElement;
+  const right =
+    footer.getBoundingClientRect().right -
+    Number.parseFloat(getComputedStyle(footer).paddingRight);
+  for (const control of footer.querySelectorAll("button, input")) {
+    const name =
+      control instanceof HTMLInputElement
+        ? `${control.id} = ${control.value}`
+        : (control.getAttribute("aria-label") ?? control.textContent);
+    await expect(
+      control.getBoundingClientRect().right,
+      `${name} ends inside the footer`,
+    ).toBeLessThanOrEqual(right + 0.5);
+    await expect(
+      control.scrollWidth,
+      `${name} shows all of its content`,
+    ).toBeLessThanOrEqual(control.clientWidth);
+  }
+}
+
+/** Finnish labels are the longest, and they must fit the narrowest phone. */
+export const EditSetFinnishNarrow = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  language: "fi",
+  viewport: "phoneNarrow",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectFooterFits(
+      await canvas.findByRole("button", { name: "Kirjaa sarja 3" }),
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: /^Muokkaa sarjaa 1/ }),
+    );
+    await expectFooterFits(
+      canvas.getByRole("button", { name: "Tallenna sarja 1" }),
+    );
+  },
+});
+
+export const EditSetNarrow = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  viewport: "phoneNarrow",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectFooterFits(
+      await canvas.findByRole("button", { name: "Log set 3" }),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
+    await expectFooterFits(canvas.getByRole("button", { name: "Save set 1" }));
+  },
+});
+
+export const EditSetPc = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  viewport: "pc",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /^Edit set 1/ }),
+    );
+    await expectFooterFits(canvas.getByRole("button", { name: "Delete set" }));
+  },
+});
+
 export const TypeOverPrefill = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,

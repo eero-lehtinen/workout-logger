@@ -416,6 +416,10 @@ drift from what the queries return. `Date` and `Temporal.Now` are faked
 at the same midday instant, `STORY_NOW`, and the clock ticks from there, so
 screens don't depend on when the tests run.
 
+The phone viewport is 390 px wide. Rows that must fit side by side, such as
+the logging footer's actions, also get a story at the `phoneNarrow` viewport
+(320 px, the WCAG reflow width) in Finnish, whose labels are the longest.
+
 Storybook keeps the PWA plugin's virtual modules but drops its service worker
 build. Telemetry is disabled.
 
