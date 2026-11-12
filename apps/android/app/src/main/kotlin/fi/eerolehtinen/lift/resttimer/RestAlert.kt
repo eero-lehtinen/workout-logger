@@ -33,7 +33,7 @@ object RestAlert {
     /** Mirrors how long the UI shows "Rest over" (FINISHED_VISIBLE_MS in rest-timer.ts). */
     private const val NOTIFICATION_TIMEOUT_MS = 60_000L
 
-    // The sound is about 1 s; this bounds the service's life if playback stalls.
+    // The sound is 0.75 s; this bounds the service's life if playback stalls.
     private const val MAX_RUN_MS = 8_000L
     private val VIBRATION_PATTERN = longArrayOf(0, 400, 200, 400, 200, 600)
 

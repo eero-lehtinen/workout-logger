@@ -13,8 +13,8 @@ import { writeFileSync } from "node:fs";
 
 const rate = 44100,
   freq = 784,
-  beep = 0.4,
-  gap = 0.14,
+  beep = 0.3,
+  gap = 0.1,
   tail = 0.05,
   drive = 2.5,
   peak = 10 ** (-0.5 / 20);
