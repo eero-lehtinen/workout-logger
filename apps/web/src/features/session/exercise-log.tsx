@@ -31,6 +31,7 @@ import { EntryFields } from "./entry-fields.tsx";
 import { Marker } from "./marker.tsx";
 import { RestControls } from "./rest-bar.tsx";
 import { wasResumed } from "./running.ts";
+import { Substitutes } from "./substitutes.tsx";
 
 const route = getRouteApi("/sessions/$sessionId/$sessionExerciseId");
 
@@ -361,6 +362,16 @@ function Logger({ log }: { log: ExerciseLog }) {
       }
     >
       <div className="px-4 pt-2 pb-4 lg:px-0">
+        {log.substitutesName && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => setSubstituting(true)}
+            className="-mx-2 mb-3 block max-w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-left text-sm text-ink-muted hover:bg-surface hover:text-ink"
+          >
+            <Substitutes name={log.substitutesName} />
+          </button>
+        )}
         <Ledger
           log={log}
           unit={unit}

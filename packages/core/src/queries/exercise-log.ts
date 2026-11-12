@@ -30,6 +30,8 @@ export interface ExerciseLog {
   slotId: string | null;
   /** The routine's reminder for the slot, e.g. "heavy, 6-10". */
   slotNote: string | null;
+  /** The slot's default exercise, when this one substitutes it. */
+  substitutesName: string | null;
   /** About this exercise in this session; `exercise.notes` is about the exercise. */
   notes: string;
   exercise: {
@@ -63,6 +65,14 @@ export const exerciseLog = defineQuery(
       .leftJoin("slot", (join) =>
         join.onRef("slot.id", "=", "se.slot_id").on("slot.deleted", "=", 0),
       )
+      // Unlike `slot`, a slot deleted since still names what this exercise
+      // substitutes, as in the session list.
+      .leftJoin("slot as origin", "origin.id", "se.slot_id")
+      .leftJoin(
+        "exercise as originExercise",
+        "originExercise.id",
+        "origin.exercise_id",
+      )
       .select([
         "se.id",
         "se.slot_id as slotId",
@@ -81,6 +91,8 @@ export const exerciseLog = defineQuery(
         "e.notes",
         "slot.rest_s as slotRestS",
         "slot.note as slotNote",
+        "origin.exercise_id as slotExerciseId",
+        "originExercise.name as slotExerciseName",
       ])
       .where("se.id", "=", args.sessionExerciseId)
       .where("se.deleted", "=", 0)
@@ -119,6 +131,10 @@ export const exerciseLog = defineQuery(
       },
       slotId: row.slotId,
       slotNote: row.slotNote,
+      substitutesName:
+        row.slotExerciseId && row.slotExerciseId !== row.exerciseId
+          ? row.slotExerciseName
+          : null,
       notes: row.sessionExerciseNotes,
       exercise: {
         id: row.exerciseId,

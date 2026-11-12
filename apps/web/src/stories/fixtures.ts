@@ -11,6 +11,8 @@ export interface FixtureIds {
   sessionId?: string | undefined;
   /** Session exercise of the running session's bench press. */
   benchId?: string | undefined;
+  /** Session exercise substituting the running session's overhead press. */
+  substituteId?: string | undefined;
   /** Session exercise of a timed exercise in a running session. */
   plankId?: string | undefined;
   idleSessionId?: string | undefined;
@@ -268,6 +270,22 @@ export const running: Fixture = async (db) => {
     sessionId: current.sessionId,
     benchId: current.ids.barbell_bench_press,
   };
+};
+
+/** `running` with dumbbell presses in place of the overhead press. */
+export const substituted: Fixture = async (db) => {
+  const ids = await running(db);
+  const view = await db.client.query("sessionView", {
+    sessionId: ids.sessionId ?? "",
+  });
+  const press = view?.exercises.find(
+    (e) => e.exerciseId === exerciseId("overhead_press"),
+  );
+  const { result: substituteId } = await db.run("substituteExercise", {
+    sessionExerciseId: press?.id ?? "",
+    exerciseId: exerciseId("dumbbell_shoulder_press"),
+  });
+  return { ...ids, substituteId };
 };
 
 /** A session left open whose last set is 40 minutes old: it has idled out. */

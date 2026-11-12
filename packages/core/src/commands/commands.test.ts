@@ -325,6 +325,16 @@ describe("session exercises", () => {
       [true, "Dip", "Bench Press (Barbell)"],
       [false, "Squat (Barbell)", null],
     ]);
+    const logs = await Promise.all(
+      (view?.exercises ?? []).map((e) =>
+        query("exerciseLog", { sessionExerciseId: e.id }),
+      ),
+    );
+    expect(logs.map((l) => l?.substitutesName)).toEqual([
+      "Bench Press (Barbell)",
+      "Bench Press (Barbell)",
+      null,
+    ]);
   });
 
   it("reorders and removes", async () => {

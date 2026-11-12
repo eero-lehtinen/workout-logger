@@ -38,6 +38,7 @@ import { useNow } from "../../lib/use-now.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { markResumed } from "./running.ts";
 import { SetLine } from "./set-line.tsx";
+import { Substitutes } from "./substitutes.tsx";
 
 const route = getRouteApi("/sessions/$sessionId");
 
@@ -253,7 +254,7 @@ function SessionPanel(props: {
                   <p className="truncate font-medium">{exercise.name}</p>
                   {exercise.substitutesName && (
                     <p className="truncate text-sm text-ink-muted">
-                      for {exercise.substitutesName}
+                      <Substitutes name={exercise.substitutesName} />
                     </p>
                   )}
                   {exercise.notes && (
@@ -385,7 +386,7 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
                   {exercise.substitutesName && (
                     <span className="font-normal text-ink-muted">
                       {" "}
-                      for {exercise.substitutesName}
+                      <Substitutes name={exercise.substitutesName} />
                     </span>
                   )}
                 </p>
