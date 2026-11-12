@@ -44,7 +44,7 @@ export function TodayPage() {
       footer={!wide && <div className="px-4 py-3">{action}</div>}
       scrollId="today"
     >
-      <div className="pt-2 lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
+      <div className="lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-10">
         {wide && <section>{action}</section>}
 
         <section>

@@ -124,7 +124,7 @@ export function StartPage() {
             </RadioGroup>
           )}
           {routine && (
-            <section className="pt-4">
+            <section className="pt-4 first:pt-0">
               <SectionHeading>
                 {options.routines.length === 1 ? routine.name : "Pick a day"}
               </SectionHeading>

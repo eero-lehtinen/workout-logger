@@ -48,7 +48,7 @@ export function HistoryPage() {
           </Link>
         </Empty>
       ) : (
-        <div className="flex flex-col gap-10 pt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-12">
+        <div className="flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-12">
           <div>
             <MonthSessions
               month={month}

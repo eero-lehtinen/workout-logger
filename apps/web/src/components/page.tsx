@@ -49,7 +49,7 @@ export function Screen(props: {
         <div
           className={clsx(
             width,
-            "pb-8 lg:pb-10",
+            "pt-2 pb-8 lg:pt-6 lg:pb-16",
             props.align === "bottom" &&
               "max-lg:flex max-lg:min-h-full max-lg:flex-col max-lg:justify-end",
           )}
