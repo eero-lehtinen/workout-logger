@@ -352,6 +352,48 @@ export const EarlierSessions = pageStory({
   },
 });
 
+function expectBefore(first: Element, second: Element) {
+  return expect(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+}
+
+/**
+ * Today's note sits under today's sets, before the earlier sessions, which
+ * open below their toggle.
+ */
+async function expectNoteBeforeEarlier(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const addNote = await canvas.findByRole("button", { name: "Add note" });
+  const earlier = canvas.getByRole("button", { name: "Earlier sessions" });
+  await expectBefore(addNote, earlier);
+
+  await userEvent.click(addNote);
+  const notes = canvas.getByRole("textbox", {
+    name: "Notes on Barbell Bench Press in this session",
+  });
+  await expectBefore(notes, earlier);
+  await userEvent.keyboard("Elbow ok");
+  await userEvent.click(earlier);
+  const [earlierSet] = canvas.getAllByRole("button", {
+    name: /^Use set 1 95 × 8 from/,
+  });
+  await expectBefore(earlier, earlierSet as HTMLElement);
+}
+
+export const NoteBeforeEarlierSessions = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => expectNoteBeforeEarlier(canvasElement),
+});
+
+export const NoteBeforeEarlierSessionsPc = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  viewport: "pc",
+  play: async ({ canvasElement }) => expectNoteBeforeEarlier(canvasElement),
+});
+
 export const RoutineFromSession = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}`,

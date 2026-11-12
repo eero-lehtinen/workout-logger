@@ -417,7 +417,33 @@ function Logger({ log }: { log: ExerciseLog }) {
           onStopEditing={() => setEditing(null)}
           onCopy={fillFrom}
         />
+        {showNotes && (
+          <NotesField
+            label={t("session.log.notesLabel", { name: exercise.name })}
+            value={log.notes}
+            placeholder={t("session.log.notesPlaceholder")}
+            focusOnMount={addingNote && log.notes === ""}
+            onSave={(notes) =>
+              command("updateSessionExerciseNotes", {
+                sessionExerciseId: log.sessionExerciseId,
+                notes,
+              })
+            }
+            onBlur={(text) => text === "" && setAddingNote(false)}
+            className="mt-4"
+          />
+        )}
         <div className="mt-3 flex flex-wrap gap-x-5">
+          {!showNotes && (
+            <button
+              type="button"
+              onClick={() => setAddingNote(true)}
+              className={quietButtonClass}
+            >
+              <NotebookPen size={17} />
+              {t("session.log.addNote")}
+            </button>
+          )}
           {earlier.length > 0 && (
             <button
               type="button"
@@ -433,16 +459,6 @@ function Logger({ log }: { log: ExerciseLog }) {
                 )}
               />
               {t("session.log.earlierSessions")}
-            </button>
-          )}
-          {!showNotes && (
-            <button
-              type="button"
-              onClick={() => setAddingNote(true)}
-              className={quietButtonClass}
-            >
-              <NotebookPen size={17} />
-              {t("session.log.addNote")}
             </button>
           )}
         </div>
@@ -463,22 +479,6 @@ function Logger({ log }: { log: ExerciseLog }) {
           <p className="pt-4 text-[0.9375rem] text-ink-muted">
             {t("session.log.firstTime")}
           </p>
-        )}
-        {showNotes && (
-          <NotesField
-            label={t("session.log.notesLabel", { name: exercise.name })}
-            value={log.notes}
-            placeholder={t("session.log.notesPlaceholder")}
-            focusOnMount={addingNote && log.notes === ""}
-            onSave={(notes) =>
-              command("updateSessionExerciseNotes", {
-                sessionExerciseId: log.sessionExerciseId,
-                notes,
-              })
-            }
-            onBlur={(text) => text === "" && setAddingNote(false)}
-            className="mt-4"
-          />
         )}
       </div>
 
