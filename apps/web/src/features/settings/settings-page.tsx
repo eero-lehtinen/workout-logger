@@ -36,10 +36,7 @@ export function SettingsPage() {
     >
       <AccountSection />
       <Section title={t("settings.units.title")}>
-        <Row
-          label={t("settings.units.weightUnit")}
-          hint={t("settings.units.weightUnitHint")}
-        >
+        <Row label={t("settings.units.weightUnit")}>
           <Segmented
             label={t("settings.units.weightUnit")}
             value={unit}
@@ -139,6 +136,21 @@ export function SettingsPage() {
             }
           />
         </Row>
+        <Row
+          label={t("settings.timers.idleEnd")}
+          hint={t("settings.timers.idleEndHint")}
+        >
+          <SettingInput
+            label={t("settings.timers.idleEndLabel")}
+            value={settings.idle_threshold_s / 60}
+            format={formatDecimal}
+            parse={(text) => {
+              const minutes = parseNumber(text);
+              return minutes === null ? null : Math.round(minutes * 60);
+            }}
+            onSave={(value) => set({ key: "idle_threshold_s", value })}
+          />
+        </Row>
       </Section>
 
       <Section title={t("settings.sessions.title")}>
@@ -156,21 +168,6 @@ export function SettingsPage() {
             />
           </Row>
         )}
-        <Row
-          label={t("settings.sessions.idleEnd")}
-          hint={t("settings.sessions.idleEndHint")}
-        >
-          <SettingInput
-            label={t("settings.sessions.idleEndLabel")}
-            value={settings.idle_threshold_s / 60}
-            format={formatDecimal}
-            parse={(text) => {
-              const minutes = parseNumber(text);
-              return minutes === null ? null : Math.round(minutes * 60);
-            }}
-            onSave={(value) => set({ key: "idle_threshold_s", value })}
-          />
-        </Row>
         <Row
           label={t("settings.sessions.repLimit")}
           hint={t("settings.sessions.repLimitHint")}

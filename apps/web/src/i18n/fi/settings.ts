@@ -6,7 +6,6 @@ export const settings = {
   units: {
     title: "Yksiköt ja painoaskel",
     weightUnit: "Painoyksikkö",
-    weightUnitHint: "Vaihtaminen ei muuta kirjattuja painoja.",
     weightStep: "Painoaskel",
     weightStepWithUnit: "Painoaskel ({{unit}})",
     weightStepHint:
@@ -27,15 +26,15 @@ export const settings = {
     sessionTimer: "Treeniajastin",
     sessionTimerHint:
       "Näyttää, kuinka kauan käynnissä oleva treeni on kestänyt.",
+    idleEnd: "Automaattinen lopetus (min)",
+    idleEndLabel: "Automaattinen lopetus minuutteina",
+    idleEndHint:
+      "Jos uutta sarjaa ei kirjata näin pitkään, treeni päättyy viimeiseen sarjaan.",
   },
   sessions: {
     title: "Treenit",
     keepScreenOn: "Pidä näyttö päällä",
     keepScreenOnHint: "Kun treeni on käynnissä.",
-    idleEnd: "Automaattinen lopetus (min)",
-    idleEndLabel: "Automaattinen lopetus minuutteina",
-    idleEndHint:
-      "Jos uutta sarjaa ei kirjata näin pitkään, treeni päättyy viimeiseen sarjaan.",
     repLimit: "e1RM-toistoraja",
     repLimitHint:
       "Jos toistoja on tätä enemmän, sarjalle ei lasketa e1RM:ää eikä se voi olla ennätys.",

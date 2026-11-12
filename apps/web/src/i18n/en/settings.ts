@@ -3,7 +3,6 @@ export const settings = {
   units: {
     title: "Units and weight step",
     weightUnit: "Weight unit",
-    weightUnitHint: "Switching doesn't change your logged weights.",
     weightStep: "Weight step",
     weightStepWithUnit: "Weight step ({{unit}})",
     weightStepHint: "The +/− step, unless an exercise sets its own.",
@@ -22,15 +21,15 @@ export const settings = {
     volumeHigh: "Loud",
     sessionTimer: "Session timer",
     sessionTimerHint: "Shows how long the running session has lasted.",
+    idleEnd: "Idle end (minutes)",
+    idleEndLabel: "Idle end in minutes",
+    idleEndHint:
+      "With no new set for this long, a session ends at its last set.",
   },
   sessions: {
     title: "Sessions",
     keepScreenOn: "Keep screen on",
     keepScreenOnHint: "While a session is running.",
-    idleEnd: "Idle end (minutes)",
-    idleEndLabel: "Idle end in minutes",
-    idleEndHint:
-      "With no new set for this long, a session ends at its last set.",
     repLimit: "e1RM rep limit",
     repLimitHint: "Sets with more reps get no e1RM and can't be PRs.",
     weekStart: "Week starts on",
