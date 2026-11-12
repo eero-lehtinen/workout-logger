@@ -134,7 +134,7 @@ export function Stepper(props: StepperProps) {
               setDraft(null);
               setFresh(false);
             }}
-            className="absolute inset-0 bg-transparent text-center text-ink outline-none"
+            className="absolute inset-0 size-full bg-transparent text-center text-ink outline-none"
           />
         </span>
         <label
