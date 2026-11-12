@@ -242,9 +242,8 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 
 ## Phase 10: CLI (S–M)
 
-- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup [--all]`, `restore`.
+- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup`, `restore`.
 - API keys in the app settings, with read and write scopes.
-- Owner backup task: `wl backup --all` plus restic, scheduled on your PC.
 
 ## Phase 11: Multi-user (M) [done]
 

@@ -433,7 +433,6 @@ Layered:
 
 - a Litestream replica
 - daily full-DB copies in R2
-- the owner's encrypted PC copy (phase 10)
 - on-device snapshot files
 
 Full design: [backups.md](backups.md).
@@ -544,7 +543,7 @@ wl exercise "Barbell Row" --history --json
 wl measurements --metric "Body weight" --json
 wl export --format json|csv|sqlite
 wl sql "select ..."                       # raw read-only SQL on the mirror
-wl backup <dir> [--all]                   # snapshot files, see backups.md
+wl backup <dir>                           # snapshot file, see backups.md
 wl restore <file>                         # replace the account's data with a snapshot, needs write-scoped key
 ```
 
