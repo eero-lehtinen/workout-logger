@@ -127,7 +127,7 @@ don't count.
 
   Matching an earlier best, or beating last time after a worse session, is not a set record. Tapping the star shows the earlier set that was hardest to beat: the highest e1RM, or above the cap the heaviest, then the most reps.
 - **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
-- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight.
+- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight. For set records, a set without added weight is compared only with earlier sets without added weight; a set with added weight is compared with all of them.
 
 ### Other exercise types
 

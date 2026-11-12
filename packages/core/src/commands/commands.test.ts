@@ -202,7 +202,7 @@ describe("logging", () => {
     ]);
   });
 
-  it("marks set records and weight increases against the reference set", async () => {
+  it("marks set records and weight increases after one earlier session", async () => {
     const { query, run, se2 } = await logged();
     await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
     await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });

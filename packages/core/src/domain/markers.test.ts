@@ -197,6 +197,17 @@ describe("bodyweight_reps", () => {
     ).toEqual([null, "weight_increase"]);
   });
 
+  it("gives sets without added weight set records over earlier weighted ones", () => {
+    const history = [
+      [s(0, 15), s(10, 8)],
+      [s(0, 15), s(0, 10)],
+      [s(0, 15), s(0, 12)],
+    ];
+    expect(
+      markPerformances("bodyweight_reps", history).map((sets) => sets[1]),
+    ).toEqual([null, null, "set_record"]);
+  });
+
   it("does not compare a set without added weight to weighted history", () => {
     expect(last("bodyweight_reps", [[s(10, 5)], [s(0, 20)]])).toEqual([null]);
   });

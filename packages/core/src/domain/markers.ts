@@ -140,8 +140,14 @@ function setRecordOverAll(
   earlier: readonly EarlierSet[] | undefined,
   cap: number,
 ): (Comparison & { against: SetIndex }) | null {
+  // A set without added weight can never beat a weighted one, so one weighted
+  // session would end its set records for good.
+  const comparable =
+    type === "bodyweight_reps" && !hasAddedWeight(set)
+      ? earlier?.filter((e) => !hasAddedWeight(e.set))
+      : earlier;
   let hardest: { comparison: Comparison; earlier: EarlierSet } | undefined;
-  for (const e of earlier ?? []) {
+  for (const e of comparable ?? []) {
     const comparison = setRecord(type, set, e.set, cap);
     if (!comparison) return null;
     if (!hardest || harder(comparison, e.set, hardest)) {
