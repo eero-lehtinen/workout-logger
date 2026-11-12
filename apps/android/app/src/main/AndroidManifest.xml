@@ -26,6 +26,7 @@
             android:name=".MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:launchMode="singleTask"
             android:theme="@style/AppTheme.NoActionBarLaunch">
             <intent-filter>
