@@ -61,7 +61,7 @@ export function EntryFields(props: {
     durationS: {
       label: t("session.entry.time"),
       value: entry.durationS,
-      inputMode: "numeric",
+      inputMode: "decimal",
       onChange: (v) => set("durationS", v),
       step: (v, d) => Math.max(0, Math.round(v / 5) * 5 + d * 5),
       format: formatDuration,

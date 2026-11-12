@@ -84,7 +84,7 @@ export function SlotDetails(props: {
             onChange={(e) => setRest(e.target.value)}
             onBlur={saveRest}
             onKeyDown={keys}
-            inputMode="numeric"
+            inputMode="decimal"
             placeholder={t("routines.slot.restDefault", {
               duration: formatDuration(
                 slot.exerciseRestS ?? props.defaultRestS,

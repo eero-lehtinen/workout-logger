@@ -252,9 +252,12 @@ export function parseNumber(text: string): number | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-/** `m:ss`, `ss`, or plain seconds. */
+/**
+ * `h:mm:ss`, `m:ss`, or plain seconds. `.` and `,` also separate the parts:
+ * phone number pads have no colon key, but the decimal pad has one of them.
+ */
 export function parseDuration(text: string): number | null {
-  const parts = text.trim().split(":");
+  const parts = text.trim().split(/[:.,]/);
   if (parts.some((p) => p === "" || !/^\d+$/.test(p)) || parts.length > 3) {
     return null;
   }

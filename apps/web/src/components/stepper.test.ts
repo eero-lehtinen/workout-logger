@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRepeatStep, replaceOnInsert } from "./stepper.tsx";
+import { isRepeatStep, parseDuration, replaceOnInsert } from "./stepper.tsx";
 
 describe("isRepeatStep", () => {
   const stepsIn = (from: number, to: number) =>
@@ -15,6 +15,24 @@ describe("isRepeatStep", () => {
     expect(stepsIn(1, 21)).toBe(7);
     expect(stepsIn(21, 41)).toBe(10);
     expect(stepsIn(41, 61)).toBe(20);
+  });
+});
+
+describe("parseDuration", () => {
+  it.each([
+    ["90", 90],
+    ["1:30", 90],
+    ["1.30", 90],
+    ["1,30", 90],
+    [" 2:05 ", 125],
+    ["1:00:00", 3600],
+    ["1.00.00", 3600],
+  ])("reads %j as %i seconds", (text, seconds) => {
+    expect(parseDuration(text)).toBe(seconds);
+  });
+
+  it.each(["", "1:", ".30", "1:2:3:4", "1:3a", "-5"])("rejects %j", (text) => {
+    expect(parseDuration(text)).toBeNull();
   });
 });
 
