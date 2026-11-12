@@ -164,3 +164,44 @@ export const DuplicateDay = pageStory({
     );
   },
 });
+
+/** Days reorder in a sheet of one-line rows; the editor follows. */
+export const ReorderDays = pageStory({
+  fixture: withRoutine,
+  url: (ids) => `/routines/${ids.routineId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getByRole("button", { name: "Reorder days" }));
+    const sheet = within(
+      await body.findByRole("dialog", { name: "Reorder days" }),
+    );
+    const grip = sheet.getByRole("button", { name: "Move Upper" });
+    // The sheet takes focus as it opens.
+    await waitFor(() => {
+      grip.focus();
+      expect(grip).toHaveFocus();
+    });
+    await userEvent.keyboard("[Space]");
+    await userEvent.keyboard("[ArrowDown]");
+    await userEvent.keyboard("[Space]");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        canvas
+          .getAllByRole<HTMLInputElement>("textbox", { name: "Day name" })
+          .map((input) => input.value),
+      ).toEqual(["Lower", "Upper"]),
+    );
+  },
+});
+
+export const ReorderDaysSheet = pageStory({
+  fixture: withRoutine,
+  url: (ids) => `/routines/${ids.routineId}`,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: "Reorder days" }),
+    );
+  },
+});

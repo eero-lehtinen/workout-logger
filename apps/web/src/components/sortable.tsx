@@ -2,6 +2,7 @@ import {
   closestCenter,
   DndContext,
   type DragEndEvent,
+  type DragStartEvent,
   KeyboardSensor,
   type Modifier,
   PointerSensor,
@@ -10,7 +11,6 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
-  rectSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -19,7 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "clsx";
 import { GripVertical } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 /** Rows of a list only move up and down. */
 const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
@@ -29,6 +29,13 @@ const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
  * the dragged item and kept widening the screen.
  */
 const AUTO_SCROLL = { threshold: { x: 0, y: 0.2 } };
+
+const KEYBOARD_MOVES = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
 
 /** Props for the element that starts a drag. */
 export interface DragHandle {
@@ -49,8 +56,6 @@ export function SortableList<T extends { id: string }>(props: {
   render: (item: T, index: number, handle: DragHandle) => ReactNode;
   /** The accessible name of an item's handle. */
   handleLabel: (item: T) => string;
-  /** `grid` for items laid out in columns. */
-  layout?: "list" | "grid";
   className?: string;
   as?: "ol" | "ul";
 }) {
@@ -63,8 +68,38 @@ export function SortableList<T extends { id: string }>(props: {
   );
   const [local, setLocal] = useState<{ source: readonly T[]; order: T[] }>();
   const items = local?.source === props.items ? local.order : props.items;
+  const listRef = useRef<HTMLOListElement & HTMLUListElement>(null);
+  const [keyboardDrag, setKeyboardDrag] = useState(false);
+
+  // dnd-kit's keyboard sensor listens on the document, and Base UI's dialog
+  // popup stops arrow keys from propagating, so inside a sheet a keyboard drag
+  // never moves. During one, arrows go to the document directly.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!keyboardDrag || !list) return;
+    const forward = (e: KeyboardEvent) => {
+      if (!KEYBOARD_MOVES.has(e.code)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      list.ownerDocument.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: e.key,
+          code: e.code,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    };
+    list.addEventListener("keydown", forward);
+    return () => list.removeEventListener("keydown", forward);
+  }, [keyboardDrag]);
+
+  function onDragStart({ activatorEvent }: DragStartEvent) {
+    setKeyboardDrag(activatorEvent instanceof KeyboardEvent);
+  }
 
   function onDragEnd({ active, over }: DragEndEvent) {
+    setKeyboardDrag(false);
     if (!over || active.id === over.id) return;
     const from = items.findIndex((i) => i.id === active.id);
     const to = items.findIndex((i) => i.id === over.id);
@@ -78,19 +113,17 @@ export function SortableList<T extends { id: string }>(props: {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onDragCancel={() => setKeyboardDrag(false)}
       autoScroll={AUTO_SCROLL}
-      {...(props.layout !== "grid" && { modifiers: [verticalOnly] })}
+      modifiers={[verticalOnly]}
     >
       <SortableContext
         items={items.map((i) => i.id)}
-        strategy={
-          props.layout === "grid"
-            ? rectSortingStrategy
-            : verticalListSortingStrategy
-        }
+        strategy={verticalListSortingStrategy}
       >
-        <List className={props.className}>
+        <List ref={listRef} className={props.className}>
           {items.map((item, index) => (
             <SortableItem
               key={item.id}
