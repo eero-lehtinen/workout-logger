@@ -206,7 +206,7 @@ export const Calendar = pageStory({
     if (!cell) throw new Error("no Lower session this month");
     await userEvent.click(cell);
     await expect(cell).toHaveAttribute("aria-pressed", "true");
-    const sessions = await canvas.findByRole("region", { name: /^\w+day, / });
+    const sessions = await canvas.findByRole("region", { name: /^\w+day\b/ });
     const session = within(sessions).getByRole("link", { name: /Lower/ });
     await expect(session).toHaveAttribute(
       "href",
