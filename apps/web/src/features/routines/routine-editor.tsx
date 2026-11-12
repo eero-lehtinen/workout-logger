@@ -4,7 +4,13 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import type { RoutineDetail } from "@workout-logger/core";
-import { Archive, ArchiveRestore, Copy, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowUpDown,
+  Copy,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/button.tsx";
 import { fieldLabelClass } from "../../components/headings.tsx";
@@ -12,10 +18,10 @@ import { InlineName } from "../../components/inline-name.tsx";
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
-import { SortableList } from "../../components/sortable.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { DayCard } from "./day-card.tsx";
+import { ReorderDaysSheet } from "./reorder-days-sheet.tsx";
 import { SlotSheet } from "./slot-sheet.tsx";
 
 const route = getRouteApi("/routines/$routineId");
@@ -117,6 +123,7 @@ function Editor({
   const reopenSlot = useRef<string | null>(null);
   const [dayName, setDayName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const openSlot =
     routine.days.flatMap((d) => d.slots).find((s) => s.id === openSlotId) ??
     null;
@@ -216,25 +223,36 @@ function Editor({
       {routine.days.length === 0 && (
         <Empty>Add your workout days in the order you do them.</Empty>
       )}
-      <SortableList
-        items={routine.days}
-        layout="grid"
-        // Columns wide enough for exercise names; fewer columns, not
-        // narrower ones, on smaller windows.
-        className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] lg:px-0"
-        handleLabel={(day) => `Move ${day.name}`}
-        onMove={(dayId, toIndex) => command("moveDay", { dayId, toIndex })}
-        render={(day, dayIndex, handle) => (
-          <DayCard
-            day={day}
-            dayIndex={dayIndex}
-            handle={handle}
-            highlighted={day.id === highlightDayId}
-            onOpenSlot={setOpenSlotId}
-            onAddSlot={() => startPick({ kind: "slot", dayId: day.id })}
-          />
-        )}
-      />
+      {routine.days.length > 1 && (
+        <div className="flex items-center px-4 pt-2 lg:px-0">
+          <span className={`${fieldLabelClass} flex-1`}>
+            {routine.days.length} days
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Reorder days"
+            onClick={() => setReordering(true)}
+          >
+            <ArrowUpDown size={16} />
+            Reorder
+          </Button>
+        </div>
+      )}
+      {/* Columns wide enough for exercise names; fewer columns, not narrower ones, on smaller windows. */}
+      <ol className="grid grid-cols-1 gap-4 px-4 pt-2 lg:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] lg:px-0">
+        {routine.days.map((day, dayIndex) => (
+          <li key={day.id}>
+            <DayCard
+              day={day}
+              dayIndex={dayIndex}
+              highlighted={day.id === highlightDayId}
+              onOpenSlot={setOpenSlotId}
+              onAddSlot={() => startPick({ kind: "slot", dayId: day.id })}
+            />
+          </li>
+        ))}
+      </ol>
       <form onSubmit={addDay} className="flex max-w-xl gap-2 px-4 pt-4 lg:px-0">
         <input
           value={dayName}
@@ -248,6 +266,11 @@ function Editor({
         </Button>
       </form>
 
+      <ReorderDaysSheet
+        days={routine.days}
+        open={reordering}
+        onOpenChange={setReordering}
+      />
       <SlotSheet
         slot={openSlot}
         defaultRestS={settings.rest_default_s}

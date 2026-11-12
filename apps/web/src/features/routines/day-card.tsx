@@ -22,7 +22,6 @@ type Day = RoutineDetail["days"][number];
 export function DayCard(props: {
   day: Day;
   dayIndex: number;
-  handle: DragHandle;
   highlighted: boolean;
   onOpenSlot: (slotId: string) => void;
   onAddSlot: () => void;
@@ -37,8 +36,7 @@ export function DayCard(props: {
         props.highlighted ? "ring-2 ring-ink/60" : "ring-1 ring-rule",
       )}
     >
-      <div className="flex items-center gap-1 px-2 pt-1 pb-1">
-        <GripHandle handle={props.handle} />
+      <div className="flex items-center gap-1 pt-1 pr-2 pb-1 pl-4">
         <span
           aria-hidden
           className={`size-2.5 shrink-0 rounded-full ${dayDotClass(props.dayIndex)}`}
