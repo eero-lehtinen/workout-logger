@@ -280,6 +280,53 @@ export const running: Fixture = async (db) => {
   };
 };
 
+/**
+ * Bench press only: a strong session, a weak one, and one that beats the weak
+ * one but not the strong one, so it has no set records. In the running
+ * session, set 2 beats every earlier set 2 without being a PR.
+ */
+export const setRecordHistory: Fixture = async (db) => {
+  const now = Date.now();
+  const bench = (daysAgo: number, sets: [number, number][]) =>
+    session(db, {
+      routineId: null,
+      dayId: null,
+      startedAt: now - daysAgo * DAY,
+      sets: { barbell_bench_press: sets },
+    });
+  await bench(16, [
+    [100, 8],
+    [95, 8],
+    [90, 8],
+  ]);
+  await bench(9, [
+    [100, 6],
+    [92.5, 6],
+    [85, 6],
+  ]);
+  await bench(2, [
+    [100, 7],
+    [95, 7],
+    [90, 7],
+  ]);
+  const current = await session(db, {
+    routineId: null,
+    dayId: null,
+    startedAt: now - 16 * MIN,
+    sets: {
+      barbell_bench_press: [
+        [100, 8],
+        [97.5, 8],
+      ],
+    },
+    end: false,
+  });
+  return {
+    sessionId: current.sessionId,
+    benchId: current.ids.barbell_bench_press,
+  };
+};
+
 /** `running` with dumbbell presses in place of the overhead press. */
 export const substituted: Fixture = async (db) => {
   const ids = await running(db);

@@ -530,8 +530,9 @@ function Logger({ log }: { log: ExerciseLog }) {
   );
 }
 /**
- * Today's sets next to last time's, row by row. Set n is judged against set
- * n of the previous performance, so the pairing is the comparison.
+ * Today's sets next to last time's, row by row. A weight increase on set n
+ * is judged against set n of the previous performance, so the pairing is that
+ * comparison; a set record is judged against every earlier set n.
  */
 function Ledger(props: {
   log: ExerciseLog;

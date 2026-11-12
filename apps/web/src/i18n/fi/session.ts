@@ -124,6 +124,7 @@ export const session = {
     thisSet: "Tämä sarja",
     moreWeightOrReps: "Enemmän painoa tai toistoja",
     bestBefore: "Paras aiemmin",
+    bestSetBefore: "Paras sarja {{number}} aiemmin",
     lastTimeSet: "Viimeksi, sarja {{number}}",
     againstEarlierToday: "{{set}} aiemmin tänään",
     againstOnDate: "{{set}}, {{date}}",

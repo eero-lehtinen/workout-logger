@@ -6,6 +6,7 @@ import { deviceTimeZone } from "../../lib/format.ts";
 import {
   empty,
   running,
+  setRecordHistory,
   withBusyDays,
   withHistory,
 } from "../../stories/fixtures.ts";
@@ -34,6 +35,18 @@ export const ExerciseHistory = pageStory({
     await expect(
       canvas.getByText("Best e1RM", { selector: "p" }),
     ).toBeVisible();
+  },
+});
+
+/** Only today's set 2 beats every earlier set with its number. */
+export const ExerciseHistorySetRecords = pageStory({
+  fixture: setRecordHistory,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getAllByRole("img", { name: "Set record" }),
+    ).toHaveLength(1);
   },
 });
 

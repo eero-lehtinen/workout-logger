@@ -110,19 +110,24 @@ Each set gets at most one marker, checked in this order:
 2. **Set record** (star)
 3. **Weight increase** (up arrow)
 
-The last two compare against the **reference set**: the set with the same index
-in the previous performance. Sets are ordered by `position`, and deleted sets
+A set record compares against every earlier set with the same set number: set 2
+today against set 2 of every earlier performance of the exercise. A weight
+increase compares against the **reference set**: the set with the same set
+number in the previous performance. Sets are numbered by `position` within the
+performance. Deleted sets, and sets of deleted session exercises or sessions,
 don't count.
 
 ### `weight_reps` and `bodyweight_reps`
 
 - **e1RM** uses Epley and is computed only for 1–12 reps. The cap is a setting. Above the cap, e1RM is undefined: estimates there are unreliable.
 - **PR:** the set's e1RM is greater than the best e1RM of every earlier set of this exercise. Sets above the cap can't be PRs.
-- **Set record:**
-  - if both this set and the reference set have an e1RM: this set's e1RM is greater;
-  - otherwise (either is above the cap): this set dominates the reference, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
+- **Set record:** the set beats every earlier set with its set number. Against each earlier set:
+  - if both have an e1RM: this set's e1RM is greater;
+  - otherwise (either is above the cap): this set dominates the earlier one, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
+
+  Matching an earlier best, or beating last time after a worse session, is not a set record. Tapping the star shows the earlier set that was hardest to beat: the highest e1RM, or above the cap the heaviest, then the most reps.
 - **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
-- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight.
+- `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight. For set records, a set without added weight is compared only with earlier sets without added weight; a set with added weight is compared with all of them.
 
 ### Other exercise types
 
@@ -135,7 +140,8 @@ don't count.
 ### Edge cases
 
 - "Greater" means greater by more than an epsilon (1e-6 kg). Ties get no marker.
-- No reference set (first session of the exercise, or more sets than last time): no set record or weight increase marker.
+- No earlier set with the same set number (first session of the exercise, or more sets than ever before): no set record. No reference set (more sets than last time): no weight increase.
+- A session that has the exercise twice is one performance, numbered in session order, so its sets don't compete with each other for set records.
 - The first session of an exercise never shows PRs, because everything would be one. For the same reason, a PR needs at least one earlier comparable set: one with an e1RM, or for the other kinds, a value of the same kind.
 - Markers in history are computed against the history before each session, so they show what was achieved at the time.
 
