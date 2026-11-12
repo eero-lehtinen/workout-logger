@@ -79,11 +79,11 @@ export const ROUTINES: readonly CatalogRoutine[] = [
         name: "Lower",
         slots: [
           [
-            "leg_press",
             "hack_squat",
+            "leg_press",
             "smith_machine_squat",
             "back_squat",
-            "goblet_squat",
+            "bulgarian_split_squat",
           ],
           [
             "romanian_deadlift",
@@ -91,7 +91,7 @@ export const ROUTINES: readonly CatalogRoutine[] = [
             "back_extension",
           ],
           ["standing_calf_raise", "seated_calf_raise", "leg_press_calf_raise"],
-          ["leg_extension", "bulgarian_split_squat"],
+          ["leg_extension", "sissy_squat"],
           ["lying_leg_curl", "seated_leg_curl"],
         ],
       },

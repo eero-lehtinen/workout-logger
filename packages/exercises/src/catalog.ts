@@ -13,7 +13,7 @@ export const CATALOG_WALL = Date.UTC(2026, 10, 10);
  * changes; devices then write the new revision over the old one, but never
  * over a user's edit.
  */
-export const CATALOG_REVISION = 1;
+export const CATALOG_REVISION = 2;
 
 /** 1 = primary muscle, 0.5 = secondary. */
 export type Factor = 1 | 0.5;
@@ -612,6 +612,13 @@ export const EXERCISES: readonly CatalogExercise[] = [
     "weight_reps",
     { quads: 1, glutes: 1 },
     "Dumbbell_Step_Ups",
+  ),
+  ex(
+    "sissy_squat",
+    "Sissy Squat",
+    "bodyweight_reps",
+    { quads: 1 },
+    "Weighted_Sissy_Squat",
   ),
   ex(
     "leg_extension",
