@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Marker } from "../features/session/marker.tsx";
+import { expectStepperCentered } from "../stories/stepper.ts";
 import { DbGate } from "./db-gate.tsx";
 import { Stepper } from "./stepper.tsx";
 
@@ -36,7 +37,59 @@ export const StepperWeight: StoryObj = {
     await userEvent.click(
       canvas.getByRole("button", { name: "Increase weight" }),
     );
-    await expect(canvas.getByLabelText("Weight in kg")).toHaveValue("102.5");
+    const input = canvas.getByRole("textbox", { name: "Weight in kg" });
+    await expect(input).toHaveValue("102.5");
+    await expectStepperCentered(input);
+  },
+};
+
+/**
+ * On a 360 px phone a long label leaves no room to center the number, so the
+ * number moves toward the unit rather than being cut off.
+ */
+export const StepperLongLabel: StoryObj = {
+  render: () => (
+    <div className="w-[328px]">
+      <Stepper
+        label="Lisäpaino"
+        unit="kg"
+        value={122.5}
+        onChange={noop}
+        step={(v, d) => v + d}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Lisäpaino in kg") as HTMLInputElement;
+    await expect(input.scrollWidth).toBeLessThanOrEqual(input.clientWidth);
+    const label = canvas.getByText("Lisäpaino");
+    await expect(label.getBoundingClientRect().right).toBeLessThanOrEqual(
+      input.getBoundingClientRect().left,
+    );
+  },
+};
+
+/** A label on one side only still leaves the number centered. */
+export const StepperSizes: StoryObj = {
+  render: () => (
+    <div className="flex flex-col gap-2">
+      {(["lg", "md"] as const).map((size) => (
+        <Stepper
+          key={size}
+          label={`Reps ${size}`}
+          value={8}
+          onChange={noop}
+          step={(v, d) => v + d}
+          size={size}
+        />
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectStepperCentered(canvas.getByLabelText("Reps lg"));
+    await expectStepperCentered(canvas.getByLabelText("Reps md"));
   },
 };
 
