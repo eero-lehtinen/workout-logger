@@ -208,9 +208,7 @@ export const SignedOut = pageStory({
       canvas.queryByRole("button", { name: "Sign in with GitHub" }),
     ).toBeNull();
     await expect(
-      canvas.getByText(
-        /the server keeps an unencrypted copy its owner can read/,
-      ),
+      canvas.getByText(/Synced data is not encrypted/),
     ).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Privacy" })).toHaveAttribute(
       "href",

@@ -56,7 +56,7 @@ the total, because every account's data is copied many times into R2.
 - The cap is 100 accounts, the owner included, changeable on the [admin page](#admin-page) without a deploy.
 - `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"; a 403 from id-token sign-in, `?error=signup_closed` on the OAuth redirect). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place. That needs `transaction: true` in its database options: without it Better Auth runs the two inserts without a transaction.
 - The hook counts through Better Auth's adapter, which joins the transaction, and reads the cap from the server's in-memory copy of `limits`: a query on the server's own Kysely instance would wait for the connection the transaction holds.
-- The sign-in row says that signing in creates an account, that the owner can read the data, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
+- The sign-in row says that signing in creates an account, that synced data is not encrypted, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
 - Sign-up lands on Settings with a welcome toast: Better Auth sends a new user to `newUserCallbackURL` (`/settings?welcome=1`; for Android, `/finish` passes `welcome=1` on to the deep link). Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
 
 **Why 100.** The binding limit is R2's free tier, 10 GB of storage, which
@@ -166,7 +166,7 @@ backup or a database over 700 MB instead of its description.
 
 ## Privacy
 
-- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says this plainly and links to a `/privacy` page with this section's content; the Google consent screen links to it too.
+- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says the data is not encrypted and links to a `/privacy` page with this section's content; the Google consent screen links to it too.
 - There is no end-to-end encryption. It would complicate the CLI and server-side restores, and a lost key would mean lost data.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.

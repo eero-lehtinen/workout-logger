@@ -35,8 +35,7 @@ export function AccountSection() {
               "Your session ended. Sign in again to keep syncing; nothing logged here is lost."
             ) : (
               <>
-                Sign in to sync your devices; the server keeps an unencrypted
-                copy its owner can read.{" "}
+                Sign in to sync your devices. Synced data is not encrypted.{" "}
                 <Link to="/privacy" className="underline">
                   Privacy
                 </Link>

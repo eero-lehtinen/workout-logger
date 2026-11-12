@@ -13,9 +13,7 @@ export const Phone = pageStory({
   url: () => "/privacy",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      canvas.getByText(/the owner can technically read it/),
-    ).toBeVisible();
+    await expect(canvas.getByText(/It is not encrypted/)).toBeVisible();
     await expect(canvas.getByText("Monthly copies: 3 months")).toBeVisible();
   },
 });

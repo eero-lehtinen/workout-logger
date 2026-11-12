@@ -39,28 +39,16 @@ export function PrivacyPage() {
     >
       <div className="flex flex-col pb-6 text-[0.9375rem] leading-relaxed">
         <Part title="Without an account">
-          <p>
-            The app works fully without signing in. Your workouts then stay on
-            this device and nothing is sent to the server. Keep your own backups
-            with Settings → Export snapshot.
-          </p>
+          <p>Your data stays on this device. Nothing is sent to the server.</p>
         </Part>
         <Part title="With an account">
           <p>
-            Signing in with Google creates an account here the first time. The
-            server keeps your name, email address, and profile picture from
-            Google, and the workout data your devices sync.
+            The server stores your name, email address, and profile picture from
+            Google, and your synced workout data. It is not encrypted.
           </p>
           <p>
-            One person, the owner, runs the server for a few people they know.
-            Your data is stored unencrypted on the owner's server and in their
-            backup storage, and the owner can technically read it. There is no
-            end-to-end encryption.
-          </p>
-          <p>
-            The server runs on a rented virtual server. Cloudflare carries the
-            traffic to it and stores its backups. Google handles sign-in. Your
-            data isn't sold or shared with anyone else.
+            Google handles sign-in. Cloudflare carries traffic to the server and
+            stores its backups. Your data isn't sold or shared with anyone else.
           </p>
         </Part>
         <Part title="Your data">
@@ -68,13 +56,11 @@ export function PrivacyPage() {
             <Link to="/settings" className="underline">
               Settings
             </Link>{" "}
-            → Export snapshot saves all your data to a file at any time. A
-            synced device holds all of your account's data.
+            → Export snapshot saves all your data to a file.
           </p>
           <p>
-            Settings → Delete account deletes your account and everything the
-            server holds for it, right away. Your devices keep their own data.
-            Backups made before the deletion still hold it until they expire:
+            Settings → Delete account deletes everything the server holds for
+            your account. Backups made before that keep it until they expire:
           </p>
           <ul className="list-disc pl-5 text-ink-muted">
             {RETENTION.map(([what, how]) => (
