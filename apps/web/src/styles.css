@@ -38,6 +38,9 @@
   --recessed: light-dark(#dcd8d1, #161412);
   /* Behind dialogs: dims in both themes. */
   --scrim: light-dark(#2d2925, #000000);
+  /* Under a screen's header once its body scrolls. Dark needs far more
+     opacity for the shadow to show at all. */
+  --lift: light-dark(rgb(45 41 37 / 0.28), rgb(0 0 0 / 0.7));
 }
 /* Forces a theme regardless of the system setting, e.g. in Storybook. */
 :root[data-theme="light"] {
@@ -81,24 +84,31 @@
 }
 
 /*
- * A rule under a screen's header, shown only once its body has scrolled.
- * The body names its scroll timeline `--screen` (see Screen). Browsers
- * without scroll-driven animations get the header without the rule.
+ * The edge under a screen's header: always a rule, so header controls never
+ * read as part of the body, and a shadow that fades in once the body has
+ * scrolled, so the body reads as passing under the header. The body names
+ * its scroll timeline `--screen` (see Screen). Browsers without
+ * scroll-driven animations get only the rule.
  */
 @utility scroll-edge {
+  box-shadow: 0 1px 0 var(--rule);
   @supports (animation-timeline: scroll()) {
     animation: scroll-edge linear both;
     animation-timeline: --screen;
-    animation-range: 0 12px;
+    animation-range: 0 24px;
   }
 }
 
 @keyframes scroll-edge {
   from {
-    box-shadow: 0 1px 0 transparent;
+    box-shadow:
+      0 1px 0 var(--rule),
+      0 0 0 0 transparent;
   }
   to {
-    box-shadow: 0 1px 0 var(--rule);
+    box-shadow:
+      0 1px 0 var(--rule),
+      0 8px 18px -8px var(--lift);
   }
 }
 
