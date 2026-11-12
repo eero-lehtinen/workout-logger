@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Button, buttonClass, IconButton } from "../../components/button.tsx";
+import { Button, buttonClass } from "../../components/button.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useDbQuery } from "../../db/react.tsx";
@@ -91,11 +91,9 @@ function SignInButtons() {
   return (
     <div className="flex flex-wrap justify-end gap-2">
       {providers.map((provider) => (
-        <IconButton
+        <Button
           key={provider}
-          variant="secondary"
-          size="lg"
-          label={t("settings.account.signInWith", {
+          aria-label={t("settings.account.signInWith", {
             provider: PROVIDER_NAMES[provider],
           })}
           disabled={busy}
@@ -116,7 +114,8 @@ function SignInButtons() {
           }}
         >
           <ProviderLogo provider={provider} />
-        </IconButton>
+          {t("settings.account.signIn")}
+        </Button>
       ))}
     </div>
   );

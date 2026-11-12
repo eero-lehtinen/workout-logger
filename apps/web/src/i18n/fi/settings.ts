@@ -63,6 +63,7 @@ export const settings = {
       "Kirjautumisesi on vanhentunut. Kirjaudu uudelleen, niin synkronointi jatkuu. Tällä laitteella kirjatut tiedot säilyvät.",
     signInHint:
       "Kirjaudu, niin voit synkronoida laitteesi. Synkronoituja tietoja ei salata. <privacy>Tietosuoja</privacy>",
+    signIn: "Kirjaudu sisään",
     signInWith: "Kirjaudu sisään {{provider}}-tilillä",
     signInFailed: "Kirjautumista ei voitu aloittaa",
     emailOffline: "{{email}} · ei verkkoyhteyttä",

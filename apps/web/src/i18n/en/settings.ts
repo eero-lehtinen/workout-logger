@@ -56,6 +56,7 @@ export const settings = {
       "Your sign-in expired. Sign in again to keep syncing; nothing logged here is lost.",
     signInHint:
       "Sign in to sync your devices. Synced data is not encrypted. <privacy>Privacy</privacy>",
+    signIn: "Sign in",
     signInWith: "Sign in with {{provider}}",
     signInFailed: "Couldn't start sign-in",
     emailOffline: "{{email}} · offline",

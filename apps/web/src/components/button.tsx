@@ -74,23 +74,17 @@ export function Button({
 export function IconButton({
   label,
   variant = "ghost",
-  size = "md",
   className,
   type = "button",
   ...props
-}: ComponentProps<"button"> & {
-  label: string;
-  variant?: ButtonVariant;
-  size?: "md" | "lg";
-}) {
+}: ComponentProps<"button"> & { label: string; variant?: ButtonVariant }) {
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
       className={clsx(
-        "inline-flex shrink-0 items-center justify-center rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-30",
-        size === "lg" ? "size-14" : "size-10",
+        "inline-flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-30",
         iconVariants[variant],
         className,
       )}
