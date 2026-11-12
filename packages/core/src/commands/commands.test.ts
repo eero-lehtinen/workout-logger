@@ -215,6 +215,31 @@ describe("logging", () => {
     ]);
   });
 
+  it("marks set records against every earlier session, not deleted ones", async () => {
+    const { query, run, advance, ids, first, se2 } = await logged();
+    await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
+    await run("logSet", { sessionExerciseId: se2, values: set(100, 5) });
+    advance(3 * 24 * 60 * MIN);
+    const third = await run("startSession", {
+      routineId: ids.routineId,
+      dayId: ids.upper,
+    });
+    const se3 =
+      (await query("sessionView", { sessionId: third }))?.exercises[0]?.id ??
+      "";
+    await run("logSet", { sessionExerciseId: se3, values: set(100, 8) });
+    await run("logSet", { sessionExerciseId: se3, values: set(100, 6) });
+    const markers = async () =>
+      (await query("exerciseLog", { sessionExerciseId: se3 }))?.sets.map(
+        (s) => s.marker,
+      );
+    // 100 × 6 beats last time's 100 × 5, but not the first session's 100 × 7.
+    expect(await markers()).toEqual([null, null]);
+
+    await run("deleteSession", { sessionId: first });
+    expect(await markers()).toEqual([null, "set_record"]);
+  });
+
   it("gives the session view the same markers as the logging view", async () => {
     const { query, run, first, second, se2 } = await logged();
     await run("logSet", { sessionExerciseId: se2, values: set(102.5, 8) });

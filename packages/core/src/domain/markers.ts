@@ -36,10 +36,13 @@ export interface MarkerBasis {
   compared: number | null;
   /**
    * The set it was compared with, as indexes into the performances: the
-   * previous best for a PR, the reference set otherwise.
+   * previous best for a PR, the best earlier set with the same set number for
+   * a set record, the reference set for a weight increase.
    */
-  against: { performance: number; set: number };
+  against: SetIndex;
 }
+
+type SetIndex = { performance: number; set: number };
 
 /**
  * Markers for every set of one exercise's performances, oldest first. A
@@ -65,10 +68,9 @@ export function explainPerformances(
 ): (MarkerBasis | null)[][] {
   const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
   // Best PR score per comparable kind over all earlier sets, and where it was.
-  const best = new Map<
-    ScoreKind,
-    { value: number; at: MarkerBasis["against"] }
-  >();
+  const best = new Map<ScoreKind, { value: number; at: SetIndex }>();
+  // Every earlier set, grouped by set number.
+  const earlierByNumber: EarlierSet[][] = [];
   let previous: readonly SetValues[] | undefined;
 
   return performances.map((sets, index) => {
@@ -94,25 +96,82 @@ export function explainPerformances(
           };
         }
       }
+      const record = setRecordOverAll(type, set, earlierByNumber[i], cap);
+      if (record) return { marker: "set_record", ...record };
       const reference = previous?.[i];
-      if (!reference) return null;
-      const against = { performance: index - 1, set: i };
-      const record = setRecord(type, set, reference, cap);
-      if (record) return { marker: "set_record", ...record, against };
-      if (isWeightType(type) && greater(weight(set), weight(reference))) {
+      if (
+        reference &&
+        isWeightType(type) &&
+        greater(weight(set), weight(reference))
+      ) {
         return {
           marker: "weight_increase",
           measure: "weight",
           value: weight(set),
           compared: weight(reference),
-          against,
+          against: { performance: index - 1, set: i },
         };
       }
       return null;
     });
+    sets.forEach((set, i) => {
+      const earlier = earlierByNumber[i] ?? [];
+      earlier.push({ set, at: { performance: index, set: i } });
+      earlierByNumber[i] = earlier;
+    });
     previous = sets;
     return bases;
   });
+}
+
+interface EarlierSet {
+  set: SetValues;
+  at: SetIndex;
+}
+
+/**
+ * A set record beats every earlier set with the same set number. The basis
+ * points at the one hardest to beat: the highest compared value, then the
+ * most weight, then the most reps, and the first to reach that on a tie.
+ */
+function setRecordOverAll(
+  type: ExerciseType,
+  set: SetValues,
+  earlier: readonly EarlierSet[] | undefined,
+  cap: number,
+): (Comparison & { against: SetIndex }) | null {
+  let hardest: { comparison: Comparison; earlier: EarlierSet } | undefined;
+  for (const e of earlier ?? []) {
+    const comparison = setRecord(type, set, e.set, cap);
+    if (!comparison) return null;
+    if (!hardest || harder(comparison, e.set, hardest)) {
+      hardest = { comparison, earlier: e };
+    }
+  }
+  return hardest
+    ? { ...hardest.comparison, against: hardest.earlier.at }
+    : null;
+}
+
+function harder(
+  comparison: Comparison,
+  set: SetValues,
+  than: { comparison: Comparison; earlier: EarlierSet },
+): boolean {
+  const key = (c: Comparison, s: SetValues) => [
+    c.compared ?? Number.NEGATIVE_INFINITY,
+    weight(s),
+    s.reps ?? 0,
+  ];
+  const a = key(comparison, set);
+  const b = key(than.comparison, than.earlier.set);
+  for (let k = 0; k < a.length; k++) {
+    const x = a[k] ?? 0;
+    const y = b[k] ?? 0;
+    if (greater(x, y)) return true;
+    if (greater(y, x)) return false;
+  }
+  return false;
 }
 
 type ScoreKind = "e1rm" | "reps" | "duration" | "distance";

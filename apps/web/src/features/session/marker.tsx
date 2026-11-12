@@ -98,12 +98,12 @@ function Comparison(props: {
         set,
         date: formatSessionDate(against.startedAt, against.tz),
       });
-  // A PR beats the best of all earlier sets; the other markers compare with
-  // the same set number last time.
   const label =
     props.marker === "pr"
       ? t("session.marker.bestBefore")
-      : t("session.marker.lastTimeSet", { number: against.setNumber });
+      : props.marker === "set_record"
+        ? t("session.marker.bestSetBefore", { number: against.setNumber })
+        : t("session.marker.lastTimeSet", { number: against.setNumber });
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pt-2 text-sm">
       <dt className="text-ink-muted">{t("session.marker.thisSet")}</dt>

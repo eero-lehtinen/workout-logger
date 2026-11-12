@@ -65,9 +65,55 @@ describe("weight_reps", () => {
     ).toEqual([null]);
   });
 
-  it("marks a set record when the e1RM beats the reference set but not the PR", () => {
+  it("marks a set record when the e1RM beats every earlier set with its number but not the PR", () => {
     const history = [[s(100, 8)], [s(90, 8), s(90, 6)], [s(80, 5), s(90, 7)]];
     expect(last("weight_reps", history)).toEqual([null, "set_record"]);
+  });
+
+  it("does not mark a set record for beating only last time", () => {
+    const history = [
+      [s(100, 8), s(100, 8)],
+      [s(100, 6), s(100, 6)],
+      [s(100, 7), s(100, 8)],
+    ];
+    expect(last("weight_reps", history)).toEqual([null, null]);
+  });
+
+  it("judges set records against the history before each session, not later sets", () => {
+    const marks = markPerformances("weight_reps", [
+      [s(120, 5), s(100, 5)],
+      [s(120, 5), s(105, 5)],
+      [s(120, 5), s(110, 5)],
+      [s(120, 5), s(102.5, 5)],
+    ]);
+    expect(marks.map((sets) => sets[1])).toEqual([
+      null,
+      "set_record",
+      "set_record",
+      null,
+    ]);
+  });
+
+  it("does not compare a set with other set numbers, today or earlier", () => {
+    expect(
+      last("weight_reps", [
+        [s(100, 8), s(80, 8)],
+        [s(100, 8), s(85, 8)],
+      ]),
+    ).toEqual([null, "set_record"]);
+  });
+
+  it("compares a set beyond last time's count with earlier sets of that number", () => {
+    const history = [
+      [s(100, 8), s(100, 8), s(90, 8)],
+      [s(100, 8), s(100, 8)],
+      [s(100, 8), s(100, 8), s(92.5, 8)],
+      [s(100, 8), s(100, 8), s(92.5, 8), s(80, 8)],
+    ];
+    const marks = markPerformances("weight_reps", history);
+    expect(marks[2]).toEqual([null, null, "set_record"]);
+    // Nothing earlier has a fourth set.
+    expect(marks[3]).toEqual([null, null, null, null]);
   });
 
   it("uses dominance when either set is above the cap", () => {
@@ -85,6 +131,10 @@ describe("weight_reps", () => {
     ]);
     // Equal on both is a tie.
     expect(last("weight_reps", [[s(60, 15)], [s(60, 15)]])).toEqual([null]);
+    // Dominates last time but not an earlier heavier set.
+    expect(
+      last("weight_reps", [[s(65, 13)], [s(60, 15)], [s(62.5, 15)]]),
+    ).toEqual(["weight_increase"]);
   });
 
   it("marks a weight increase: more weight, fewer reps, no record", () => {
@@ -198,7 +248,33 @@ describe("explainPerformances", () => {
     ]);
   });
 
-  it("points set records and weight increases at the reference set", () => {
+  it("points a set record at the hardest earlier set with its number", () => {
+    const history = [
+      [s(100, 8), s(95, 8)],
+      [s(100, 6), s(90, 8)],
+      [s(100, 5), s(97.5, 8)],
+    ];
+    expect(explainPerformances("weight_reps", history).at(-1)?.[1]).toEqual({
+      marker: "set_record",
+      measure: "e1rm",
+      value: 97.5 * (1 + 8 / 30),
+      compared: 95 * (1 + 8 / 30),
+      against: { performance: 0, set: 1 },
+    });
+  });
+
+  it("points a set record above the cap at the heaviest, then most reps", () => {
+    const history = [[s(60, 15)], [s(60, 16)], [s(55, 18)], [s(60, 18)]];
+    expect(
+      explainPerformances("weight_reps", history).at(-1)?.[0],
+    ).toMatchObject({
+      marker: "set_record",
+      measure: "weight_and_reps",
+      against: { performance: 1, set: 0 },
+    });
+  });
+
+  it("points set records and weight increases at the reference set when it is the only one", () => {
     const history = [
       [s(120, 8), s(100, 7), s(100, 6)],
       [s(110, 5), s(100, 8), s(105, 4)],

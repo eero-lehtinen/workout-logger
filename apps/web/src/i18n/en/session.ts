@@ -121,6 +121,7 @@ export const session = {
     thisSet: "This set",
     moreWeightOrReps: "More weight or reps",
     bestBefore: "Best before",
+    bestSetBefore: "Best set {{number}} before",
     lastTimeSet: "Last time, set {{number}}",
     againstEarlierToday: "{{set}} earlier today",
     againstOnDate: "{{set}} on {{date}}",
