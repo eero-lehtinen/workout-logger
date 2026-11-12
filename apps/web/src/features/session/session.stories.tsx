@@ -250,6 +250,9 @@ export const SetRecordOverAllEarlier = pageStory({
       /This set123\.5 kg e1RMBest set 2 before120\.3 kg e1RM95 × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
+    // Until the closing popover unmounts, its focus guards are aria-hidden
+    // yet focusable, which fails the a11y check that runs after play.
+    await waitFor(() => expect(record).not.toBeInTheDocument());
   },
 });
 
