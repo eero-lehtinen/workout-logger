@@ -6,21 +6,13 @@ import {
   weeklyAverages,
 } from "@workout-logger/core";
 import { MUSCLE_GROUPS } from "@workout-logger/exercises";
+import { useTranslation } from "react-i18next";
 import { FieldLabel } from "../../components/headings.tsx";
 import { Switch } from "../../components/switch.tsx";
-import { dateFromIso } from "../../lib/format.ts";
+import { dateFormat, dateFromIso, numberFormat } from "../../lib/format.ts";
 import { useSwitchPreference } from "../../lib/preference.ts";
-
-const one = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-const shortDate = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+import { muscleGroupName, muscleName } from "../exercises/muscles.ts";
+import { ONE_DECIMAL, SHORT_DATE } from "./format-options.ts";
 
 /** Weekly weighted sets per muscle group, optionally with its muscles below. */
 export function MuscleSets(props: {
@@ -30,6 +22,7 @@ export function MuscleSets(props: {
   weekStart: WeekStart;
 }) {
   const { sessions, muscles, range, weekStart } = props;
+  const { t } = useTranslation();
   const [showMuscles, setShowMuscles] = useSwitchPreference(
     "history-show-muscles",
     false,
@@ -58,11 +51,11 @@ export function MuscleSets(props: {
   return (
     <>
       <div className="flex items-center justify-between gap-2 pt-6 pb-1">
-        <FieldLabel as="h3">Muscles</FieldLabel>
+        <FieldLabel as="h3">{t("history.muscleSets.title")}</FieldLabel>
         <span className="flex items-center gap-2 text-sm text-ink-muted">
-          <span aria-hidden>By muscle</span>
+          <span aria-hidden>{t("history.muscleSets.byMuscle")}</span>
           <Switch
-            label="By muscle"
+            label={t("history.muscleSets.byMuscle")}
             checked={showMuscles}
             onChange={setShowMuscles}
           />
@@ -72,19 +65,23 @@ export function MuscleSets(props: {
         <thead>
           <tr className="text-sm text-ink-muted">
             <th scope="col" className="py-1 font-normal">
-              Group
+              {t("history.muscleSets.group")}
             </th>
             <th scope="col" className="py-1 text-right font-normal">
-              Sets per week
+              {t("history.muscleSets.setsPerWeek")}
             </th>
             <th scope="col" className="py-1 pl-4 text-right font-normal">
-              Last trained
+              {t("history.muscleSets.lastTrained")}
             </th>
           </tr>
         </thead>
         {groups.map((g) => (
           <tbody key={g.key} className="border-t border-rule">
-            <Row name={g.key} perWeek={g.perWeek} lastDate={g.lastDate} />
+            <Row
+              name={muscleGroupName(g.key)}
+              perWeek={g.perWeek}
+              lastDate={g.lastDate}
+            />
             {muscles
               .filter((m) => showMuscles && m.group === g.key)
               .map((m) => {
@@ -92,7 +89,7 @@ export function MuscleSets(props: {
                 return (
                   <Row
                     key={m.id}
-                    name={m.name}
+                    name={muscleName(m)}
                     perWeek={muscle?.perWeek ?? 0}
                     lastDate={muscle?.lastDate ?? null}
                     muscle
@@ -103,9 +100,7 @@ export function MuscleSets(props: {
         ))}
       </table>
       <p className="pt-1 text-xs text-ink-muted">
-        Weighted sets per week: a set counts fully for a primary muscle and by
-        half for a secondary one. In a group, each set counts once, by its
-        largest share.
+        {t("history.muscleSets.explanation")}
       </p>
     </>
   );
@@ -128,9 +123,13 @@ function Row(props: {
       >
         {props.name}
       </th>
-      <td className="tabular py-0.5 text-right">{one.format(props.perWeek)}</td>
+      <td className="tabular py-0.5 text-right">
+        {numberFormat(ONE_DECIMAL).format(props.perWeek)}
+      </td>
       <td className="tabular py-0.5 pl-4 text-right text-ink-muted">
-        {props.lastDate ? shortDate.format(dateFromIso(props.lastDate)) : "–"}
+        {props.lastDate
+          ? dateFormat(SHORT_DATE).format(dateFromIso(props.lastDate))
+          : "–"}
       </td>
     </tr>
   );

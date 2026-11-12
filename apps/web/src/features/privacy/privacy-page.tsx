@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { PageHeader, Screen } from "../../components/page.tsx";
 import { BackupRetention } from "./backup-retention.tsx";
@@ -19,43 +20,36 @@ function Part(props: { title: string; children: ReactNode }) {
 }
 
 export function PrivacyPage() {
+  const { t } = useTranslation();
   return (
     <Screen
       header={
         <PageHeader
-          title="Privacy"
-          back={{ to: "/settings", label: "Settings" }}
+          title={t("privacy.title")}
+          back={{ to: "/settings", label: t("settings.title") }}
         />
       }
       scrollId="privacy"
       width="narrow"
     >
       <div className="flex flex-col text-[0.9375rem] leading-relaxed">
-        <Part title="Without an account">
-          <p>Your data stays on this device. Nothing is sent to the server.</p>
+        <Part title={t("privacy.withoutAccount.title")}>
+          <p>{t("privacy.withoutAccount.body")}</p>
         </Part>
-        <Part title="With an account">
-          <p>
-            The server stores your name, email address, and profile picture from
-            Google, and your synced workout data. It is not encrypted.
-          </p>
-          <p>
-            Google handles sign-in. Cloudflare carries traffic to the server and
-            stores its backups. Your data isn't sold or shared with anyone else.
-          </p>
+        <Part title={t("privacy.withAccount.title")}>
+          <p>{t("privacy.withAccount.stored")}</p>
+          <p>{t("privacy.withAccount.processors")}</p>
         </Part>
-        <Part title="Your data">
+        <Part title={t("privacy.yourData.title")}>
           <p>
-            <Link to="/settings" className="underline">
-              Settings
-            </Link>{" "}
-            → Export snapshot saves all your data to a file.
+            <Trans
+              i18nKey="privacy.yourData.export"
+              components={{
+                settings: <Link to="/settings" className="underline" />,
+              }}
+            />
           </p>
-          <p>
-            Settings → Delete account deletes everything the server has for your
-            account. Older backups still contain your data until they are
-            deleted:
-          </p>
+          <p>{t("privacy.yourData.delete")}</p>
           <BackupRetention />
         </Part>
       </div>

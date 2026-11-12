@@ -1,9 +1,11 @@
 import { Plus, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useCommand } from "../../db/react.tsx";
 import type { Slot } from "./slot-details.tsx";
 
 /** A slot's alternatives as removable chips, and a way to add one. */
 export function Alternatives(props: { slot: Slot; onAdd: () => void }) {
+  const { t } = useTranslation();
   const command = useCommand();
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -12,10 +14,12 @@ export function Alternatives(props: { slot: Slot; onAdd: () => void }) {
           key={alt.id}
           className="inline-flex h-8 items-center gap-0.5 rounded-full bg-surface pr-0.5 pl-3 text-sm"
         >
-          {alt.exerciseName ?? "Deleted exercise"}
+          {alt.exerciseName ?? t("routines.slot.deletedExercise")}
           <button
             type="button"
-            aria-label={`Remove alternative ${alt.exerciseName ?? ""}`}
+            aria-label={t("routines.alternatives.remove", {
+              name: alt.exerciseName ?? "",
+            })}
             onClick={() =>
               command("deleteAlternative", { alternativeId: alt.id })
             }
@@ -31,7 +35,7 @@ export function Alternatives(props: { slot: Slot; onAdd: () => void }) {
         className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-sm text-ink-muted hover:bg-surface hover:text-ink"
       >
         <Plus size={14} />
-        Alternative
+        {t("routines.alternatives.add")}
       </button>
     </div>
   );

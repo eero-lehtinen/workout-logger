@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react-vite";
 import { configure } from "storybook/test";
+import { type Language, pinLanguage } from "../src/i18n/index.ts";
 import { resetStoryClock } from "../src/stories/clock.ts";
 import "../src/styles.css";
 
@@ -32,8 +33,22 @@ const preview: Preview = {
   initialGlobals: {
     viewport: { value: "phone", isRotated: false },
     theme: "light",
+    // Fixed, so stories don't follow the language of the machine running them.
+    language: "en",
   },
   globalTypes: {
+    language: {
+      description: "UI language",
+      toolbar: {
+        title: "Language",
+        icon: "globe",
+        items: [
+          { value: "en", title: "English" },
+          { value: "fi", title: "Suomi" },
+        ],
+        dynamicTitle: true,
+      },
+    },
     theme: {
       description: "Color theme",
       toolbar: {
@@ -50,6 +65,7 @@ const preview: Preview = {
   decorators: [
     (Story, context) => {
       document.documentElement.dataset.theme = context.globals.theme as string;
+      pinLanguage(context.globals.language as Language);
       // The app's root is isolated the same way (styles.css, #app).
       return (
         <div className="isolate">

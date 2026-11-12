@@ -11,14 +11,8 @@ import { readPreference, usePreference } from "./preference.ts";
 
 export type Theme = "system" | "light" | "dark";
 
-export const THEMES = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-] as const satisfies readonly { value: Theme; label: string }[];
-
 const KEY = "theme";
-const VALUES = THEMES.map((t) => t.value);
+const VALUES = ["system", "light", "dark"] as const satisfies Theme[];
 
 /** At startup: the inline script sets only `data-theme`. */
 export function initTheme() {

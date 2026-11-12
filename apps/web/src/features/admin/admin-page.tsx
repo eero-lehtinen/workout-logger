@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
+import { i18n } from "../../i18n/index.ts";
 import { useAccount } from "../../lib/account.ts";
 import {
   type AdminUser,
@@ -26,6 +28,7 @@ export const ADMIN_USERS_KEY = ["admin", "users"];
  * (docs/accounts.md#admin-page).
  */
 export function AdminPage() {
+  const { t } = useTranslation();
   const account = useAccount();
   const isOwner =
     account.status === "signed-in" && account.user.role === "owner";
@@ -59,23 +62,27 @@ export function AdminPage() {
     <Screen
       header={
         <PageHeader
-          title="Admin"
-          back={{ to: "/settings", label: "Settings" }}
+          title={t("admin.title")}
+          back={{ to: "/settings", label: t("settings.title") }}
         />
       }
       scrollId="admin"
       width="narrow"
     >
       {!isOwner ? (
-        <Empty>Only the owner can see this page.</Empty>
+        <Empty>{t("admin.ownerOnly")}</Empty>
       ) : (
         <>
           <ServerSection status={status} storage={storage} now={now} />
-          <SectionHeading className="pt-6 pb-1">Accounts</SectionHeading>
+          <SectionHeading className="pt-6 pb-1">
+            {t("admin.accounts.title")}
+          </SectionHeading>
           {users.isError ? (
-            <Empty>Couldn't load the accounts: {users.error.message}</Empty>
+            <Empty>
+              {t("admin.accounts.loadFailed", { error: users.error.message })}
+            </Empty>
           ) : !users.data ? (
-            <Empty>Loading…</Empty>
+            <Empty>{t("admin.loading")}</Empty>
           ) : (
             <>
               <AccountCap
@@ -92,12 +99,14 @@ export function AdminPage() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name or email"
-                  aria-label="Search accounts"
+                  placeholder={t("admin.accounts.searchPlaceholder")}
+                  aria-label={t("admin.accounts.searchLabel")}
                   className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
                 />
               </div>
-              {shown.length === 0 && <Empty>No account matches.</Empty>}
+              {shown.length === 0 && (
+                <Empty>{t("admin.accounts.noMatch")}</Empty>
+              )}
               <ul className={listClass}>
                 {shown.map((user) => (
                   <li key={user.id}>
@@ -113,10 +122,16 @@ export function AdminPage() {
                       <span className="font-medium">
                         {user.name}
                         {user.role === "owner" && (
-                          <span className="text-ink-muted"> · owner</span>
+                          <span className="text-ink-muted">
+                            {" · "}
+                            {t("admin.accounts.owner")}
+                          </span>
                         )}
                         {user.disabled && (
-                          <span className="text-danger"> · disabled</span>
+                          <span className="text-danger">
+                            {" · "}
+                            {t("admin.accounts.disabled")}
+                          </span>
                         )}
                       </span>
                       <span className="text-sm text-ink-muted">
@@ -158,10 +173,19 @@ function usageLine(
   const of = (used: number, limit: number | null) =>
     limit === null
       ? formatBytes(used)
-      : `${formatBytes(used)} of ${formatBytes(limit)}`;
+      : i18n.t("admin.accounts.usageOf", {
+          used: formatBytes(used),
+          limit: formatBytes(limit),
+        });
   const synced =
     user.lastSyncAt === null
-      ? "never synced"
-      : `synced ${formatAgo(user.lastSyncAt, now)}`;
-  return `${of(user.storedBytes, max)} stored · ${of(user.bytesWrittenToday, perDay)} today · ${synced}`;
+      ? i18n.t("admin.accounts.neverSynced")
+      : i18n.t("admin.accounts.synced", {
+          ago: formatAgo(user.lastSyncAt, now),
+        });
+  return i18n.t("admin.accounts.usage", {
+    stored: of(user.storedBytes, max),
+    today: of(user.bytesWrittenToday, perDay),
+    synced,
+  });
 }

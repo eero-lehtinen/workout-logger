@@ -25,6 +25,21 @@ export const Browser = pageStory({
   },
 });
 
+export const BrowserFinnish = pageStory({
+  fixture: empty,
+  url: () => "/exercises",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("searchbox", { name: "Hae liikkeitä" }),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Rinta" }));
+    await expect(await canvas.findByText("Barbell Bench Press")).toBeVisible();
+    await expect(canvas.queryByText("Back Squat")).toBeNull();
+  },
+});
+
 export const SortRecentlyLogged = pageStory({
   fixture: withHistory,
   url: () => "/exercises",
@@ -256,4 +271,21 @@ export const EditBuiltIn = pageStory({
 export const EditBuiltInPhone = pageStory({
   fixture: empty,
   url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
+});
+
+export const EditFinnish = pageStory({
+  fixture: empty,
+  url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("heading", { name: "Muokkaa liikettä" }),
+    ).toBeVisible();
+    const chest = within(canvas.getByRole("group", { name: "Rinta" }));
+    await expect(chest.getByRole("button", { name: "Rinta" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  },
 });

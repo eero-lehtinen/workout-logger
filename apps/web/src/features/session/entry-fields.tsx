@@ -6,15 +6,17 @@ import {
   type WeightUnit,
   weightIncrement,
 } from "@workout-logger/core";
+import { useTranslation } from "react-i18next";
 import {
   parseDuration,
   Stepper,
   type StepperProps,
 } from "../../components/stepper.tsx";
-import { formatDuration } from "../../lib/format.ts";
+import { formatDuration, numberFormat } from "../../lib/format.ts";
 import { type Entry, type EntryField, FIELDS } from "./entry.ts";
 
-const formatWeightInput = (value: number) => String(roundTo(value, 2));
+const formatDecimalInput = (value: number) =>
+  numberFormat({ maximumFractionDigits: 2, useGrouping: false }).format(value);
 
 export function EntryFields(props: {
   type: ExerciseType;
@@ -26,6 +28,7 @@ export function EntryFields(props: {
   size?: "lg" | "md";
 }) {
   const { entry, onChange, unit } = props;
+  const { t } = useTranslation();
   const increment = weightIncrement(
     unit,
     props.incrementKg,
@@ -38,22 +41,25 @@ export function EntryFields(props: {
 
   const steppers: Record<EntryField, Omit<StepperProps, "size">> = {
     weight: {
-      label: props.type === "bodyweight_reps" ? "Added" : "Weight",
+      label:
+        props.type === "bodyweight_reps"
+          ? t("session.entry.added")
+          : t("session.entry.weight"),
       unit,
       value: entry.weight,
       onChange: (v) => set("weight", v),
       step: (v, d) => stepWeight(v, increment, d),
-      format: formatWeightInput,
+      format: formatDecimalInput,
     },
     reps: {
-      label: "Reps",
+      label: t("session.entry.reps"),
       value: entry.reps,
       inputMode: "numeric",
       onChange: (v) => set("reps", v === null ? null : Math.round(v)),
       step: (v, d) => Math.max(0, Math.round(v) + d),
     },
     durationS: {
-      label: "Time",
+      label: t("session.entry.time"),
       value: entry.durationS,
       inputMode: "numeric",
       onChange: (v) => set("durationS", v),
@@ -62,12 +68,12 @@ export function EntryFields(props: {
       parse: parseDuration,
     },
     distanceKm: {
-      label: "Distance",
+      label: t("session.entry.distance"),
       unit: "km",
       value: entry.distanceKm,
       onChange: (v) => set("distanceKm", v),
       step: (v, d) => Math.max(0, roundTo(v + d * 0.1, 2)),
-      format: (v) => String(roundTo(v, 2)),
+      format: formatDecimalInput,
     },
   };
 

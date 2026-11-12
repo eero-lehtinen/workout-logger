@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { i18n } from "../../i18n/index.ts";
 
 /**
  * Where an exercise's history or editor was opened from, in its search
@@ -29,15 +30,18 @@ export function backToOrigin(origin: Origin) {
     return {
       to: "/sessions/$sessionId/$sessionExerciseId" as const,
       params: { sessionId, sessionExerciseId },
-      label: "Back to logging",
+      label: i18n.t("exercises.back.toLogging"),
     };
   }
   if (sessionId !== undefined) {
     return {
       to: "/sessions/$sessionId" as const,
       params: { sessionId },
-      label: "Back to session",
+      label: i18n.t("exercises.back.toSession"),
     };
   }
-  return { to: "/exercises" as const, label: "Back to exercises" };
+  return {
+    to: "/exercises" as const,
+    label: i18n.t("exercises.back.toExercises"),
+  };
 }

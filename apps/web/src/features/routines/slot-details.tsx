@@ -2,9 +2,11 @@ import type { RoutineDetail } from "@workout-logger/core";
 import { clsx } from "clsx";
 import { Timer } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fieldLabelClass } from "../../components/headings.tsx";
 import { parseDuration } from "../../components/stepper.tsx";
 import { useCommand } from "../../db/react.tsx";
+import { i18n } from "../../i18n/index.ts";
 import { formatDuration } from "../../lib/format.ts";
 
 export type Slot = RoutineDetail["days"][number]["slots"][number];
@@ -22,13 +24,14 @@ export function SlotDetails(props: {
   defaultRestS: number;
 }) {
   const { slot } = props;
+  const { t } = useTranslation();
   const command = useCommand();
   const [note, setNote] = useState<string | null>(null);
   const [rest, setRest] = useState<string | null>(null);
   const restText = slot.restS === null ? "" : formatDuration(slot.restS);
   const restS = rest?.trim() ? parseDuration(rest) : null;
   const restInvalid = rest !== null && rest.trim() !== "" && restS === null;
-  const name = slot.exerciseName ?? "exercise";
+  const name = slot.exerciseName ?? t("routines.slot.exerciseFallback");
 
   const saveNote = () => {
     if (note !== null && note.trim() !== (slot.note ?? "")) {
@@ -49,21 +52,21 @@ export function SlotDetails(props: {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <span aria-hidden className={fieldLabelClass}>
-          Note
+          {t("routines.slot.note")}
         </span>
         <input
-          aria-label={`Note for ${name}`}
+          aria-label={t("routines.slot.noteFor", { name })}
           value={note ?? slot.note ?? ""}
           onChange={(e) => setNote(e.target.value)}
           onBlur={saveNote}
           onKeyDown={keys}
-          placeholder="e.g. heavy, 6-10"
+          placeholder={t("routines.slot.notePlaceholder")}
           className={clsx(fieldClass, "w-full")}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <span aria-hidden className={fieldLabelClass}>
-          Rest (m:ss)
+          {t("routines.slot.rest")}
         </span>
         <label
           className={clsx(
@@ -73,14 +76,20 @@ export function SlotDetails(props: {
           )}
         >
           <Timer size={15} className="shrink-0 text-ink-muted" aria-hidden />
-          <span className="sr-only">Rest for {name}, m:ss</span>
+          <span className="sr-only">
+            {t("routines.slot.restFor", { name })}
+          </span>
           <input
             value={rest ?? restText}
             onChange={(e) => setRest(e.target.value)}
             onBlur={saveRest}
             onKeyDown={keys}
             inputMode="numeric"
-            placeholder={`Default ${formatDuration(slot.exerciseRestS ?? props.defaultRestS)}`}
+            placeholder={t("routines.slot.restDefault", {
+              duration: formatDuration(
+                slot.exerciseRestS ?? props.defaultRestS,
+              ),
+            })}
             className="tabular w-full min-w-0 bg-transparent outline-none placeholder:text-ink-muted"
           />
         </label>
@@ -96,12 +105,21 @@ export function SlotDetails(props: {
 export function slotSummary(slot: Slot): string {
   return [
     slot.note,
-    slot.restS === null ? null : `Rest ${formatDuration(slot.restS)}`,
+    slot.restS === null
+      ? null
+      : i18n.t("routines.slot.summaryRest", {
+          duration: formatDuration(slot.restS),
+        }),
     slot.alternatives.length === 0
-      ? "No alternatives"
-      : `or ${slot.alternatives
-          .map((alt) => alt.exerciseName ?? "Deleted exercise")
-          .join(", ")}`,
+      ? i18n.t("routines.slot.noAlternatives")
+      : i18n.t("routines.slot.summaryAlternatives", {
+          names: slot.alternatives
+            .map(
+              (alt) =>
+                alt.exerciseName ?? i18n.t("routines.slot.deletedExercise"),
+            )
+            .join(", "),
+        }),
   ]
     .filter(Boolean)
     .join(" · ");

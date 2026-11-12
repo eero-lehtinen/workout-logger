@@ -1,4 +1,6 @@
+import type { TFunction } from "i18next";
 import { useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import { useDbQuery } from "../db/react.tsx";
 import { getAccount, useAccount } from "./account.ts";
 import { apiHeaders, SERVER_URL } from "./server.ts";
@@ -72,6 +74,9 @@ export const DATABASE_WARNING_BYTES = 700 * 1024 * 1024;
  * reached the server for days, or, for the owner, a stale server backup.
  */
 export function useBackupWarning(): string | null {
+  // `t`, not `i18n.t`: the badge lives outside the screen that remounts on a
+  // language change, and the compiler caches a call that has no inputs.
+  const { t } = useTranslation();
   const account = useAccount();
   const sync = useDbQuery("syncStatus");
   const owner = useOwnerStatus();
@@ -81,16 +86,16 @@ export function useBackupWarning(): string | null {
     sync.unsynced > 0 &&
     (sync.lastSyncAt === null || now - sync.lastSyncAt > SYNC_WARNING_AGE)
   ) {
-    return "Changes haven't synced for days";
+    return t("ui.backupWarning.unsynced");
   }
-  return owner && ownerWarning(owner);
+  return owner && ownerWarning(owner, t);
 }
 
 /** What on the server needs the owner's attention, or null. */
-export function ownerWarning(owner: OwnerStatus): string | null {
-  if (!owner.backupsOk) return "A server backup is out of date";
+export function ownerWarning(owner: OwnerStatus, t: TFunction): string | null {
+  if (!owner.backupsOk) return t("ui.backupWarning.backupStale");
   if (owner.databaseBytes > DATABASE_WARNING_BYTES) {
-    return "The server database is over 700 MB";
+    return t("ui.backupWarning.databaseLarge");
   }
   return null;
 }

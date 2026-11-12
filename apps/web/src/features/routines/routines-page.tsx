@@ -6,6 +6,7 @@ import {
   routineContent,
 } from "@workout-logger/exercises";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -14,6 +15,7 @@ import { useCommand, useDbQuery } from "../../db/react.tsx";
 import { dayDotClass } from "../history/day-colors.ts";
 
 export function RoutinesPage() {
+  const { t } = useTranslation();
   const routines = useDbQuery("routines");
   const command = useCommand();
   const navigate = useNavigate();
@@ -22,7 +24,9 @@ export function RoutinesPage() {
 
   /** Opens the editor with the placeholder name selected, to type over. */
   async function create() {
-    const routineId = await command("createRoutine", { name: "New routine" });
+    const routineId = await command("createRoutine", {
+      name: t("routines.list.newRoutineName"),
+    });
     if (routineId) {
       await navigate({
         to: "/routines/$routineId",
@@ -36,7 +40,7 @@ export function RoutinesPage() {
     const routineId = await command(
       "createRoutineWithDays",
       routineContent(routine),
-      { undoLabel: `${routine.name} added` },
+      { undoLabel: t("routines.list.added", { name: routine.name }) },
     );
     if (routineId) {
       await navigate({ to: "/routines/$routineId", params: { routineId } });
@@ -47,11 +51,11 @@ export function RoutinesPage() {
     <Screen
       header={
         <PageHeader
-          title="Routines"
+          title={t("routines.list.title")}
           actions={
             <Button variant="ghost" size="sm" onClick={() => void create()}>
               <Plus size={17} />
-              New
+              {t("routines.list.new")}
             </Button>
           }
         />
@@ -60,14 +64,12 @@ export function RoutinesPage() {
       width="medium"
     >
       {active.length === 0 ? (
-        <Empty>
-          No routines yet. Create one with New, or add a built-in one.
-        </Empty>
+        <Empty>{t("routines.list.empty")}</Empty>
       ) : (
         <RoutineList routines={active} />
       )}
       <section className="pt-8">
-        <SectionHeading>Built-in routines</SectionHeading>
+        <SectionHeading>{t("routines.list.builtin")}</SectionHeading>
         <ul className={listClass}>
           {ROUTINES.map((routine) => (
             <li key={routine.key} className="flex items-center gap-3 px-4 py-3">
@@ -76,10 +78,10 @@ export function RoutinesPage() {
                 <p className="text-sm text-ink-muted">{routine.description}</p>
               </div>
               <Button
-                aria-label={`Add ${routine.name}`}
+                aria-label={t("routines.list.add", { name: routine.name })}
                 onClick={() => void addBuiltin(routine)}
               >
-                Add
+                {t("common.add")}
               </Button>
             </li>
           ))}
@@ -87,7 +89,7 @@ export function RoutinesPage() {
       </section>
       {archived.length > 0 && (
         <section className="pt-8">
-          <SectionHeading>Archived</SectionHeading>
+          <SectionHeading>{t("routines.list.archived")}</SectionHeading>
           <RoutineList routines={archived} />
         </section>
       )}
@@ -96,6 +98,7 @@ export function RoutinesPage() {
 }
 
 function RoutineList({ routines }: { routines: RoutineItem[] }) {
+  const { t } = useTranslation();
   return (
     <ul className={listClass}>
       {routines.map((r) => (
@@ -111,7 +114,9 @@ function RoutineList({ routines }: { routines: RoutineItem[] }) {
                 <p className="line-clamp-2 text-sm">{r.description}</p>
               )}
               {r.dayNames.length === 0 ? (
-                <p className="text-sm text-ink-muted">No days yet</p>
+                <p className="text-sm text-ink-muted">
+                  {t("routines.list.noDays")}
+                </p>
               ) : (
                 <p className="flex flex-wrap gap-x-3 text-sm text-ink-muted">
                   {r.dayNames.map((name, index) => (

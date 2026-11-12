@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { toasts } from "../components/toasts.tsx";
 import type { DbClient } from "../db/client.ts";
 import type { AccountMode } from "../db/db.worker.ts";
+import { i18n } from "../i18n/index.ts";
 import {
   getAccount,
   refreshAccount,
@@ -257,12 +258,17 @@ export async function chooseAccount(
 async function saveBeforeDiscard(client: DbClient): Promise<boolean> {
   try {
     const where = await saveSnapshot(await client.exportSnapshot());
-    toasts.add({ title: "Saved this device's data first", description: where });
+    toasts.add({
+      title: i18n.t("ui.sync.savedFirstTitle"),
+      description: where,
+    });
     return true;
   } catch (error) {
     toasts.add({
-      title: "Nothing was discarded",
-      description: `Saving a snapshot first failed: ${error instanceof Error ? error.message : String(error)}`,
+      title: i18n.t("ui.sync.notDiscardedTitle"),
+      description: i18n.t("ui.sync.snapshotFailed", {
+        reason: error instanceof Error ? error.message : String(error),
+      }),
       type: "error",
     });
     return false;

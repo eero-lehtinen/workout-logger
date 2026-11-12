@@ -1,23 +1,37 @@
 import type { IsoDate } from "@workout-logger/core";
+import { i18n } from "../../i18n/index.ts";
 import { usePreference } from "../../lib/preference.ts";
 
 /** How far back the history screens look, ending today. */
 export type Period = "3m" | "6m" | "1y" | "all";
 
-export const PERIODS = [
-  { value: "3m", label: "3 months" },
-  { value: "6m", label: "6 months" },
-  { value: "1y", label: "Year" },
-  { value: "all", label: "All" },
-] as const satisfies readonly { value: Period; label: string }[];
+const PERIOD_VALUES = [
+  "3m",
+  "6m",
+  "1y",
+  "all",
+] as const satisfies readonly Period[];
 
-/** Completes "Records …", "12 sessions …". */
-export const PERIOD_PHRASES: Record<Period, string> = {
-  "3m": "in the last 3 months",
-  "6m": "in the last 6 months",
-  "1y": "in the last year",
-  all: "",
-};
+export function periodOptions(): { value: Period; label: string }[] {
+  return PERIOD_VALUES.map((value) => ({
+    value,
+    label: i18n.t(`history.periods.${value}`),
+  }));
+}
+
+/** "12 sessions in the last 3 months", or just "12 sessions" for all time. */
+export function periodSessions(period: Period, count: number): string {
+  return i18n.t(`history.periodSessions.${period}`, { count });
+}
+
+export function periodRecordsTitle(period: Period): string {
+  return i18n.t(`history.periodRecords.${period}`);
+}
+
+/** The empty state of a period that has sessions elsewhere, so never "all". */
+export function periodNoSets(period: Exclude<Period, "all">): string {
+  return i18n.t(`history.periodNoSets.${period}`);
+}
 
 /** The period's first date, or null for all time. */
 export function periodStart(period: Period, today: IsoDate): IsoDate | null {
@@ -29,9 +43,5 @@ export function periodStart(period: Period, today: IsoDate): IsoDate | null {
 
 /** The period every history screen shows, remembered on this device. */
 export function usePeriod() {
-  return usePreference<Period>(
-    "history-period",
-    PERIODS.map((p) => p.value),
-    "all",
-  );
+  return usePreference<Period>("history-period", PERIOD_VALUES, "all");
 }

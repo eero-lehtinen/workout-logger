@@ -7,9 +7,10 @@ import {
 } from "@workout-logger/core";
 import { clsx } from "clsx";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../../components/button.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
-import { dateFromIso } from "../../lib/format.ts";
+import { dateFormat, dateFromIso } from "../../lib/format.ts";
 import { useMediaQuery, WIDE } from "../../lib/use-media-query.ts";
 import { dayChipClass, dayDotClass } from "./day-colors.ts";
 
@@ -32,10 +33,7 @@ export function shiftMonth(month: string, months: number): string {
 }
 
 const utc = (options: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat(undefined, { ...options, timeZone: "UTC" });
-const monthTitle = utc({ month: "long", year: "numeric" });
-const weekday = utc({ weekday: "short" });
-const dayLabel = utc({ weekday: "long", day: "numeric", month: "long" });
+  dateFormat({ ...options, timeZone: "UTC" });
 
 /**
  * A month of days with their sessions. On wide screens each session is a
@@ -51,12 +49,16 @@ export function MonthCalendar(props: {
   onSelect: (date: IsoDate) => void;
   onMonth: (month: string) => void;
 }) {
+  const { t } = useTranslation();
   const dots = !useMediaQuery(WIDE);
   const thisMonth = props.today.slice(0, 7);
   const days = monthGrid(props.month, props.weekStart);
+  const monthTitle = utc({ month: "long", year: "numeric" });
+  const weekday = utc({ weekday: "short" });
+  const dayLabel = utc({ weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <section aria-label="Calendar">
+    <section aria-label={t("history.calendar.label")}>
       <div className="flex items-center gap-1 px-2 pb-2 lg:px-0">
         <SectionHeading inset={false} className="flex-1 pb-0 pl-2 lg:pl-0">
           {monthTitle.format(dateFromIso(`${props.month}-01`))}
@@ -67,17 +69,17 @@ export function MonthCalendar(props: {
             size="sm"
             onClick={() => props.onMonth(thisMonth)}
           >
-            Today
+            {t("history.calendar.today")}
           </Button>
         )}
         <IconButton
-          label="Previous month"
+          label={t("history.calendar.previousMonth")}
           onClick={() => props.onMonth(shiftMonth(props.month, -1))}
         >
           <ChevronLeft size={20} />
         </IconButton>
         <IconButton
-          label="Next month"
+          label={t("history.calendar.nextMonth")}
           onClick={() => props.onMonth(shiftMonth(props.month, 1))}
         >
           <ChevronRight size={20} />
@@ -142,7 +144,9 @@ export function MonthCalendar(props: {
                         dayDotClass(s.dayIndex),
                       )}
                     >
-                      <span className="sr-only">{s.dayName ?? "Ad hoc"}</span>
+                      <span className="sr-only">
+                        {s.dayName ?? t("history.adHoc")}
+                      </span>
                     </span>
                   ))}
                 </span>
@@ -159,14 +163,14 @@ export function MonthCalendar(props: {
                       dayChipClass(s.dayIndex),
                     )}
                   >
-                    {s.dayName ?? "Ad hoc"}
+                    {s.dayName ?? t("history.adHoc")}
                   </span>
                 ))
               )}
               {hidden > 0 && (
                 <span className="absolute top-0.5 right-0.5 text-[0.6875rem] leading-6 text-ink-muted lg:top-1.5 lg:right-1.5 lg:text-xs">
                   +{hidden}
-                  <span className="sr-only"> more</span>
+                  <span className="sr-only"> {t("history.calendar.more")}</span>
                 </span>
               )}
             </button>

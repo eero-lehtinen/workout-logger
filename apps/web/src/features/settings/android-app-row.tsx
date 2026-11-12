@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { buttonClass } from "../../components/button.tsx";
 import { APK_URL, latestRelease } from "../../lib/app-update.ts";
 import { isAndroidBrowser } from "../../lib/platform.ts";
@@ -9,6 +10,7 @@ import { Row } from "./settings-rows.tsx";
  * has a release. A plain link: the browser downloads the APK.
  */
 export function AndroidAppRow() {
+  const { t } = useTranslation();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     if (!isAndroidBrowser()) return;
@@ -25,11 +27,11 @@ export function AndroidAppRow() {
   if (!version) return null;
   return (
     <Row
-      label="Android app"
-      hint={`Version ${version}. Its rest timer also alerts in the background. It keeps its own data: move yours over with a snapshot.`}
+      label={t("settings.data.androidApp")}
+      hint={t("settings.data.androidAppHint", { version })}
     >
       <a href={APK_URL} className={buttonClass("primary")}>
-        Download
+        {t("settings.data.download")}
       </a>
     </Row>
   );

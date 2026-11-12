@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
@@ -24,7 +25,12 @@ import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
-import { formatSessionDate, formatSet, formatTime } from "../../lib/format.ts";
+import {
+  deviceTimeZone,
+  formatSessionDate,
+  formatSet,
+  formatTime,
+} from "../../lib/format.ts";
 import { useGoBack } from "../../lib/navigation.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
@@ -39,6 +45,7 @@ import { Substitutes } from "./substitutes.tsx";
 const route = getRouteApi("/sessions/$sessionId/$sessionExerciseId");
 
 export function ExerciseLogPage() {
+  const { t } = useTranslation();
   const { sessionId, sessionExerciseId } = route.useParams();
   const log = useDbQuery("exerciseLog", { sessionExerciseId });
   if (!log) {
@@ -46,18 +53,18 @@ export function ExerciseLogPage() {
       <Screen
         header={
           <PageHeader
-            title="Exercise"
+            title={t("session.log.exercise")}
             back={{
               to: "/sessions/$sessionId",
               params: { sessionId },
-              label: "Back to session",
+              label: t("session.log.backToSession"),
             }}
           />
         }
         scrollId="exercise-removed"
         width="logPane"
       >
-        <Empty>This exercise was removed from the session.</Empty>
+        <Empty>{t("session.log.removed")}</Empty>
       </Screen>
     );
   }
@@ -65,6 +72,7 @@ export function ExerciseLogPage() {
 }
 
 function Logger({ log }: { log: ExerciseLog }) {
+  const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const unit = settings.weight_unit;
   const command = useCommand();
@@ -125,7 +133,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     await command(
       "updateSet",
       { setId, values: editValues },
-      { undoLabel: "Set changed" },
+      { undoLabel: t("session.log.setChanged") },
     );
   }
 
@@ -133,7 +141,11 @@ function Logger({ log }: { log: ExerciseLog }) {
     if (!editing) return;
     const { setId } = editing;
     setEditing(null);
-    await command("deleteSet", { setId }, { undoLabel: "Set deleted" });
+    await command(
+      "deleteSet",
+      { setId },
+      { undoLabel: t("session.log.setDeleted") },
+    );
   }
   const [substituting, setSubstituting] = useState(false);
   const [ended, setEnded] = useState<Extract<
@@ -212,7 +224,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     await command(
       "removeSessionExercise",
       { sessionExerciseId: log.sessionExerciseId },
-      { undoLabel: `Removed ${exercise.name}` },
+      { undoLabel: t("session.log.removedExercise", { name: exercise.name }) },
     );
     await goBack({
       to: "/sessions/$sessionId",
@@ -220,7 +232,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     });
   }
   const removeItem = {
-    label: "Remove from session",
+    label: t("session.log.removeFromSession"),
     icon: <Trash2 size={18} />,
     danger: true,
     onClick: () => void removeFromSession(),
@@ -245,10 +257,10 @@ function Logger({ log }: { log: ExerciseLog }) {
   const iconLinkClass =
     "inline-flex size-10 items-center justify-center rounded-xl hover:bg-surface";
   const historyIcon = (
-    <IconTip label="Exercise history">
+    <IconTip label={t("session.log.history")}>
       <Link
         {...historyLink}
-        aria-label="Exercise history"
+        aria-label={t("session.log.history")}
         className={iconLinkClass}
       >
         <ChartLine size={20} />
@@ -265,22 +277,22 @@ function Logger({ log }: { log: ExerciseLog }) {
         back={{
           to: "/sessions/$sessionId",
           params: { sessionId: log.session.id },
-          label: "Back to session",
+          label: t("session.log.backToSession"),
         }}
         className="lg:hidden"
         actions={
           <>
             {historyIcon}
             <MoreMenu
-              label="More actions"
+              label={t("session.log.moreActions")}
               items={[
                 {
-                  label: "Edit exercise",
+                  label: t("session.log.editExercise"),
                   icon: <Pencil size={18} />,
                   onClick: () => void navigate(settingsLink),
                 },
                 {
-                  label: "Substitute",
+                  label: t("session.log.substitute"),
                   icon: <ArrowLeftRight size={18} />,
                   onClick: () => setSubstituting(true),
                 },
@@ -295,26 +307,26 @@ function Logger({ log }: { log: ExerciseLog }) {
           {exercise.name}
         </h1>
         {historyIcon}
-        <IconTip label="Edit exercise">
+        <IconTip label={t("session.log.editExercise")}>
           <Link
             {...settingsLink}
-            aria-label="Edit exercise"
+            aria-label={t("session.log.editExercise")}
             className={iconLinkClass}
           >
             <Pencil size={19} />
           </Link>
         </IconTip>
-        <IconTip label="Substitute exercise">
+        <IconTip label={t("session.log.substituteExercise")}>
           <button
             type="button"
-            aria-label="Substitute exercise"
+            aria-label={t("session.log.substituteExercise")}
             onClick={() => setSubstituting(true)}
             className={iconLinkClass}
           >
             <ArrowLeftRight size={20} />
           </button>
         </IconTip>
-        <MoreMenu label="More actions" items={[removeItem]} />
+        <MoreMenu label={t("session.log.moreActions")} items={[removeItem]} />
       </div>
       {(log.slotNote || exercise.notes) && (
         <div className="flex flex-col gap-1 px-4 pb-3 text-ink-muted lg:px-0">
@@ -335,14 +347,14 @@ function Logger({ log }: { log: ExerciseLog }) {
           {editing ? (
             <div className="flex h-12 items-center gap-2">
               <p className="flex-1 font-semibold">
-                Editing set {editIndex + 1}
+                {t("session.log.editingSet", { number: editIndex + 1 })}
               </p>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setEditing(null)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           ) : (
@@ -361,7 +373,7 @@ function Logger({ log }: { log: ExerciseLog }) {
           {editing ? (
             <div className="flex gap-2">
               <Button variant="danger" size="lg" onClick={deleteEdited}>
-                Delete set
+                {t("session.log.deleteSet")}
               </Button>
               <Button
                 variant="primary"
@@ -370,7 +382,7 @@ function Logger({ log }: { log: ExerciseLog }) {
                 disabled={!editValues}
                 onClick={saveEdit}
               >
-                Save set {editIndex + 1}
+                {t("session.log.saveSet", { number: editIndex + 1 })}
               </Button>
             </div>
           ) : (
@@ -380,7 +392,7 @@ function Logger({ log }: { log: ExerciseLog }) {
               disabled={!values}
               onClick={onLog}
             >
-              Log set {log.sets.length + 1}
+              {t("session.log.logSet", { number: log.sets.length + 1 })}
             </Button>
           )}
         </div>
@@ -420,7 +432,7 @@ function Logger({ log }: { log: ExerciseLog }) {
                   showEarlier && "rotate-180",
                 )}
               />
-              Earlier sessions
+              {t("session.log.earlierSessions")}
             </button>
           )}
           {!showNotes && (
@@ -430,7 +442,7 @@ function Logger({ log }: { log: ExerciseLog }) {
               className={toggleClass}
             >
               <NotebookPen size={17} />
-              Add note
+              {t("session.log.addNote")}
             </button>
           )}
         </div>
@@ -449,14 +461,14 @@ function Logger({ log }: { log: ExerciseLog }) {
         )}
         {!previous && log.sets.length === 0 && (
           <p className="pt-4 text-[0.9375rem] text-ink-muted">
-            First time logging this exercise.
+            {t("session.log.firstTime")}
           </p>
         )}
         {showNotes && (
           <NotesField
-            label={`Notes on ${exercise.name} in this session`}
+            label={t("session.log.notesLabel", { name: exercise.name })}
             value={log.notes}
-            placeholder="Notes on this exercise today"
+            placeholder={t("session.log.notesPlaceholder")}
             focusOnMount={addingNote && log.notes === ""}
             onSave={(notes) =>
               command("updateSessionExerciseNotes", {
@@ -473,7 +485,7 @@ function Logger({ log }: { log: ExerciseLog }) {
       <ExercisePicker
         open={substituting}
         onOpenChange={setSubstituting}
-        title={`Instead of ${exercise.name}`}
+        title={t("session.log.insteadOf", { name: exercise.name })}
         substituteFor={{ exerciseId: exercise.id, slotId: log.slotId }}
         onPick={async (exerciseId) => {
           const id = await command("substituteExercise", {
@@ -492,15 +504,23 @@ function Logger({ log }: { log: ExerciseLog }) {
       <Confirm
         open={ended !== null}
         onOpenChange={(open) => !open && setEnded(null)}
-        title="This session has ended"
+        title={t("session.log.endedTitle")}
         description={
           ended &&
-          `${ended.reason === "idle" ? "No sets since" : "It ended at"} ${formatTime(ended.endedAt, Intl.DateTimeFormat().resolvedOptions().timeZone)}. Add this set to it, or start a new session?`
+          t(
+            ended.reason === "idle"
+              ? "session.log.endedIdle"
+              : "session.log.endedManual",
+            { time: formatTime(ended.endedAt, deviceTimeZone()) },
+          )
         }
         actions={[
-          { label: "Continue that session", onClick: continueSession },
           {
-            label: "Start a new session",
+            label: t("session.log.continueSession"),
+            onClick: continueSession,
+          },
+          {
+            label: t("session.log.startNewSession"),
             variant: "secondary",
             onClick: startNewSession,
           },
@@ -527,6 +547,7 @@ function Ledger(props: {
   onCopy: (set: LoggedSet) => void;
 }) {
   const { log, unit } = props;
+  const { t } = useTranslation();
   const previous = log.previous[0];
   const rows = Math.max(log.sets.length + 1, previous?.sets.length ?? 0);
 
@@ -535,15 +556,15 @@ function Ledger(props: {
       <thead>
         <tr className="text-left text-sm text-ink-muted">
           <th scope="col" className="w-8 pb-1 font-normal">
-            <span className="sr-only">Set</span>
+            <span className="sr-only">{t("session.ledger.set")}</span>
           </th>
           <th scope="col" className="pb-1 font-normal">
-            Today
+            {t("session.ledger.today")}
           </th>
           <th scope="col" className="pb-1 pl-3 font-normal">
             {previous
               ? formatSessionDate(previous.startedAt, previous.tz)
-              : "Last time"}
+              : t("session.ledger.lastTime")}
           </th>
         </tr>
       </thead>
@@ -563,9 +584,12 @@ function Ledger(props: {
                       type="button"
                       onClick={() => props.onEdit(today)}
                       aria-pressed={props.editingId === today.id}
+                      aria-label={t("session.ledger.editSet", {
+                        number: i + 1,
+                        set: formatSet(today, log.exercise.type, unit),
+                      })}
                       className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
                     >
-                      <span className="sr-only">Edit set {i + 1}: </span>
                       <span className="numerals truncate text-2xl">
                         {formatSet(today, log.exercise.type, unit)}
                       </span>
@@ -581,15 +605,14 @@ function Ledger(props: {
                   <button
                     type="button"
                     onClick={props.onStopEditing}
+                    aria-label={t("session.ledger.stopEditing")}
                     className="-ml-2 flex h-12 items-center rounded-xl px-2 text-2xl text-ink-muted hover:bg-surface hover:text-ink"
                   >
-                    <span className="sr-only">Stop editing, back to the </span>
-                    next
-                    <span className="sr-only"> set</span>
+                    {t("session.ledger.next")}
                   </button>
                 ) : (
                   <span className="flex h-12 items-center text-2xl text-ink-muted">
-                    {isNext ? "next" : ""}
+                    {isNext ? t("session.ledger.next") : ""}
                   </span>
                 )}
               </td>
@@ -599,7 +622,9 @@ function Ledger(props: {
                     <button
                       type="button"
                       onClick={() => props.onCopy(before)}
-                      aria-label={`Use ${formatSet(before, log.exercise.type, unit)} for the next set`}
+                      aria-label={t("session.ledger.useForNext", {
+                        set: formatSet(before, log.exercise.type, unit),
+                      })}
                       className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
                     >
                       <span className="numerals truncate text-xl">
@@ -630,6 +655,7 @@ function EarlierPerformance(props: {
   onCopy: (set: LoggedSet) => void;
 }) {
   const { performance, log, unit } = props;
+  const { t } = useTranslation();
   const date = formatSessionDate(performance.startedAt, performance.tz);
   // A small column like the "last time" one: numbered sets, one per row.
   return (
@@ -643,12 +669,15 @@ function EarlierPerformance(props: {
               <button
                 type="button"
                 onClick={() => props.onCopy(set)}
+                aria-label={t("session.ledger.useSetFrom", {
+                  number: i + 1,
+                  set: text,
+                  date,
+                })}
                 className="flex h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
               >
-                <span className="sr-only">Use set </span>
-                <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>
+                <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>{" "}
                 <span className="numerals truncate text-lg">{text}</span>
-                <span className="sr-only"> from {date}</span>
               </button>
               <Marker
                 marker={set.marker}

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { DbGate } from "./components/db-gate.tsx";
 import { SyncRunner } from "./components/sync-runner.tsx";
 import { DatabaseProvider } from "./db/react.tsx";
+import "./i18n/index.ts";
 import { initAccount } from "./lib/account.ts";
 import { runningInstalled, watchInstall } from "./lib/install.ts";
 import { routeBeforeSwitch, startLiveUpdates } from "./lib/live-update.ts";

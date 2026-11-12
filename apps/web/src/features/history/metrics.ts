@@ -6,26 +6,16 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { DAYS_PER_MONTH } from "../../components/chart/trend.ts";
-import { formatDuration, formatKm } from "../../lib/format.ts";
+import { i18n } from "../../i18n/index.ts";
+import { formatDuration, formatKm, numberFormat } from "../../lib/format.ts";
 
-export const METRIC_LABELS: Record<HistoryMetric, string> = {
-  best_e1rm: "Best e1RM",
-  set_e1rm: "Every set's e1RM",
-  top_weight: "Top weight",
-  reps_at_weight: "Reps at a weight",
-  best_reps: "Most reps",
-  best_duration: "Longest",
-  best_distance: "Longest",
-  weekly_sets: "Sets per week",
-};
+export function metricLabel(metric: HistoryMetric): string {
+  return i18n.t(`history.metrics.${metric}`);
+}
 
-export const HEADLINE_LABELS: Record<HeadlineKind, string> = {
-  e1rm: "Best e1RM",
-  weight: "Heaviest weight",
-  reps: "Most reps",
-  duration: "Longest set",
-  distance: "Longest distance",
-};
+export function headlineLabel(kind: HeadlineKind): string {
+  return i18n.t(`history.headlines.${kind}`);
+}
 
 type Measure = "kg" | "reps" | "s" | "m";
 
@@ -50,17 +40,13 @@ const HEADLINE_MEASURES: Record<HeadlineKind, Measure> = {
   distance: "m",
 };
 
-const derivedFormat = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 1,
-});
-
 /** A value of a measure with its unit, e.g. `116.7 kg`, `12 reps`, `1:30`. */
 function formatMeasure(measure: Measure, value: number, unit: WeightUnit) {
   switch (measure) {
     case "kg":
-      return `${derivedFormat.format(displayDerived(value, unit))} ${unit}`;
+      return `${numberFormat({ maximumFractionDigits: 1 }).format(displayDerived(value, unit))} ${unit}`;
     case "reps":
-      return `${Math.round(value)} reps`;
+      return i18n.t("format.reps", { count: Math.round(value) });
     case "s":
       return formatDuration(value);
     case "m":
@@ -76,12 +62,6 @@ export function formatMetric(
   return formatMeasure(METRIC_MEASURES[metric], value, unit);
 }
 
-const rateFormat = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 1,
-  minimumFractionDigits: 1,
-  signDisplay: "exceptZero",
-});
-
 /** A trend's rate, e.g. `+0.8 kg per month`, from its change per day. */
 export function formatTrendRate(
   metric: ValueMetric,
@@ -89,15 +69,25 @@ export function formatTrendRate(
   unit: WeightUnit,
 ) {
   const perMonth = perDay * DAYS_PER_MONTH;
+  const rate = numberFormat({
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+    signDisplay: "exceptZero",
+  });
   switch (METRIC_MEASURES[metric]) {
     case "kg":
-      return `${rateFormat.format(displayDerived(perMonth, unit))} ${unit} per month`;
+      return i18n.t("history.trend.weight", {
+        value: rate.format(displayDerived(perMonth, unit)),
+        unit,
+      });
     case "reps":
-      return `${rateFormat.format(perMonth)} reps per month`;
+      return i18n.t("history.trend.reps", { value: rate.format(perMonth) });
     case "s":
-      return `${rateFormat.format(perMonth)} s per month`;
+      return i18n.t("history.trend.seconds", { value: rate.format(perMonth) });
     case "m":
-      return `${rateFormat.format(perMonth / 1000)} km per month`;
+      return i18n.t("history.trend.distance", {
+        value: rate.format(perMonth / 1000),
+      });
   }
 }
 

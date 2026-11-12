@@ -14,6 +14,7 @@ import {
 import { clsx } from "clsx";
 import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   buttonClass,
@@ -44,6 +45,7 @@ import { Substitutes } from "./substitutes.tsx";
 const route = getRouteApi("/sessions/$sessionId");
 
 export function SessionLayout() {
+  const { t } = useTranslation();
   const { sessionId } = route.useParams();
   const view = useDbQuery("sessionView", { sessionId });
   const matchRoute = useMatchRoute();
@@ -56,13 +58,13 @@ export function SessionLayout() {
       <Screen
         header={
           <PageHeader
-            title="Session"
-            back={{ to: "/", label: "Back to today" }}
+            title={t("session.view.title")}
+            back={{ to: "/", label: t("session.backToToday") }}
           />
         }
         scrollId="session-deleted"
       >
-        <Empty>This session was deleted.</Empty>
+        <Empty>{t("session.view.deleted")}</Empty>
       </Screen>
     );
   }
@@ -126,9 +128,10 @@ function useReadOnly(view: SessionView, editing: boolean): boolean {
 
 /** The right-hand pane on wide screens before an exercise is picked. */
 export function SessionIndex() {
+  const { t } = useTranslation();
   return (
     <p className="hidden max-w-2xl pt-32 text-center text-ink-muted lg:block">
-      Pick an exercise to log its sets.
+      {t("session.view.pickExercise")}
     </p>
   );
 }
@@ -140,6 +143,7 @@ function SessionPanel(props: {
 }) {
   const { view, readOnly } = props;
   const { session } = view;
+  const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const command = useCommand();
   const navigate = useNavigate();
@@ -166,15 +170,15 @@ function SessionPanel(props: {
     ? {
         to: "/exercises/$exerciseId/history" as const,
         params: { exerciseId: search.exerciseId },
-        label: "Back to exercise",
+        label: t("session.view.backToExercise"),
       }
     : search.from === "calendar"
       ? {
           to: "/history" as const,
           search: { month: date.slice(0, 7), day: date },
-          label: "Back to history",
+          label: t("session.view.backToHistory"),
         }
-      : { to: "/" as const, label: "Back to today" };
+      : { to: "/" as const, label: t("session.backToToday") };
 
   return (
     <Screen
@@ -182,7 +186,7 @@ function SessionPanel(props: {
       width={readOnly ? "narrow" : "listPane"}
       header={
         <PageHeader
-          title={session.dayName ?? "Ad hoc session"}
+          title={session.dayName ?? t("session.adHocSession")}
           subtitle={[
             formatSessionDate(session.startedAt, session.tz),
             session.routineName,
@@ -194,12 +198,12 @@ function SessionPanel(props: {
             readOnly ? (
               <Button variant="ghost" size="sm" onClick={props.onEdit}>
                 <Pencil size={16} />
-                Edit
+                {t("common.edit")}
               </Button>
             ) : (
               session.routineId && (
                 // Labelled on phones; an icon in the narrow pane on PC.
-                <IconTip label="Edit routine">
+                <IconTip label={t("session.view.editRoutine")}>
                   <Link
                     to="/routines/$routineId"
                     params={{ routineId: session.routineId }}
@@ -207,12 +211,12 @@ function SessionPanel(props: {
                       sessionId: session.id,
                       ...(session.dayId && { dayId: session.dayId }),
                     }}
-                    aria-label="Edit routine"
+                    aria-label={t("session.view.editRoutine")}
                     className={`${buttonClass("ghost", "sm")} lg:size-10 lg:px-0`}
                   >
                     <ListOrdered size={18} />
                     <span aria-hidden className="lg:hidden">
-                      Edit routine
+                      {t("session.view.editRoutine")}
                     </span>
                   </Link>
                 </IconTip>
@@ -233,12 +237,14 @@ function SessionPanel(props: {
       {readOnly ? (
         <ReadOnlyExercises view={view} unit={unit} />
       ) : view.exercises.length === 0 ? (
-        <Empty>Add the exercises you're doing.</Empty>
+        <Empty>{t("session.view.empty")}</Empty>
       ) : (
         <SortableList
           items={view.exercises}
           className={listClass}
-          handleLabel={(exercise) => `Move ${exercise.name}`}
+          handleLabel={(exercise) =>
+            t("session.view.moveExercise", { name: exercise.name })
+          }
           onMove={(sessionExerciseId, toIndex) =>
             command("moveSessionExercise", { sessionExerciseId, toIndex })
           }
@@ -289,7 +295,7 @@ function SessionPanel(props: {
         <div className="px-4 pt-3 lg:px-0">
           <Button className="w-full" onClick={() => setAdding(true)}>
             <Plus size={18} />
-            Add exercise to session
+            {t("session.view.addExercise")}
           </Button>
         </div>
       )}
@@ -303,9 +309,9 @@ function SessionPanel(props: {
       ) : (
         <div className="px-4 pt-6 lg:px-0">
           <NotesField
-            label="Session notes"
+            label={t("session.view.notes")}
             value={session.notes}
-            placeholder="Notes on this session"
+            placeholder={t("session.view.notesPlaceholder")}
             onSave={(notes) =>
               command("updateSessionNotes", { sessionId: session.id, notes })
             }
@@ -320,14 +326,14 @@ function SessionPanel(props: {
             className={dangerAlignClass}
             onClick={() => setConfirmDelete(true)}
           >
-            Delete session
+            {t("session.view.deleteSession")}
           </Button>
         </div>
       )}
       <ExercisePicker
         open={adding}
         onOpenChange={setAdding}
-        title="Add exercise to session"
+        title={t("session.view.addExercise")}
         onPick={async (exerciseId) => {
           const id = await command("addSessionExercise", {
             sessionId: session.id,
@@ -344,17 +350,19 @@ function SessionPanel(props: {
       <Confirm
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="Delete this session?"
-        description={`${session.setCount} logged ${session.setCount === 1 ? "set goes" : "sets go"} with it.`}
+        title={t("session.view.deleteTitle")}
+        description={t("session.view.deleteDescription", {
+          count: session.setCount,
+        })}
         actions={[
           {
-            label: "Delete session",
+            label: t("session.view.deleteSession"),
             variant: "danger",
             onClick: async () => {
               await command(
                 "deleteSession",
                 { sessionId: session.id },
-                { undoLabel: "Session deleted" },
+                { undoLabel: t("session.view.sessionDeleted") },
               );
               await goBack(back);
             },
@@ -368,7 +376,10 @@ function SessionPanel(props: {
 /** A past session's sets; each exercise opens its history. */
 function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
   const { view, unit } = props;
-  if (view.exercises.length === 0) return <Empty>No exercises.</Empty>;
+  const { t } = useTranslation();
+  if (view.exercises.length === 0) {
+    return <Empty>{t("session.view.noExercises")}</Empty>;
+  }
   const weighted = view.exercises.some(
     (e) => e.type === "weight_reps" || e.type === "bodyweight_reps",
   );
@@ -394,7 +405,9 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
                   )}
                 </p>
                 {exercise.sets.length === 0 ? (
-                  <p className="text-sm text-ink-muted">No sets</p>
+                  <p className="text-sm text-ink-muted">
+                    {t("session.view.noSets")}
+                  </p>
                 ) : (
                   <SetLine
                     sets={exercise.sets}
@@ -414,7 +427,7 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
       </ul>
       {weighted && (
         <p className="px-4 pt-2 text-xs text-ink-muted lg:px-0">
-          Weights in {unit}.
+          {t("session.view.weightsIn", { unit })}
         </p>
       )}
     </>
@@ -422,10 +435,11 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
 }
 
 function DoneMark({ done }: { done: boolean }) {
+  const { t } = useTranslation();
   return done ? (
     <span
       role="img"
-      aria-label="Done"
+      aria-label={t("session.view.done")}
       className="flex size-6 shrink-0 items-center justify-center rounded-full text-ink ring-2 ring-ink/60 ring-inset"
     >
       <Check size={15} strokeWidth={3} />
@@ -433,7 +447,7 @@ function DoneMark({ done }: { done: boolean }) {
   ) : (
     <span
       role="img"
-      aria-label="Not started"
+      aria-label={t("session.view.notStarted")}
       className="size-6 shrink-0 rounded-full ring-2 ring-rule ring-inset"
     />
   );
@@ -448,6 +462,7 @@ function SessionTimer(props: {
   onResumeIdle: () => void;
 }) {
   const { session } = props.view;
+  const { t } = useTranslation();
   const command = useCommand();
   const now = useNow();
   const end = effectiveSessionEnd(
@@ -472,31 +487,46 @@ function SessionTimer(props: {
           </p>
         ) : (
           <p className="flex-1 text-[0.9375rem] text-ink-muted">
-            Running since {formatTime(session.startedAt, session.tz)}
+            {t("session.timer.runningSince", {
+              time: formatTime(session.startedAt, session.tz),
+            })}
           </p>
         )}
         <Button
           onClick={() => command("endSession", { sessionId: session.id })}
         >
-          End session
+          {t("session.timer.endSession")}
         </Button>
       </div>
     );
   }
   if (props.readOnly) {
-    const sets = `${session.setCount} ${session.setCount === 1 ? "set" : "sets"}`;
+    const sets = t("session.setCount", { count: session.setCount });
     return (
       <p className="text-[0.9375rem] text-ink-muted">
         {end.reason === "unknown"
-          ? `${sets}, duration not recorded`
-          : `${formatTime(session.startedAt, session.tz)}–${formatTime(end.endedAt, session.tz)} · ${formatSessionLength(end.endedAt - session.startedAt)} · ${sets}`}
+          ? t("session.timer.pastNoDuration", { sets })
+          : t("session.timer.pastSummary", {
+              from: formatTime(session.startedAt, session.tz),
+              to: formatTime(end.endedAt, session.tz),
+              length: formatSessionLength(end.endedAt - session.startedAt),
+              sets,
+            })}
       </p>
     );
   }
   const ended =
     end.reason === "unknown"
-      ? "Duration not recorded"
-      : `Lasted ${formatSessionLength(end.endedAt - session.startedAt)}, ${end.reason === "idle" ? "no sets since" : "ended at"} ${formatTime(end.endedAt, session.tz)}`;
+      ? t("session.timer.durationNotRecorded")
+      : t(
+          end.reason === "idle"
+            ? "session.timer.lastedIdle"
+            : "session.timer.lastedEnded",
+          {
+            length: formatSessionLength(end.endedAt - session.startedAt),
+            time: formatTime(end.endedAt, session.tz),
+          },
+        );
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-surface py-2 pr-2 pl-4">
       <p className="flex-1 text-[0.9375rem] text-ink-muted">{ended}</p>
@@ -506,12 +536,12 @@ function SessionTimer(props: {
           size="sm"
           onClick={() => command("resumeSession", { sessionId: session.id })}
         >
-          Resume
+          {t("session.timer.resume")}
         </Button>
       )}
       {end.reason === "idle" && (
         <Button variant="ghost" size="sm" onClick={props.onResumeIdle}>
-          Resume
+          {t("session.timer.resume")}
         </Button>
       )}
     </div>

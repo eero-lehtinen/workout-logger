@@ -1,4 +1,5 @@
 import type { RoutineDetail } from "@workout-logger/core";
+import { useTranslation } from "react-i18next";
 import { Sheet } from "../../components/sheet.tsx";
 import { GripHandle, SortableList } from "../../components/sortable.tsx";
 import { useCommand } from "../../db/react.tsx";
@@ -13,17 +14,18 @@ export function ReorderDaysSheet(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const command = useCommand();
   return (
     <Sheet
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title="Reorder days"
+      title={t("routines.reorder.title")}
     >
       <SortableList
         items={props.days}
         className="dividers flex flex-col py-1"
-        handleLabel={(day) => `Move ${day.name}`}
+        handleLabel={(day) => t("routines.reorder.moveDay", { name: day.name })}
         onMove={(dayId, toIndex) => command("moveDay", { dayId, toIndex })}
         render={(day, dayIndex, handle) => (
           <div className="flex items-center gap-1 py-1 pr-2 pl-4">
@@ -37,8 +39,7 @@ export function ReorderDaysSheet(props: {
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="truncate font-medium">{day.name}</span>
               <span className="truncate text-sm text-ink-muted">
-                {day.slots.length}{" "}
-                {day.slots.length === 1 ? "exercise" : "exercises"}
+                {t("routines.reorder.exercises", { count: day.slots.length })}
               </span>
             </span>
             <GripHandle handle={handle} />

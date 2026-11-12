@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { GateView } from "../db/react.tsx";
 import { applyLiveUpdate, markAppReady } from "../lib/live-update.ts";
 import { isNative } from "../lib/platform.ts";
@@ -6,6 +7,7 @@ import { Button } from "./button.tsx";
 
 /** Shown until this tab owns an open database. */
 export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
+  const { t } = useTranslation();
   // Opening takes ~50-200 ms; a message that flashes by reads as a glitch.
   const [slow, setSlow] = useState(false);
   useEffect(() => {
@@ -22,20 +24,21 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
   if (state === "starting") {
     return (
       <Centered>
-        {slow && <p className="text-ink-muted">Opening your log…</p>}
+        {slow && <p className="text-ink-muted">{t("shell.gate.opening")}</p>}
       </Centered>
     );
   }
   if (state === "elsewhere") {
     return (
       <Centered>
-        <h1 className="text-xl font-semibold">Open in another tab</h1>
+        <h1 className="text-xl font-semibold">
+          {t("shell.gate.elsewhereTitle")}
+        </h1>
         <p className="max-w-xs text-ink-muted">
-          Your log can be open in one tab at a time. Using it here closes it in
-          the other tab.
+          {t("shell.gate.elsewhereText")}
         </p>
         <Button variant="primary" onClick={takeOver}>
-          Use here
+          {t("shell.gate.useHere")}
         </Button>
       </Centered>
     );
@@ -43,13 +46,12 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
   if (state === "blocked") {
     return (
       <Centered>
-        <h1 className="text-xl font-semibold">Still open in another window</h1>
-        <p className="max-w-xs text-ink-muted">
-          The browser has paused the other window, so it can't let go of your
-          log yet. Switch to it or close it; this opens on its own after that.
-        </p>
+        <h1 className="text-xl font-semibold">
+          {t("shell.gate.blockedTitle")}
+        </h1>
+        <p className="max-w-xs text-ink-muted">{t("shell.gate.blockedText")}</p>
         <Button variant="primary" onClick={retry}>
-          Try again
+          {t("common.tryAgain")}
         </Button>
       </Centered>
     );
@@ -57,18 +59,17 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
   return (
     <Centered>
       <h1 className="text-xl font-semibold">
-        {tooNew ? "Update the app" : "Your log didn't open"}
+        {tooNew ? t("shell.gate.tooNewTitle") : t("shell.gate.failedTitle")}
       </h1>
       {tooNew ? (
         <p className="max-w-sm text-ink-muted">
-          Your data was saved by a newer version.{" "}
-          {isNative ? "Update" : "Reload"} to get it.
+          {isNative
+            ? t("shell.gate.tooNewUpdate")
+            : t("shell.gate.tooNewReload")}
         </p>
       ) : (
         <div className="flex max-w-sm flex-col gap-2">
-          <p className="text-ink-muted">
-            Your data is untouched. Try again, or reload the app.
-          </p>
+          <p className="text-ink-muted">{t("shell.gate.failedText")}</p>
           {/* For a bug report; a user can't act on it. */}
           <p className="text-xs break-words text-ink-muted">
             {error instanceof Error ? error.message : String(error)}
@@ -83,11 +84,11 @@ export const DbGate: GateView = ({ state, error, takeOver, retry }) => {
             isNative ? void applyLiveUpdate() : location.reload()
           }
         >
-          {isNative ? "Update" : "Reload"}
+          {isNative ? t("common.update") : t("common.reload")}
         </Button>
       ) : (
         <Button variant="primary" onClick={retry}>
-          Try again
+          {t("common.tryAgain")}
         </Button>
       )}
     </Centered>

@@ -1,6 +1,6 @@
 import { App } from "@capacitor/app";
 import { compareVersions, validate } from "compare-versions";
-import { SERVER_URL } from "./server.ts";
+import { SERVER_URL, serverAnswered } from "./server.ts";
 
 /**
  * The latest APK, for a link in a browser. The Android app itself uses
@@ -45,7 +45,7 @@ export async function latestRelease(): Promise<string | null> {
   const res = await fetch(`${SERVER_URL}/api/android/latest`);
   // 404: no release has been published yet.
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  if (!res.ok) throw serverAnswered(res.status);
   return ((await res.json()) as { version: string }).version;
 }
 
@@ -58,7 +58,7 @@ export async function latestRelease(): Promise<string | null> {
  */
 export async function downloadUpdate(): Promise<void> {
   const res = await fetch(`${SERVER_URL}/api/android/download`);
-  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  if (!res.ok) throw serverAnswered(res.status);
   const { url } = (await res.json()) as { url: string };
   window.open(url, "_blank");
 }

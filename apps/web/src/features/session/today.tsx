@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { effectiveSessionEnd, type SessionSummary } from "@workout-logger/core";
 import { Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { buttonClass } from "../../components/button.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass } from "../../components/list.ts";
@@ -13,6 +14,7 @@ import { RECENT_LIMIT } from "./running.ts";
 import { SessionRow, spansRoutines } from "./session-row.tsx";
 
 export function TodayPage() {
+  const { t } = useTranslation();
   const sessions = useDbQuery("recentSessions", { limit: RECENT_LIMIT });
   const settings = useDbQuery("settings");
   const now = useNow();
@@ -40,7 +42,7 @@ export function TodayPage() {
   // On phones the action goes in the footer, in thumb reach.
   return (
     <Screen
-      header={<PageHeader title="Today" />}
+      header={<PageHeader title={t("session.today.title")} />}
       footer={!wide && <div className="px-4 py-3">{action}</div>}
       scrollId="today"
     >
@@ -49,10 +51,10 @@ export function TodayPage() {
 
         <section>
           {past.length === 0 ? (
-            <Empty>Sessions you log show up here.</Empty>
+            <Empty>{t("session.today.empty")}</Empty>
           ) : (
             <>
-              <SectionHeading>Past sessions</SectionHeading>
+              <SectionHeading>{t("session.today.pastSessions")}</SectionHeading>
               <ul className={listClass}>
                 {past.map((s) => (
                   <li key={s.id}>
@@ -75,10 +77,11 @@ export function TodayPage() {
 }
 
 function StartLink() {
+  const { t } = useTranslation();
   return (
     <Link to="/start" className={`${buttonClass("primary", "xl")} w-full`}>
       <Play size={22} fill="currentColor" />
-      Start session
+      {t("session.today.startSession")}
     </Link>
   );
 }
@@ -89,6 +92,7 @@ function RunningCard(props: {
   showElapsed: boolean;
 }) {
   const { session, now } = props;
+  const { t } = useTranslation();
   return (
     <Link
       to="/sessions/$sessionId"
@@ -96,10 +100,12 @@ function RunningCard(props: {
       className="block rounded-2xl border border-rule bg-raised p-5 text-ink hover:bg-surface/60 active:bg-surface"
     >
       <p className="text-sm opacity-70">
-        Running since {formatTime(session.startedAt, session.tz)}
+        {t("session.today.runningSince", {
+          time: formatTime(session.startedAt, session.tz),
+        })}
       </p>
       <p className="mt-1 text-2xl font-semibold">
-        {session.dayName ?? "Ad hoc session"}
+        {session.dayName ?? t("session.adHocSession")}
       </p>
       {session.routineName && (
         <p className="opacity-70">{session.routineName}</p>
@@ -112,9 +118,11 @@ function RunningCard(props: {
         )}
         <p className="ml-auto text-right">
           <span className="block text-sm opacity-70">
-            {session.setCount} {session.setCount === 1 ? "set" : "sets"}
+            {t("session.setCount", { count: session.setCount })}
           </span>
-          <span className="block text-lg font-semibold">Continue</span>
+          <span className="block text-lg font-semibold">
+            {t("session.today.continue")}
+          </span>
         </p>
       </div>
     </Link>

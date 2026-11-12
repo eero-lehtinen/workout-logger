@@ -11,6 +11,7 @@ import { MUSCLE_GROUPS } from "@workout-logger/exercises";
 import { clsx } from "clsx";
 import { Archive, ArchiveRestore, Copy } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { chipClass } from "../../components/chip.tsx";
 import { FieldLabel, fieldLabelClass } from "../../components/headings.tsx";
@@ -18,8 +19,15 @@ import { MoreMenu } from "../../components/more-menu.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
-import { EXERCISE_TYPE_LABELS, formatDuration } from "../../lib/format.ts";
+import { i18n } from "../../i18n/index.ts";
+import {
+  EXERCISE_TYPES,
+  exerciseTypeLabel,
+  formatDuration,
+  numberFormat,
+} from "../../lib/format.ts";
 import { useGoBack } from "../../lib/navigation.ts";
+import { muscleGroupName, muscleName } from "./muscles.ts";
 import { backToOrigin, type Origin, originOf } from "./origin.ts";
 
 const route = getRouteApi("/exercises/$exerciseId");
@@ -42,9 +50,12 @@ type Back =
       label: string;
     };
 
-const TO_EXERCISES: Back = { to: "/exercises", label: "Back to exercises" };
+function toExercises(): Back {
+  return { to: "/exercises", label: i18n.t("exercises.back.toExercises") };
+}
 
 export function EditExercisePage() {
+  const { t } = useTranslation();
   const { exerciseId } = route.useParams();
   const search = route.useSearch();
   const origin = backToOrigin(search);
@@ -56,16 +67,18 @@ export function EditExercisePage() {
           to: "/exercises/$exerciseId/history",
           params: { exerciseId },
           search: originOf(search),
-          label: "Back to history",
+          label: t("exercises.back.toHistory"),
         };
   const exercise = useDbQuery("exerciseDetail", { exerciseId });
   if (!exercise) {
     return (
       <Screen
-        header={<PageHeader title="Exercise" back={back} />}
+        header={
+          <PageHeader title={t("exercises.editor.exercise")} back={back} />
+        }
         scrollId="exercise-deleted"
       >
-        <Empty>This exercise was deleted.</Empty>
+        <Empty>{t("exercises.editor.deleted")}</Empty>
       </Screen>
     );
   }
@@ -77,17 +90,23 @@ const newRoute = getRouteApi("/exercises/new");
 export function NewExercisePage() {
   const { from } = newRoute.useSearch();
   if (from) return <CopyExercise key={from} from={from} />;
-  return <ExerciseForm exercise={null} back={TO_EXERCISES} />;
+  return <ExerciseForm exercise={null} back={toExercises()} />;
 }
 
 /** A new exercise prefilled from an existing one; nothing is saved until Create. */
 function CopyExercise({ from }: { from: string }) {
+  const { t } = useTranslation();
   const source = useDbQuery("exerciseDetail", { exerciseId: from });
   return (
     <ExerciseForm
       exercise={null}
-      initial={source && { ...source, name: `${source.name} (copy)` }}
-      back={TO_EXERCISES}
+      initial={
+        source && {
+          ...source,
+          name: t("exercises.editor.copyName", { name: source.name }),
+        }
+      }
+      back={toExercises()}
     />
   );
 }
@@ -105,6 +124,7 @@ function ExerciseForm({
   initial?: ExerciseDetail | null;
   back: Back;
 }) {
+  const { t } = useTranslation();
   const start = exercise ?? initial ?? null;
   const muscles = useDbQuery("muscles");
   const settings = useDbQuery("settings");
@@ -125,7 +145,7 @@ function ExerciseForm({
   const [increment, setIncrement] = useState(
     start?.weightIncrementKg == null
       ? ""
-      : String(roundTo(fromKg(start.weightIncrementKg, unit), 3)),
+      : formatStep(roundTo(fromKg(start.weightIncrementKg, unit), 3)),
   );
   const [notes, setNotes] = useState(start?.notes ?? "");
   // Problems show once a save was tried, not while the form is being filled.
@@ -182,19 +202,21 @@ function ExerciseForm({
         <PageHeader
           title={
             exercise
-              ? "Edit exercise"
+              ? t("exercises.editor.titleEdit")
               : initial
-                ? "Copy exercise"
-                : "New exercise"
+                ? t("exercises.editor.titleCopy")
+                : t("exercises.editor.titleNew")
           }
           back={back}
           actions={
             exercise && (
               <MoreMenu
-                label="More actions"
+                label={t("exercises.editor.moreActions")}
                 items={[
                   {
-                    label: exercise.archived ? "Unarchive" : "Archive",
+                    label: exercise.archived
+                      ? t("exercises.editor.unarchive")
+                      : t("exercises.editor.archive"),
                     icon: exercise.archived ? (
                       <ArchiveRestore size={18} />
                     ) : (
@@ -203,7 +225,7 @@ function ExerciseForm({
                     onClick: () => void toggleArchived(),
                   },
                   {
-                    label: "Copy as new",
+                    label: t("exercises.editor.copyAsNew"),
                     icon: <Copy size={18} />,
                     onClick: () =>
                       void navigate({
@@ -226,7 +248,9 @@ function ExerciseForm({
             variant="primary"
             className="w-full sm:w-auto"
           >
-            {exercise ? "Save exercise" : "Create exercise"}
+            {exercise
+              ? t("exercises.editor.save")
+              : t("exercises.editor.create")}
           </Button>
         </div>
       }
@@ -235,14 +259,17 @@ function ExerciseForm({
         <div className="flex flex-col gap-5 px-4 lg:px-0">
           {exercise?.builtin && (
             <p className="-mb-2 text-sm text-ink-muted">
-              Built in. Your changes are kept over catalog updates.
+              {t("exercises.editor.builtIn")}
             </p>
           )}
-          <Field label="Name" error={shown(problems.name) && "Enter a name."}>
+          <Field
+            label={t("exercises.editor.name")}
+            error={shown(problems.name) && t("exercises.editor.nameError")}
+          >
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Row (Chest Supported)"
+              placeholder={t("exercises.editor.namePlaceholder")}
               aria-invalid={shown(problems.name)}
               className={inputClass}
             />
@@ -250,32 +277,30 @@ function ExerciseForm({
 
           <fieldset>
             <FieldLabel as="legend" className="pb-1.5">
-              What a set records
+              {t("exercises.editor.type")}
             </FieldLabel>
             <div className="flex flex-col gap-1">
-              {(Object.keys(EXERCISE_TYPE_LABELS) as ExerciseType[]).map(
-                (t) => (
-                  <label
-                    key={t}
-                    className="flex h-10 items-center gap-3 rounded-xl px-2 hover:bg-surface"
-                  >
-                    <input
-                      type="radio"
-                      name="type"
-                      checked={type === t}
-                      onChange={() => setType(t)}
-                      className="size-4 accent-[var(--ink)]"
-                    />
-                    {EXERCISE_TYPE_LABELS[t]}
-                  </label>
-                ),
-              )}
+              {EXERCISE_TYPES.map((option) => (
+                <label
+                  key={option}
+                  className="flex h-10 items-center gap-3 rounded-xl px-2 hover:bg-surface"
+                >
+                  <input
+                    type="radio"
+                    name="type"
+                    checked={type === option}
+                    onChange={() => setType(option)}
+                    className="size-4 accent-[var(--ink)]"
+                  />
+                  {exerciseTypeLabel(option)}
+                </label>
+              ))}
             </div>
           </fieldset>
 
           <fieldset className="min-w-0">
             <FieldLabel as="legend" className="pb-1">
-              Muscles
+              {t("exercises.editor.muscles")}
             </FieldLabel>
             <p
               className={clsx(
@@ -283,8 +308,7 @@ function ExerciseForm({
                 shown(problems.primary) ? "text-danger" : "text-ink-muted",
               )}
             >
-              Tap a muscle once for secondary, twice for primary. Pick at least
-              one primary.
+              {t("exercises.editor.musclesHint")}
             </p>
             <MuscleCycle
               muscles={muscles}
@@ -295,45 +319,54 @@ function ExerciseForm({
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
-              label="Rest time"
-              hint="m:ss. Empty uses your default."
-              error={shown(problems.rest) && "Enter a time as m:ss."}
+              label={t("exercises.editor.restTime")}
+              hint={t("exercises.editor.restTimeHint")}
+              error={
+                shown(problems.rest) && t("exercises.editor.restTimeError")
+              }
             >
               <input
                 value={rest}
                 onChange={(e) => setRest(e.target.value)}
                 inputMode="numeric"
-                placeholder={`Default ${formatDuration(settings.rest_default_s)}`}
+                placeholder={t("exercises.editor.defaultValue", {
+                  value: formatDuration(settings.rest_default_s),
+                })}
                 aria-invalid={shown(problems.rest)}
                 className={inputClass}
               />
             </Field>
             <Field
-              label={`Weight step (${unit})`}
-              hint="Empty uses your default."
-              error={shown(problems.increment) && "Enter a number above 0."}
+              label={t("exercises.editor.weightStep", { unit })}
+              hint={t("exercises.editor.weightStepHint")}
+              error={
+                shown(problems.increment) &&
+                t("exercises.editor.weightStepError")
+              }
             >
               <input
                 value={increment}
                 onChange={(e) => setIncrement(e.target.value)}
                 inputMode="decimal"
-                placeholder={`Default ${
-                  unit === "kg"
-                    ? settings.weight_increment_kg
-                    : settings.weight_increment_lb
-                }`}
+                placeholder={t("exercises.editor.defaultValue", {
+                  value: formatStep(
+                    unit === "kg"
+                      ? settings.weight_increment_kg
+                      : settings.weight_increment_lb,
+                  ),
+                })}
                 aria-invalid={shown(problems.increment)}
                 className={inputClass}
               />
             </Field>
           </div>
 
-          <Field label="Notes">
+          <Field label={t("exercises.editor.notes")}>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Seat height, grip, cues"
+              placeholder={t("exercises.editor.notesPlaceholder")}
               className={clsx(inputClass, "h-auto py-2")}
             />
           </Field>
@@ -341,6 +374,14 @@ function ExerciseForm({
       </form>
     </Screen>
   );
+}
+
+/** A weight step as typed into the field, in the language's decimal separator. */
+function formatStep(value: number): string {
+  return numberFormat({
+    maximumFractionDigits: 3,
+    useGrouping: false,
+  }).format(value);
 }
 
 type Targets = Record<string, number>;
@@ -367,7 +408,7 @@ function MuscleCycle(props: {
   return (
     <div className="flex flex-col gap-2.5">
       {byGroup(props.muscles).map(({ group, muscles }) => (
-        <Region key={group} group={group} label={group}>
+        <Region key={group} label={muscleGroupName(group)}>
           {muscles.map((muscle) => {
             const factor = props.targets[muscle.id] ?? 0;
             return (
@@ -397,7 +438,7 @@ function MuscleCycle(props: {
                     )}
                   />
                 )}
-                {muscle.name}
+                {muscleName(muscle)}
               </button>
             );
           })}
@@ -408,18 +449,14 @@ function MuscleCycle(props: {
 }
 
 /** A body region's muscles, its name in a column beside them. */
-function Region(props: {
-  group: string;
-  label: string;
-  children: React.ReactNode;
-}) {
+function Region(props: { label: string; children: React.ReactNode }) {
   return (
     <fieldset aria-label={props.label} className="flex min-w-0 gap-2">
       <span
         aria-hidden
         className="w-[4.5rem] shrink-0 pt-2 text-sm text-ink-muted"
       >
-        {props.group}
+        {props.label}
       </span>
       <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
         {props.children}

@@ -1,43 +1,47 @@
 import type { SettingChange } from "@workout-logger/core";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
-import { formatDuration } from "../../lib/format.ts";
+import { useLanguage } from "../../i18n/index.ts";
+import { formatDuration, numberFormat } from "../../lib/format.ts";
 import { keepAwakeSupported } from "../../lib/keep-awake.ts";
 import { isNative } from "../../lib/platform.ts";
 import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
-import { THEMES, useTheme } from "../../lib/theme.ts";
+import { useTheme } from "../../lib/theme.ts";
 import { AboutSection } from "./about-section.tsx";
 import { AccountSection } from "./account-section.tsx";
 import { DataSection } from "./data-section.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const command = useCommand();
   const set = (change: SettingChange) => command("setSetting", change);
   const unit = settings.weight_unit;
   const [theme, setTheme] = useTheme();
+  const [language, setLanguage] = useLanguage();
 
   return (
     <Screen
-      header={<PageHeader title="Settings" />}
+      header={<PageHeader title={t("settings.title")} />}
       scrollId="settings"
       width="narrow"
     >
       <AccountSection />
-      <Section title="Units and steps">
+      <Section title={t("settings.units.title")}>
         <Row
-          label="Weight unit"
-          hint="Switching doesn't change your logged weights."
+          label={t("settings.units.weightUnit")}
+          hint={t("settings.units.weightUnitHint")}
         >
           <Segmented
-            label="Weight unit"
+            label={t("settings.units.weightUnit")}
             value={unit}
             options={[
               { value: "kg", label: "kg" },
@@ -47,17 +51,17 @@ export function SettingsPage() {
           />
         </Row>
         <Row
-          label={`Weight step (${unit})`}
-          hint="The +/− step, unless an exercise sets its own."
+          label={t("settings.units.weightStepWithUnit", { unit })}
+          hint={t("settings.units.weightStepHint")}
         >
           <SettingInput
-            label="Weight step"
+            label={t("settings.units.weightStep")}
             value={
               unit === "kg"
                 ? settings.weight_increment_kg
                 : settings.weight_increment_lb
             }
-            format={String}
+            format={formatDecimal}
             parse={parseNumber}
             onSave={(value) =>
               set(
@@ -70,10 +74,13 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Timers">
-        <Row label="Rest timer" hint="Counts down after each logged set.">
+      <Section title={t("settings.timers.title")}>
+        <Row
+          label={t("settings.timers.restTimer")}
+          hint={t("settings.timers.restTimerHint")}
+        >
           <Switch
-            label="Rest timer"
+            label={t("settings.timers.restTimer")}
             checked={settings.rest_timer_enabled}
             onChange={(value) => {
               if (!value) restTimer.skip();
@@ -82,9 +89,12 @@ export function SettingsPage() {
           />
         </Row>
         {settings.rest_timer_enabled && (
-          <Row label="Rest time" hint="m:ss. Exercises can set their own.">
+          <Row
+            label={t("settings.timers.restTime")}
+            hint={t("settings.timers.restTimeHint")}
+          >
             <SettingInput
-              label="Rest time"
+              label={t("settings.timers.restTime")}
               value={settings.rest_default_s}
               format={formatDuration}
               parse={parseDuration}
@@ -95,20 +105,20 @@ export function SettingsPage() {
         {settings.rest_timer_enabled && (
           <Row
             stacked
-            label="Alert volume"
+            label={t("settings.timers.alertVolume")}
             hint={
               isNative
-                ? "Relative to the phone's alarm volume."
-                : "The sound at the end of a rest."
+                ? t("settings.timers.alertVolumeHintNative")
+                : t("settings.timers.alertVolumeHintWeb")
             }
           >
             <Segmented
-              label="Alert volume"
+              label={t("settings.timers.alertVolume")}
               value={settings.rest_alert_volume}
               options={[
-                { value: "low", label: "Quiet" },
-                { value: "medium", label: "Medium" },
-                { value: "high", label: "Loud" },
+                { value: "low", label: t("settings.timers.volumeLow") },
+                { value: "medium", label: t("settings.timers.volumeMedium") },
+                { value: "high", label: t("settings.timers.volumeHigh") },
               ]}
               onChange={(value) => {
                 restTimer.previewAlert(ALERT_VOLUMES[value]);
@@ -118,11 +128,11 @@ export function SettingsPage() {
           </Row>
         )}
         <Row
-          label="Session timer"
-          hint="Shows how long the running session has lasted."
+          label={t("settings.timers.sessionTimer")}
+          hint={t("settings.timers.sessionTimerHint")}
         >
           <Switch
-            label="Session timer"
+            label={t("settings.timers.sessionTimer")}
             checked={settings.session_timer_shown}
             onChange={(value) =>
               void set({ key: "session_timer_shown", value })
@@ -131,11 +141,14 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Sessions">
+      <Section title={t("settings.sessions.title")}>
         {keepAwakeSupported && (
-          <Row label="Keep screen on" hint="While a session is running.">
+          <Row
+            label={t("settings.sessions.keepScreenOn")}
+            hint={t("settings.sessions.keepScreenOnHint")}
+          >
             <Switch
-              label="Keep screen on"
+              label={t("settings.sessions.keepScreenOn")}
               checked={settings.keep_screen_awake}
               onChange={(value) =>
                 void set({ key: "keep_screen_awake", value })
@@ -144,13 +157,13 @@ export function SettingsPage() {
           </Row>
         )}
         <Row
-          label="Idle end (minutes)"
-          hint="With no new set for this long, a session ends at its last set."
+          label={t("settings.sessions.idleEnd")}
+          hint={t("settings.sessions.idleEndHint")}
         >
           <SettingInput
-            label="Idle end in minutes"
+            label={t("settings.sessions.idleEndLabel")}
             value={settings.idle_threshold_s / 60}
-            format={String}
+            format={formatDecimal}
             parse={(text) => {
               const minutes = parseNumber(text);
               return minutes === null ? null : Math.round(minutes * 60);
@@ -159,11 +172,11 @@ export function SettingsPage() {
           />
         </Row>
         <Row
-          label="e1RM rep limit"
-          hint="Sets with more reps get no e1RM and can't be PRs."
+          label={t("settings.sessions.repLimit")}
+          hint={t("settings.sessions.repLimitHint")}
         >
           <SettingInput
-            label="e1RM rep limit"
+            label={t("settings.sessions.repLimit")}
             value={settings.e1rm_rep_cap}
             format={String}
             parse={(text) => {
@@ -174,28 +187,56 @@ export function SettingsPage() {
           />
         </Row>
         <Row
-          label="Week starts on"
-          hint="The calendar's first column and where weekly counts split."
+          label={t("settings.sessions.weekStart")}
+          hint={t("settings.sessions.weekStartHint")}
         >
           <Segmented
-            label="Week starts on"
+            label={t("settings.sessions.weekStart")}
             value={settings.week_start}
             options={[
-              { value: "monday", label: "Mon" },
-              { value: "sunday", label: "Sun" },
+              { value: "monday", label: t("settings.sessions.monday") },
+              { value: "sunday", label: t("settings.sessions.sunday") },
             ]}
             onChange={(value) => set({ key: "week_start", value })}
           />
         </Row>
       </Section>
 
-      <Section title="Appearance">
-        <Row stacked label="Theme" hint="On this device only.">
+      <Section title={t("settings.appearance.title")}>
+        <Row
+          stacked
+          label={t("settings.appearance.theme")}
+          hint={t("settings.appearance.themeHint")}
+        >
           <Segmented
-            label="Theme"
+            label={t("settings.appearance.theme")}
             value={theme}
-            options={THEMES}
+            options={[
+              { value: "system", label: t("settings.appearance.themeSystem") },
+              { value: "light", label: t("settings.appearance.themeLight") },
+              { value: "dark", label: t("settings.appearance.themeDark") },
+            ]}
             onChange={setTheme}
+          />
+        </Row>
+        <Row
+          stacked
+          label={t("settings.appearance.language")}
+          hint={t("settings.appearance.languageHint")}
+        >
+          <Segmented
+            label={t("settings.appearance.language")}
+            value={language}
+            options={[
+              {
+                value: "system",
+                label: t("settings.appearance.languageSystem"),
+              },
+              // Each language by its own name, so it can be found in either.
+              { value: "en", label: "English" },
+              { value: "fi", label: "Suomi" },
+            ]}
+            onChange={setLanguage}
           />
         </Row>
       </Section>
@@ -203,6 +244,12 @@ export function SettingsPage() {
       <DataSection />
       <AboutSection />
     </Screen>
+  );
+}
+
+function formatDecimal(value: number): string {
+  return numberFormat({ maximumFractionDigits: 3, useGrouping: false }).format(
+    value,
   );
 }
 
@@ -214,13 +261,17 @@ function SettingInput<T extends number>(props: {
   parse: (text: string) => number | null;
   onSave: (value: T) => Promise<unknown>;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<string | null>(null);
   async function save() {
     if (draft === null) return;
     const value = props.parse(draft);
     setDraft(null);
     if (value === null) {
-      toasts.add({ title: `${props.label}: enter a number`, type: "error" });
+      toasts.add({
+        title: t("common.enterNumber", { field: props.label }),
+        type: "error",
+      });
       return;
     }
     if (value !== props.value) await props.onSave(value as T);

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { toasts } from "../components/toasts.tsx";
+import { i18n } from "../i18n/index.ts";
 import { isNative } from "./platform.ts";
 import {
   type AlarmRest,
@@ -111,8 +112,8 @@ class RestTimer {
   #startFailed() {
     this.#set(null);
     toasts.add({
-      title: "The rest timer didn't start",
-      description: "Android only starts it while the app is open.",
+      title: i18n.t("ui.restTimer.failedTitle"),
+      description: i18n.t("ui.restTimer.failedText"),
       type: "error",
     });
   }

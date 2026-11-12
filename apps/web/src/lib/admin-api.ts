@@ -1,4 +1,4 @@
-import { apiHeaders, SERVER_URL } from "./server.ts";
+import { apiHeaders, SERVER_URL, serverAnswered } from "./server.ts";
 
 /** `/api/admin/*`, the owner's view of every account (docs/accounts.md#admin-page). */
 
@@ -65,7 +65,7 @@ async function call(path: string, init: RequestInit = {}): Promise<Response> {
       ...(init.body ? { "Content-Type": "application/json" } : {}),
     },
   });
-  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  if (!res.ok) throw serverAnswered(res.status);
   return res;
 }
 

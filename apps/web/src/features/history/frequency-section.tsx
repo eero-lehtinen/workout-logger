@@ -7,30 +7,20 @@ import {
   type TrainingStats,
   type WeekStart,
 } from "@workout-logger/core";
+import { useTranslation } from "react-i18next";
 import { BarChart } from "../../components/chart/index.tsx";
 import { FieldLabel, SectionHeading } from "../../components/headings.tsx";
 import { Segmented } from "../../components/segmented.tsx";
-import { dateFromIso } from "../../lib/format.ts";
+import { dateFormat, dateFromIso, numberFormat } from "../../lib/format.ts";
 import { dayDotClass } from "./day-colors.ts";
+import { ONE_DECIMAL, SHORT_DATE } from "./format-options.ts";
 import { MuscleSets } from "./muscle-sets.tsx";
-import { PERIODS, type Period, periodStart, usePeriod } from "./period.ts";
-
-const one = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-const weekLabel = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const shortDate = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+import {
+  type Period,
+  periodOptions,
+  periodStart,
+  usePeriod,
+} from "./period.ts";
 
 /** The period, cut to start at the first session so averages aren't diluted. */
 function rangeOf(period: Period, today: IsoDate, first: IsoDate): DateRange {
@@ -44,6 +34,8 @@ export function FrequencySection(props: {
   today: IsoDate;
 }) {
   const { stats, weekStart, today } = props;
+  const { t } = useTranslation();
+  const one = numberFormat(ONE_DECIMAL);
   const [period, setPeriod] = usePeriod();
   const days = stats.sessions.map((s) => ({
     ...s,
@@ -62,52 +54,61 @@ export function FrequencySection(props: {
     <section aria-labelledby="frequency" className="px-4 lg:px-0">
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
         <SectionHeading id="frequency" inset={false} className="pb-0">
-          Frequency
+          {t("history.frequency.title")}
         </SectionHeading>
         <Segmented
-          label="Period"
+          label={t("history.periods.label")}
           size="sm"
           value={period}
           onChange={setPeriod}
-          options={PERIODS}
+          options={periodOptions()}
         />
       </div>
 
       <dl className="grid grid-cols-2 gap-2">
-        <Stat label="Sessions per week" value={one.format(perWeek.average)} />
         <Stat
-          label="Days between sessions"
+          label={t("history.frequency.sessionsPerWeek")}
+          value={one.format(perWeek.average)}
+        />
+        <Stat
+          label={t("history.frequency.daysBetweenSessions")}
           value={gaps.average === null ? "–" : one.format(gaps.average)}
         />
       </dl>
 
       <FieldLabel as="h3" className="block pt-6 pb-2">
-        Sessions per week
+        {t("history.frequency.sessionsPerWeek")}
       </FieldLabel>
       <BarChart
-        label="Sessions per week"
+        label={t("history.frequency.sessionsPerWeek")}
         xKind="time"
         height={180}
         bars={perWeek.weeks.map((w) => ({
           x: dateFromIso(w.week),
           v: w.count,
         }))}
-        formatX={(x) => `Week of ${weekLabel.format(x)}`}
-        formatValue={(v) => `${v} ${v === 1 ? "session" : "sessions"}`}
+        formatX={(x) =>
+          t("history.frequency.weekOf", {
+            date: dateFormat(SHORT_DATE).format(x),
+          })
+        }
+        formatValue={(v) => t("history.frequency.sessionCount", { count: v })}
         formatTick={String}
         reference={{
           value: perWeek.average,
-          label: `Average ${one.format(perWeek.average)}`,
+          label: t("history.frequency.average", {
+            value: one.format(perWeek.average),
+          }),
         }}
       />
 
       {gaps.distribution.length > 0 && (
         <>
           <FieldLabel as="h3" className="block pt-6 pb-2">
-            Days between sessions
+            {t("history.frequency.daysBetweenSessions")}
           </FieldLabel>
           <BarChart
-            label="Days between sessions"
+            label={t("history.frequency.daysBetweenSessions")}
             xKind="category"
             height={160}
             color="day-2"
@@ -117,7 +118,7 @@ export function FrequencySection(props: {
                 ? `${x}+`
                 : String(x)
             }
-            formatValue={(v) => `${v} ${v === 1 ? "time" : "times"}`}
+            formatValue={(v) => t("history.frequency.timeCount", { count: v })}
             formatTick={String}
           />
         </>
@@ -150,6 +151,7 @@ function RoutineDays(props: {
   days: { dayId: string | null; date: IsoDate }[];
   inRange: { dayId: string | null }[];
 }) {
+  const { t } = useTranslation();
   const routines = props.stats.routines.filter(
     (r) =>
       !r.archived ||
@@ -164,19 +166,21 @@ function RoutineDays(props: {
             {r.name}
           </FieldLabel>
           {r.days.length === 0 ? (
-            <p className="text-sm text-ink-muted">No days.</p>
+            <p className="text-sm text-ink-muted">
+              {t("history.frequency.noDays")}
+            </p>
           ) : (
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="text-sm text-ink-muted">
                   <th scope="col" className="py-1 font-normal">
-                    Day
+                    {t("history.frequency.day")}
                   </th>
                   <th scope="col" className="py-1 text-right font-normal">
-                    Times
+                    {t("history.frequency.times")}
                   </th>
                   <th scope="col" className="py-1 pl-4 text-right font-normal">
-                    Last done
+                    {t("history.frequency.lastDone")}
                   </th>
                 </tr>
               </thead>
@@ -200,7 +204,9 @@ function RoutineDays(props: {
                         {props.inRange.filter((s) => s.dayId === d.id).length}
                       </td>
                       <td className="tabular py-1.5 pl-4 text-right text-ink-muted">
-                        {last ? shortDate.format(dateFromIso(last)) : "–"}
+                        {last
+                          ? dateFormat(SHORT_DATE).format(dateFromIso(last))
+                          : "–"}
                       </td>
                     </tr>
                   );

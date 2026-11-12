@@ -20,6 +20,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { toasts } from "../components/toasts.tsx";
+import { i18n } from "../i18n/index.ts";
 import { isNative } from "../lib/platform.ts";
 import type { DbClient } from "./client.ts";
 import { DbOwner, type DbState } from "./ownership.ts";
@@ -166,13 +167,11 @@ export function useCommand() {
         toasts.add({
           title: options.undoLabel,
           actionProps: {
-            children: "Undo",
+            children: i18n.t("common.undo"),
             onClick: async () => {
               const undone = await db.undo(undoTx);
               if (!undone) {
-                toasts.add({
-                  title: "Can't undo: something else changed since",
-                });
+                toasts.add({ title: i18n.t("ui.command.undoFailed") });
               }
             },
           },
@@ -181,7 +180,7 @@ export function useCommand() {
       return result;
     } catch (error) {
       toasts.add({
-        title: "That didn't save",
+        title: i18n.t("ui.command.saveFailed"),
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });

@@ -509,7 +509,10 @@ describe("routines and exercises", () => {
       routineId: ids.routineId,
       description: "  Four days a week. ",
     });
-    const copyId = await run("duplicateRoutine", { routineId: ids.routineId });
+    const copyId = await run("duplicateRoutine", {
+      routineId: ids.routineId,
+      name: "Upper/Lower (copy)",
+    });
     const copy = await query("routineDetail", { routineId: copyId });
     expect(copy?.name).toBe("Upper/Lower (copy)");
     expect(copy?.description).toBe("Four days a week.");
@@ -523,7 +526,7 @@ describe("routines and exercises", () => {
     ]);
     expect(copy?.days[0]?.slots[0]?.id).not.toBe(ids.benchSlot);
 
-    await run("duplicateDay", { dayId: ids.upper });
+    await run("duplicateDay", { dayId: ids.upper, name: "Upper (copy)" });
     const original = await query("routineDetail", {
       routineId: ids.routineId,
     });

@@ -4,7 +4,7 @@ import * as v from "valibot";
 import { appVersion } from "./app-update.ts";
 import { planAfterReady, planUpdate } from "./live-update-plan.ts";
 import { isNative } from "./platform.ts";
-import { SERVER_URL } from "./server.ts";
+import { SERVER_URL, serverAnswered } from "./server.ts";
 import { forgetRoute, rememberRoute, takeRoute } from "./switch-route.ts";
 
 const BUNDLE_URL = `${SERVER_URL}/api/android/bundle`;
@@ -22,7 +22,7 @@ const Bundle = v.object({
 async function latestBundle(): Promise<v.InferOutput<typeof Bundle> | null> {
   const res = await fetch(BUNDLE_URL);
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  if (!res.ok) throw serverAnswered(res.status);
   return v.parse(Bundle, await res.json());
 }
 

@@ -6,11 +6,12 @@ import {
   type WeekStart,
 } from "@workout-logger/core";
 import { useDeferredValue } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
-import { deviceTimeZone, todayIso } from "../../lib/format.ts";
+import { dateFormat, deviceTimeZone, todayIso } from "../../lib/format.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { SessionRow, spansRoutines } from "../session/session-row.tsx";
 import { FrequencySection } from "./frequency-section.tsx";
@@ -18,14 +19,8 @@ import { MonthCalendar, monthGrid } from "./month-calendar.tsx";
 
 const route = getRouteApi("/history");
 
-const dayTitle = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
-
 export function HistoryPage() {
+  const { t } = useTranslation();
   const search = route.useSearch();
   const navigate = useNavigate({ from: "/history" });
   const settings = useDbQuery("settings");
@@ -36,16 +31,23 @@ export function HistoryPage() {
   const selected = search.day ?? (month === today.slice(0, 7) ? today : null);
 
   return (
-    <Screen header={<PageHeader title="History" />} scrollId="history">
+    <Screen
+      header={<PageHeader title={t("history.title")} />}
+      scrollId="history"
+    >
       {stats.sessions.length === 0 ? (
         <Empty>
-          Sessions you log show up here.{" "}
-          <Link
-            to="/start"
-            className="font-semibold text-ink underline underline-offset-2"
-          >
-            Start a session
-          </Link>
+          <Trans
+            i18nKey="history.empty"
+            components={{
+              start: (
+                <Link
+                  to="/start"
+                  className="font-semibold text-ink underline underline-offset-2"
+                />
+              ),
+            }}
+          />
         </Empty>
       ) : (
         <div className="flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-12">
@@ -76,6 +78,7 @@ function MonthSessions(props: {
   onSelect: (day: IsoDate) => void;
   onMonth: (month: string) => void;
 }) {
+  const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const now = useNow();
   // Keeps showing the old month while the new one loads, instead of
@@ -113,14 +116,19 @@ function MonthSessions(props: {
       {props.selected && (
         <section aria-labelledby="day-sessions" className="pt-6">
           <SectionHeading id="day-sessions">
-            {dayTitle.format(
+            {dateFormat({
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              timeZone: "UTC",
+            }).format(
               Temporal.PlainDate.from(props.selected).toZonedDateTime("UTC")
                 .epochMilliseconds,
             )}
           </SectionHeading>
           {daySessions.length === 0 ? (
             <p className="px-4 text-[0.9375rem] text-ink-muted lg:px-0">
-              No sessions.
+              {t("history.noSessions")}
             </p>
           ) : (
             <ul className={listClass}>

@@ -1,6 +1,7 @@
 import type { RoutineDetail } from "@workout-logger/core";
 import { clsx } from "clsx";
 import { Copy, Plus, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../../components/button.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
 import { rowClass } from "../../components/list.ts";
@@ -27,6 +28,7 @@ export function DayCard(props: {
   onAddSlot: () => void;
 }) {
   const { day } = props;
+  const { t } = useTranslation();
   const command = useCommand();
   return (
     <div
@@ -45,25 +47,32 @@ export function DayCard(props: {
           {props.dayIndex + 1}
         </span>
         <InlineName
-          label="Day name"
+          label={t("routines.day.name")}
           value={day.name}
           onSave={(name) => command("renameDay", { dayId: day.id, name })}
           className="flex-1 text-lg font-semibold"
         />
         <IconButton
-          label={`Duplicate ${day.name}`}
-          onClick={() => command("duplicateDay", { dayId: day.id })}
+          label={t("routines.day.duplicate", { name: day.name })}
+          onClick={() =>
+            command("duplicateDay", {
+              dayId: day.id,
+              name: t("routines.copyName", { name: day.name }),
+            })
+          }
         >
           <Copy size={17} />
         </IconButton>
         <IconButton
-          label={`Delete ${day.name}`}
+          label={t("routines.day.delete", { name: day.name })}
           variant="danger"
           onClick={() =>
             command(
               "deleteDay",
               { dayId: day.id },
-              { undoLabel: `Deleted ${day.name}` },
+              {
+                undoLabel: t("routines.day.deletedUndo", { name: day.name }),
+              },
             )
           }
         >
@@ -78,7 +87,9 @@ export function DayCard(props: {
           day.slots.length > 0 && "border-t border-rule",
         )}
         handleLabel={(slot) =>
-          `Move ${slot.exerciseName ?? "deleted exercise"}`
+          t("routines.day.moveSlot", {
+            name: slot.exerciseName ?? t("routines.day.deletedExerciseInline"),
+          })
         }
         onMove={(slotId, toIndex) => command("moveSlot", { slotId, toIndex })}
         render={(slot, _index, slotHandle) => (
@@ -97,7 +108,7 @@ export function DayCard(props: {
           onClick={props.onAddSlot}
         >
           <Plus size={16} />
-          Add exercise
+          {t("routines.day.addExercise")}
         </Button>
       </div>
     </div>
@@ -111,6 +122,7 @@ function SlotRow(props: {
   onOpen: () => void;
 }) {
   const { slot } = props;
+  const { t } = useTranslation();
   return (
     <>
       <button
@@ -119,7 +131,7 @@ function SlotRow(props: {
         className={`${rowClass} flex w-full flex-col items-start py-2.5 pr-13 text-left`}
       >
         <span className="w-full truncate font-medium">
-          {slot.exerciseName ?? "Deleted exercise"}
+          {slot.exerciseName ?? t("routines.slot.deletedExercise")}
         </span>
         <span className="w-full truncate text-sm text-ink-muted">
           {slotSummary(slot)}

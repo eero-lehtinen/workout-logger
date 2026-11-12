@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
@@ -16,6 +17,7 @@ import { AndroidAppRow } from "./android-app-row.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
 export function DataSection() {
+  const { t } = useTranslation();
   const db = useDb();
   const fileInput = useRef<HTMLInputElement>(null);
   const [importBytes, setImportBytes] = useState<Uint8Array | null>(null);
@@ -25,10 +27,15 @@ export function DataSection() {
     setBusy(true);
     try {
       const where = await saveSnapshot(await db.exportSnapshot());
-      if (isNative) toasts.add({ title: "Snapshot saved", description: where });
+      if (isNative) {
+        toasts.add({
+          title: t("settings.data.snapshotSaved"),
+          description: where,
+        });
+      }
     } catch (error) {
       toasts.add({
-        title: "Export failed",
+        title: t("settings.data.exportFailed"),
         description: String(error),
         type: "error",
       });
@@ -47,21 +54,23 @@ export function DataSection() {
       const result = await db.importSnapshot(importBytes, mode);
       const { undoTx } = result;
       toasts.add({
-        title: "Snapshot imported",
+        title: t("settings.data.imported"),
         description:
           mode === "merge"
-            ? `${result.written} rows were newer than yours.`
-            : `${result.written} rows written, ${result.deleted} removed.`,
+            ? t("settings.data.importedMerge", { count: result.written })
+            : t("settings.data.importedReplace", {
+                written: result.written,
+                deleted: result.deleted,
+              }),
         ...(undoTx !== null && {
           actionProps: {
-            children: "Undo",
+            children: t("common.undo"),
             onClick: async () => {
               if (!(await db.undo(undoTx))) {
                 toasts.add({
-                  title: "Can't undo: something else changed since",
+                  title: t("settings.data.undoFailed"),
                   ...(mode === "replace" && {
-                    description:
-                      "Import the snapshot saved before the replace to go back.",
+                    description: t("settings.data.undoFailedHint"),
                   }),
                 });
               }
@@ -71,7 +80,7 @@ export function DataSection() {
       });
     } catch (error) {
       toasts.add({
-        title: "Import failed",
+        title: t("settings.data.importFailed"),
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });
@@ -85,14 +94,16 @@ export function DataSection() {
     try {
       const where = await saveSnapshot(await db.exportSnapshot());
       toasts.add({
-        title: "Saved your current data first",
+        title: t("settings.data.savedFirst"),
         description: where,
       });
       return true;
     } catch (error) {
       toasts.add({
-        title: "Nothing was replaced",
-        description: `Saving your current data first failed: ${error instanceof Error ? error.message : String(error)}`,
+        title: t("settings.data.notReplaced"),
+        description: t("settings.data.saveFirstFailed", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
         type: "error",
       });
       return false;
@@ -100,22 +111,25 @@ export function DataSection() {
   }
 
   return (
-    <Section title="Data">
+    <Section title={t("settings.data.title")}>
       <Row
-        label="Export snapshot"
+        label={t("settings.data.exportSnapshot")}
         hint={
           isNative
-            ? `Saves all your data as one file in Documents/${SNAPSHOT_FOLDER}.`
-            : "Downloads all your data as one file. Keep it somewhere safe."
+            ? t("settings.data.exportHintNative", { folder: SNAPSHOT_FOLDER })
+            : t("settings.data.exportHintWeb")
         }
       >
         <Button disabled={busy} onClick={exportSnapshot}>
-          Export
+          {t("settings.data.export")}
         </Button>
       </Row>
-      <Row label="Import snapshot" hint="From a file exported here.">
+      <Row
+        label={t("settings.data.importSnapshot")}
+        hint={t("settings.data.importHint")}
+      >
         <Button disabled={busy} onClick={() => fileInput.current?.click()}>
-          Import
+          {t("settings.data.import")}
         </Button>
         <input
           ref={fileInput}
@@ -147,12 +161,15 @@ export function DataSection() {
       <Confirm
         open={importBytes !== null}
         onOpenChange={(open) => !open && setImportBytes(null)}
-        title="Import snapshot"
-        description="Merge keeps the newer version of anything in both. Replace first saves your current data as a snapshot file, then makes your data match the imported file exactly."
+        title={t("settings.data.importSnapshot")}
+        description={t("settings.data.importChoice")}
         actions={[
-          { label: "Merge", onClick: () => runImport("merge") },
           {
-            label: "Replace everything",
+            label: t("settings.data.merge"),
+            onClick: () => runImport("merge"),
+          },
+          {
+            label: t("settings.data.replaceEverything"),
             variant: "danger",
             onClick: () => runImport("replace"),
           },
@@ -163,32 +180,39 @@ export function DataSection() {
 }
 
 function AutoSnapshotRow() {
+  const { t } = useTranslation();
   const last = useLastSnapshotAt();
   return (
     <Row
-      label="Automatic snapshots"
-      hint={`Saved to Documents/${SNAPSHOT_FOLDER} after each session; the newest 10 are kept. ${
-        last === null ? "None saved yet." : `Last: ${formatDateTime(last)}.`
-      }`}
+      label={t("settings.data.autoSnapshots")}
+      hint={
+        last === null
+          ? t("settings.data.autoSnapshotsNone", { folder: SNAPSHOT_FOLDER })
+          : t("settings.data.autoSnapshotsLast", {
+              folder: SNAPSHOT_FOLDER,
+              time: formatDateTime(last),
+            })
+      }
     />
   );
 }
 
 function InstallRow() {
+  const { t } = useTranslation();
   const { state, install } = useInstall();
   if (state === "installed") return null;
   return (
     <Row
-      label="Install app"
+      label={t("settings.data.install")}
       hint={
         state === "available"
-          ? "Opens from your home screen or desktop, works offline, and keeps the browser from clearing your data."
-          : "Install from your browser's menu. On iPhone: Share, then Add to Home Screen."
+          ? t("settings.data.installHintAvailable")
+          : t("settings.data.installHintManual")
       }
     >
       {state === "available" && (
         <Button variant="primary" onClick={() => void install()}>
-          Install
+          {t("settings.data.installButton")}
         </Button>
       )}
     </Row>
@@ -196,16 +220,17 @@ function InstallRow() {
 }
 
 function StorageRow() {
+  const { t } = useTranslation();
   const persisted = usePersistence();
   return (
     <Row
-      label="Storage"
+      label={t("settings.data.storage")}
       hint={
         persisted === null
-          ? "This browser doesn't report whether your data is protected from cleanup."
+          ? t("settings.data.storageUnknown")
           : persisted
-            ? "Protected: the browser won't clear your data to free space."
-            : "Not protected: the browser may clear your data when space runs low. Installing the app usually protects it. Until then, export regularly."
+            ? t("settings.data.storageProtected")
+            : t("settings.data.storageUnprotected")
       }
     >
       {persisted === false && (
@@ -213,14 +238,13 @@ function StorageRow() {
           onClick={async () => {
             if (!(await requestPersistence())) {
               toasts.add({
-                title: "The browser didn't allow it",
-                description:
-                  "Chrome decides on its own, mostly once the app is installed. The app asks again when you install it.",
+                title: t("settings.data.askBrowserDenied"),
+                description: t("settings.data.askBrowserDeniedHint"),
               });
             }
           }}
         >
-          Ask browser
+          {t("settings.data.askBrowser")}
         </Button>
       )}
     </Row>

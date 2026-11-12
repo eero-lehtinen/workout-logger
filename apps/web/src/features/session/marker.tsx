@@ -2,24 +2,21 @@ import { Popover } from "@base-ui/react/popover";
 import {
   displayDerived,
   type ExerciseType,
-  formatWeight,
   type MarkerExplanation,
   type ProgressMarker,
   type WeightUnit,
 } from "@workout-logger/core";
 import { ArrowUp, Star, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { i18n } from "../../i18n/index.ts";
 import {
   formatDuration,
   formatKm,
   formatSessionDate,
   formatSet,
+  formatWeight,
+  numberFormat,
 } from "../../lib/format.ts";
-
-const LABELS: Record<ProgressMarker, string> = {
-  pr: "Personal record",
-  set_record: "Set record",
-  weight_increase: "Weight increase",
-};
 
 /** PR: trophy. Set record: outline star. Weight increase: up arrow. */
 function MarkerIcon(props: { marker: ProgressMarker; size: number }) {
@@ -46,8 +43,9 @@ export function Marker(props: {
   size?: number;
 }) {
   const { marker, basis } = props;
+  const { t } = useTranslation();
   if (!marker) return null;
-  const label = LABELS[marker];
+  const label = t(`session.marker.${marker}`);
   if (!basis) {
     return (
       <span role="img" aria-label={label} title={label} className="inline-flex">
@@ -91,23 +89,27 @@ function Comparison(props: {
   unit: WeightUnit;
 }) {
   const { basis, type, unit } = props;
+  const { t } = useTranslation();
   const { against } = basis;
   const set = formatSet(against, type, unit);
-  const when = against.sameSession
-    ? "earlier today"
-    : `on ${formatSessionDate(against.startedAt, against.tz)}`;
+  const compared = against.sameSession
+    ? t("session.marker.againstEarlierToday", { set })
+    : t("session.marker.againstOnDate", {
+        set,
+        date: formatSessionDate(against.startedAt, against.tz),
+      });
   // A PR beats the best of all earlier sets; the other markers compare with
   // the same set number last time.
   const label =
     props.marker === "pr"
-      ? "Best before"
-      : `Last time, set ${against.setNumber}`;
+      ? t("session.marker.bestBefore")
+      : t("session.marker.lastTimeSet", { number: against.setNumber });
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pt-2 text-sm">
-      <dt className="text-ink-muted">This set</dt>
+      <dt className="text-ink-muted">{t("session.marker.thisSet")}</dt>
       <dd className="font-medium">
         {basis.measure === "weight_and_reps"
-          ? "More weight or reps"
+          ? t("session.marker.moreWeightOrReps")
           : amount(basis.measure, basis.value, unit)}
       </dd>
       <dt className="text-ink-muted">{label}</dt>
@@ -117,9 +119,7 @@ function Comparison(props: {
             {amount(basis.measure, basis.compared, unit)}
           </div>
         )}
-        <div className="text-xs text-ink-muted">
-          {set} {when}
-        </div>
+        <div className="text-xs text-ink-muted">{compared}</div>
       </dd>
     </dl>
   );
@@ -134,11 +134,11 @@ function amount(
   if (value === null) return "";
   switch (measure) {
     case "e1rm":
-      return `${displayDerived(value, unit)} ${unit} e1RM`;
+      return `${numberFormat({ maximumFractionDigits: 1, useGrouping: false }).format(displayDerived(value, unit))} ${unit} e1RM`;
     case "weight":
       return `${formatWeight(value, unit)} ${unit}`;
     case "reps":
-      return `${value} reps`;
+      return i18n.t("session.marker.reps", { count: value });
     case "duration":
       return formatDuration(value);
     case "distance":

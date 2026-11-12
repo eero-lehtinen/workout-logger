@@ -5,6 +5,7 @@ import type {
   WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import {
@@ -13,8 +14,8 @@ import {
   formatWeightWithUnit,
 } from "../../lib/format.ts";
 import { usePreference } from "../../lib/preference.ts";
-import { formatHeadline, HEADLINE_LABELS, isWeighted } from "./metrics.ts";
-import { PERIOD_PHRASES, type Period } from "./period.ts";
+import { formatHeadline, headlineLabel, isWeighted } from "./metrics.ts";
+import { type Period, periodRecordsTitle } from "./period.ts";
 
 const TABLES = ["reps", "weight"] as const;
 type Table = (typeof TABLES)[number];
@@ -26,6 +27,7 @@ export function RecordsSection(props: {
 }) {
   const { history, unit } = props;
   const { records, exercise } = history;
+  const { t } = useTranslation();
   const [table, setTable] = usePreference<Table>(
     "history-records-table",
     TABLES,
@@ -34,7 +36,7 @@ export function RecordsSection(props: {
   return (
     <section className="px-4 lg:px-0">
       <SectionHeading inset={false}>
-        {`Records ${PERIOD_PHRASES[props.period]}`.trim()}
+        {periodRecordsTitle(props.period)}
       </SectionHeading>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {records.headline.map((r) => (
@@ -42,7 +44,7 @@ export function RecordsSection(props: {
             key={r.kind}
             className="rounded-2xl bg-raised p-3 ring-1 ring-rule"
           >
-            <p className="text-sm text-ink-muted">{HEADLINE_LABELS[r.kind]}</p>
+            <p className="text-sm text-ink-muted">{headlineLabel(r.kind)}</p>
             <p className="numerals text-2xl">
               {formatHeadline(r.kind, r.value, unit)}
             </p>
@@ -57,19 +59,24 @@ export function RecordsSection(props: {
       {isWeighted(exercise.type) && records.byReps.length > 0 && (
         <div className="pt-5">
           <Segmented
-            label="Records table"
+            label={t("history.records.tableLabel")}
             size="sm"
             value={table}
             onChange={setTable}
             options={[
-              { value: "reps", label: "Best weight for reps" },
-              { value: "weight", label: "Most reps at weight" },
+              { value: "reps", label: t("history.records.bestWeightForReps") },
+              { value: "weight", label: t("history.records.mostRepsAtWeight") },
             ]}
           />
           {table === "reps" ? (
             <RecordTable
               exerciseId={exercise.id}
-              head={["Reps", "Weight", "e1RM", "Date"]}
+              head={[
+                t("history.records.reps"),
+                t("history.records.weight"),
+                "e1RM",
+                t("history.records.date"),
+              ]}
               rows={records.byReps.map((r) => ({
                 key: String(r.reps),
                 beaten: r.beaten,
@@ -86,7 +93,11 @@ export function RecordsSection(props: {
           ) : (
             <RecordTable
               exerciseId={exercise.id}
-              head={["Weight", "Reps", "Date"]}
+              head={[
+                t("history.records.weight"),
+                t("history.records.reps"),
+                t("history.records.date"),
+              ]}
               rows={records.byWeight.map((r) => ({
                 key: String(r.weightKg),
                 beaten: r.beaten,
@@ -96,7 +107,7 @@ export function RecordsSection(props: {
             />
           )}
           <p className="pt-1 text-xs text-ink-muted">
-            Dimmed rows were beaten by a set with more weight and as many reps.
+            {t("history.records.dimmedNote")}
           </p>
         </div>
       )}

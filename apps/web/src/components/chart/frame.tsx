@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import type { Ref } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../button.tsx";
 import type { ChartHeight } from "./types.ts";
 
@@ -15,6 +16,7 @@ export function ChartFrame(props: {
   chartRef?: Ref<HTMLDivElement>;
   onReset?: (() => void) | undefined;
 }) {
+  const { t } = useTranslation();
   const fill = props.height === "fill";
   return (
     <div
@@ -33,7 +35,7 @@ export function ChartFrame(props: {
           className="absolute top-0 right-1 shadow-sm"
           onClick={props.onReset}
         >
-          Show all
+          {t("ui.chart.showAll")}
         </Button>
       )}
     </div>

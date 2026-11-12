@@ -16,6 +16,7 @@ import {
 } from "@workout-logger/core";
 import { Maximize2, Pencil } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../../components/button.tsx";
 import {
   BarChart,
@@ -32,23 +33,33 @@ import { Select } from "../../components/select.tsx";
 import { FullScreen } from "../../components/sheet.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
+import { i18n } from "../../i18n/index.ts";
 import {
+  dateFormat,
   dateFromIso,
   formatSessionDate,
   formatWeightWithUnit,
+  numberFormat,
   todayIso,
 } from "../../lib/format.ts";
 import { usePreference, useSwitchPreference } from "../../lib/preference.ts";
 import { backToOrigin, type Origin, originOf } from "../exercises/origin.ts";
 import { SetLine } from "../session/set-line.tsx";
+import { ONE_DECIMAL, SHORT_DATE } from "./format-options.ts";
 import {
   formatMetric,
   formatTrendRate,
   isWeighted,
-  METRIC_LABELS,
+  metricLabel,
   type ValueMetric,
 } from "./metrics.ts";
-import { PERIOD_PHRASES, PERIODS, periodStart, usePeriod } from "./period.ts";
+import {
+  periodNoSets,
+  periodOptions,
+  periodSessions,
+  periodStart,
+  usePeriod,
+} from "./period.ts";
 import { RecordsSection } from "./records.tsx";
 
 const route = getRouteApi("/exercises/$exerciseId_/history");
@@ -56,6 +67,7 @@ const route = getRouteApi("/exercises/$exerciseId_/history");
 const PAGE = 10;
 
 export function ExerciseHistoryPage() {
+  const { t } = useTranslation();
   const { exerciseId } = route.useParams();
   const search = route.useSearch();
   const history = useDbQuery("exerciseHistory", { exerciseId });
@@ -67,10 +79,10 @@ export function ExerciseHistoryPage() {
   if (!history) {
     return (
       <Screen
-        header={<PageHeader title="Exercise" back={back} />}
+        header={<PageHeader title={t("history.exercise.title")} back={back} />}
         scrollId="exercise-history-deleted"
       >
-        <Empty>This exercise was deleted.</Empty>
+        <Empty>{t("history.exercise.deleted")}</Empty>
       </Screen>
     );
   }
@@ -97,6 +109,7 @@ function InPeriod(props: {
 }) {
   const { history, unit } = props;
   const { exercise } = history;
+  const { t } = useTranslation();
   const [period, setPeriod] = usePeriod();
   const today = todayIso();
   const from = periodStart(period, today);
@@ -112,7 +125,6 @@ function InPeriod(props: {
         })
       : history.records,
   };
-  const phrase = PERIOD_PHRASES[period];
   const first = history.performances[0];
   const logged = first !== undefined;
   // Weekly charts start at the period, but never before the first session.
@@ -127,8 +139,8 @@ function InPeriod(props: {
           title={exercise.name}
           subtitle={
             logged
-              ? `${performances.length} ${performances.length === 1 ? "session" : "sessions"} ${phrase}`.trim()
-              : "Not logged yet"
+              ? periodSessions(period, performances.length)
+              : t("history.exercise.notLogged")
           }
           back={props.back}
           actions={
@@ -136,8 +148,8 @@ function InPeriod(props: {
               to="/exercises/$exerciseId"
               params={{ exerciseId: exercise.id }}
               search={props.editSearch}
-              aria-label="Edit exercise"
-              title="Edit exercise"
+              aria-label={t("history.exercise.edit")}
+              title={t("history.exercise.edit")}
               className="inline-flex size-10 items-center justify-center rounded-xl hover:bg-surface"
             >
               <Pencil size={19} />
@@ -146,20 +158,24 @@ function InPeriod(props: {
         >
           {logged && (
             <Segmented
-              label="Period"
+              label={t("history.periods.label")}
               size="sm"
               value={period}
               onChange={setPeriod}
-              options={PERIODS}
+              options={periodOptions()}
             />
           )}
         </PageHeader>
       }
     >
       {!logged ? (
-        <Empty>Sets you log of this exercise show up here.</Empty>
+        <Empty>{t("history.exercise.neverLogged")}</Empty>
       ) : performances.length === 0 ? (
-        <Empty>No sets of this exercise {phrase}.</Empty>
+        <Empty>
+          {period === "all"
+            ? t("history.exercise.neverLogged")
+            : periodNoSets(period)}
+        </Empty>
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
           <div className="flex flex-col gap-8">
@@ -186,6 +202,7 @@ function ProgressChart(props: {
 }) {
   const { history, unit } = props;
   const { exercise, performances } = history;
+  const { t } = useTranslation();
   const metrics = historyMetrics(exercise.type);
   // One metric for every exercise: a type without it shows its first metric
   // and leaves the stored one for the exercises that have it.
@@ -212,27 +229,34 @@ function ProgressChart(props: {
   const controls = (
     <>
       <Select
-        label="Metric"
+        label={t("history.exercise.metric")}
         value={metric}
         onChange={setMetric}
-        options={metrics.map((m) => ({ value: m, label: METRIC_LABELS[m] }))}
+        options={metrics.map((m) => ({ value: m, label: metricLabel(m) }))}
       />
       {metric === "reps_at_weight" && (
         <Select
-          label="Weight"
+          label={t("history.exercise.weight")}
           value={weight}
           onChange={setWeight}
           options={weights.map((w) => ({
             value: String(w.weightKg),
-            label: `${formatWeightWithUnit(w.weightKg, unit)} (${w.sessions} ${w.sessions === 1 ? "session" : "sessions"})`,
+            label: t("history.exercise.weightOption", {
+              weight: formatWeightWithUnit(w.weightKg, unit),
+              count: w.sessions,
+            }),
           }))}
         />
       )}
       {metric !== "weekly_sets" && metric !== "set_e1rm" && (
         <span className="flex items-center gap-3">
-          <Switch label="Trend line" checked={trend} onChange={setTrend} />
+          <Switch
+            label={t("history.exercise.trendLine")}
+            checked={trend}
+            onChange={setTrend}
+          />
           <span aria-hidden className="text-ink-muted">
-            Trend line
+            {t("history.exercise.trendLine")}
           </span>
         </span>
       )}
@@ -253,11 +277,11 @@ function ProgressChart(props: {
     );
   return (
     <section className="px-4 lg:px-0">
-      <h2 className="sr-only">Progress</h2>
+      <h2 className="sr-only">{t("history.exercise.progress")}</h2>
       <div className={controlsClass}>
         {controls}
         <IconButton
-          label="Full screen"
+          label={t("history.exercise.fullScreen")}
           className="-my-1 ml-auto"
           onClick={() => setFullScreen(true)}
         >
@@ -282,12 +306,6 @@ function ProgressChart(props: {
 const controlsClass =
   "flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]";
 
-const sessionDate = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
 /** One colored line, or one per set number for every set's e1RM. */
 function chartSeries(
   history: ExerciseHistory,
@@ -304,7 +322,7 @@ function chartSeries(
   if (metric === "set_e1rm") {
     return setE1rmSeries(history.performances, options).map((s, i) => ({
       id: `set-${s.setNumber}`,
-      label: `Set ${s.setNumber}`,
+      label: i18n.t("history.exercise.setNumber", { number: s.setNumber }),
       points: toPoints(s.points),
       kind: "line",
       color: seriesColor(i),
@@ -317,7 +335,7 @@ function chartSeries(
   return [
     {
       id: metric,
-      label: METRIC_LABELS[metric],
+      label: metricLabel(metric),
       points,
       kind: "line",
       color: seriesColor(0),
@@ -337,38 +355,34 @@ function MetricChart(props: {
   height: ChartHeight;
 }) {
   const { history, metric, unit } = props;
+  const { t } = useTranslation();
   const series = chartSeries(history, metric, props.weightKg, props.trend);
   if (series.length === 0) {
     return (
       <p className="py-10 text-center text-[0.9375rem] text-ink-muted">
         {metric === "best_e1rm" || metric === "set_e1rm"
-          ? "No sets within the e1RM rep limit yet."
-          : "Nothing to show for this metric yet."}
+          ? t("history.exercise.noE1rmSets")
+          : t("history.exercise.nothingToShow")}
       </p>
     );
   }
   return (
     <TimeChart
-      label={METRIC_LABELS[metric]}
+      label={metricLabel(metric)}
       height={props.height}
       series={series}
       formatValue={(v) => formatMetric(metric, v, unit)}
       formatTrend={(perDay) => formatTrendRate(metric, perDay, unit)}
-      formatTime={(t) => sessionDate.format(t)}
+      formatTime={(at) =>
+        dateFormat({
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }).format(at)
+      }
     />
   );
 }
-
-const weekLabel = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const average = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
 
 /** Every week since the first performance, empty weeks included. */
 function WeeklySetsChart(props: {
@@ -376,6 +390,7 @@ function WeeklySetsChart(props: {
   from: IsoDate | null;
   height: ChartHeight;
 }) {
+  const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const { weeks, average: mean } = weeklySets(
     props.history.performances,
@@ -384,25 +399,35 @@ function WeeklySetsChart(props: {
   );
   return (
     <BarChart
-      label="Sets per week"
+      label={t("history.exercise.setsPerWeek")}
       xKind="time"
       height={props.height}
       bars={weeks.map((w) => ({ x: dateFromIso(w.week), v: w.count }))}
-      formatX={(x) => `Week of ${weekLabel.format(x)}`}
-      formatValue={(v) => `${v} ${v === 1 ? "set" : "sets"}`}
+      formatX={(x) =>
+        t("history.exercise.weekOf", {
+          date: dateFormat(SHORT_DATE).format(x),
+        })
+      }
+      formatValue={(v) => t("history.exercise.setCount", { count: v })}
       formatTick={String}
-      reference={{ value: mean, label: `Average ${average.format(mean)}` }}
+      reference={{
+        value: mean,
+        label: t("history.exercise.average", {
+          value: numberFormat(ONE_DECIMAL).format(mean),
+        }),
+      }}
     />
   );
 }
 
 function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
   const { history, unit } = props;
+  const { t } = useTranslation();
   const [shown, setShown] = useState(PAGE);
   const newestFirst = [...history.performances].reverse();
   return (
     <section className="pt-8 lg:pt-0">
-      <SectionHeading>Sessions</SectionHeading>
+      <SectionHeading>{t("history.exercise.sessions")}</SectionHeading>
       <ul className={listClass}>
         {newestFirst.slice(0, shown).map((p) => (
           <li key={p.sessionId}>
@@ -427,7 +452,7 @@ function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
             size="sm"
             onClick={() => setShown(shown + 2 * PAGE)}
           >
-            Show older sessions
+            {t("history.exercise.showOlder")}
           </Button>
         </div>
       )}

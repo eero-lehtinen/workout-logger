@@ -29,6 +29,9 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    // The tests check English text; otherwise the browser takes the
+    // machine's language and the app follows it.
+    locale: "en-US",
   },
   projects: [{ name: "phone", use: { ...devices["Pixel 7"] } }],
   webServer: {

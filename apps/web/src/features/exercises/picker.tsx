@@ -1,6 +1,7 @@
 import type { ExerciseItem } from "@workout-logger/core";
 import { Search } from "lucide-react";
 import { Suspense, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Sheet } from "../../components/sheet.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { matchesSearch } from "../../lib/search.ts";
@@ -52,6 +53,7 @@ function PickerBody(props: {
     | { exerciseId: string | null; slotId: string | null }
     | undefined;
 }) {
+  const { t } = useTranslation();
   const exercises = useDbQuery("exercises");
   const options = useDbQuery("substitutionOptions", {
     exerciseId: props.substituteFor?.exerciseId ?? null,
@@ -89,10 +91,10 @@ function PickerBody(props: {
       : [];
     const shown = new Set([...alternatives, ...similar]);
     return [
-      { title: "Alternatives", items: alternatives },
-      { title: "Same muscles", items: similar },
+      { title: t("exercises.picker.alternatives"), items: alternatives },
+      { title: t("exercises.picker.sameMuscles"), items: similar },
       {
-        title: shown.size > 0 ? "All exercises" : null,
+        title: shown.size > 0 ? t("exercises.picker.allExercises") : null,
         items: live.filter((e) => !shown.has(e)),
       },
     ].filter((s) => s.items.length > 0);
@@ -111,8 +113,8 @@ function PickerBody(props: {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search exercises"
-              aria-label="Search exercises"
+              placeholder={t("exercises.list.search")}
+              aria-label={t("exercises.list.search")}
               className="h-11 w-full rounded-xl bg-chalk pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
             />
           </div>
@@ -122,7 +124,7 @@ function PickerBody(props: {
       </div>
       {sections.length === 0 && (
         <p className="px-4 py-8 text-center text-ink-muted">
-          No exercise matches. Create it under Exercises.
+          {t("exercises.picker.noMatch")}
         </p>
       )}
       {sections.map((section) => (

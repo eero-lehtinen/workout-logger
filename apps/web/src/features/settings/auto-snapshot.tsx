@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { toasts } from "../../components/toasts.tsx";
 import { useDb, useDbQuery } from "../../db/react.tsx";
+import { i18n } from "../../i18n/index.ts";
 import {
   snapshotDue,
   useLastSnapshotAt,
@@ -35,7 +36,7 @@ export function AutoSnapshot() {
       .then(writeDeviceSnapshot)
       .catch((error) => {
         toasts.add({
-          title: "Couldn't save the snapshot file",
+          title: i18n.t("settings.data.autoSnapshotFailed"),
           description: error instanceof Error ? error.message : String(error),
           type: "error",
         });

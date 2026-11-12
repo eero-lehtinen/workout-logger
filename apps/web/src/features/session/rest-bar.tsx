@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { RotateCcw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { formatDuration } from "../../lib/format.ts";
 import {
   type RestState,
@@ -15,6 +16,7 @@ function remainingSeconds(state: RestState, now: number) {
 
 /** The rest countdown with its controls, for the logging screen. */
 export function RestControls() {
+  const { t } = useTranslation();
   const state = useRestTimer();
   const now = useNow(250);
   if (!state) return null;
@@ -34,10 +36,12 @@ export function RestControls() {
       />
       <p className="relative flex-1 text-[0.9375rem]" aria-live="polite">
         {state.finished ? (
-          <span className="font-semibold text-increase">Rest over</span>
+          <span className="font-semibold text-increase">
+            {t("session.rest.over")}
+          </span>
         ) : (
           <>
-            <span className="text-ink-muted">Rest </span>
+            <span className="text-ink-muted">{t("session.rest.label")} </span>
             <span className="numerals text-xl">
               {formatDuration(remaining)}
             </span>
@@ -50,11 +54,16 @@ export function RestControls() {
           <RestButton onClick={() => restTimer.adjust(15)}>+15 s</RestButton>
         </>
       )}
-      <RestButton label="Restart rest" onClick={() => restTimer.restart()}>
+      <RestButton
+        label={t("session.rest.restart")}
+        onClick={() => restTimer.restart()}
+      >
         <RotateCcw size={17} />
       </RestButton>
       <RestButton
-        label={state.finished ? "Dismiss" : "Skip rest"}
+        label={
+          state.finished ? t("session.rest.dismiss") : t("session.rest.skip")
+        }
         onClick={() => restTimer.skip()}
       >
         <X size={18} />
@@ -89,6 +98,7 @@ const PILL =
  * exercise the rest belongs to; opening a finished rest also dismisses it.
  */
 export function RestBar() {
+  const { t } = useTranslation();
   const state = useRestTimer();
   if (!state) return null;
   const label = <RestLabel state={state} />;
@@ -119,7 +129,9 @@ export function RestBar() {
       )}
       <button
         type="button"
-        aria-label={state.finished ? "Dismiss" : "Skip rest"}
+        aria-label={
+          state.finished ? t("session.rest.dismiss") : t("session.rest.skip")
+        }
         onClick={() => restTimer.skip()}
         className="flex size-9 items-center justify-center rounded-full hover:bg-surface"
       >
@@ -130,17 +142,18 @@ export function RestBar() {
 }
 
 function RestLabel({ state }: { state: RestState }) {
+  const { t } = useTranslation();
   const now = useNow(500);
   if (state.finished) {
     return (
       <span className="font-semibold" aria-live="polite">
-        Rest over
+        {t("session.rest.over")}
       </span>
     );
   }
   return (
     <span aria-live="polite">
-      Rest{" "}
+      {t("session.rest.label")}{" "}
       <span className="numerals text-base">
         {formatDuration(remainingSeconds(state, now))}
       </span>

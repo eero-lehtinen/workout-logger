@@ -3,12 +3,11 @@ import { usePreference } from "../../lib/preference.ts";
 
 export type ExerciseSort = "name" | "recent" | "most";
 
-/** Short labels: the dropdown sits beside the search with a sort icon. */
 export const EXERCISE_SORTS = [
-  { value: "name", label: "Name" },
-  { value: "recent", label: "Recent" },
-  { value: "most", label: "Most logged" },
-] as const satisfies readonly { value: ExerciseSort; label: string }[];
+  "name",
+  "recent",
+  "most",
+] as const satisfies readonly ExerciseSort[];
 
 const byName = (a: ExerciseItem, b: ExerciseItem) =>
   a.name.localeCompare(b.name);
@@ -35,9 +34,5 @@ export function sortExercises(
 
 /** One order for the exercise list and the picker, remembered on the device. */
 export function useExerciseSort() {
-  return usePreference<ExerciseSort>(
-    "exercise-sort",
-    EXERCISE_SORTS.map((s) => s.value),
-    "name",
-  );
+  return usePreference<ExerciseSort>("exercise-sort", EXERCISE_SORTS, "name");
 }

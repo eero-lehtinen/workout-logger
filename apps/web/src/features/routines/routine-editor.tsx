@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { fieldLabelClass } from "../../components/headings.tsx";
 import { InlineName } from "../../components/inline-name.tsx";
@@ -32,13 +33,14 @@ type PickTarget =
   | { kind: "slotExercise"; slotId: string }
   | { kind: "alternative"; slotId: string };
 
-const PICKER_TITLES: Record<PickTarget["kind"], string> = {
-  slot: "Add exercise",
-  slotExercise: "Change exercise",
-  alternative: "Add alternative",
-};
+const PICKER_TITLE_KEYS = {
+  slot: "routines.editor.pickAddExercise",
+  slotExercise: "routines.editor.pickChangeExercise",
+  alternative: "routines.editor.pickAddAlternative",
+} as const satisfies Record<PickTarget["kind"], string>;
 
 export function RoutineEditor() {
+  const { t } = useTranslation();
   const { routineId } = route.useParams();
   const search = route.useSearch();
   const routine = useDbQuery("routineDetail", { routineId });
@@ -46,16 +48,19 @@ export function RoutineEditor() {
     ? {
         to: "/sessions/$sessionId" as const,
         params: { sessionId: search.sessionId },
-        label: "Back to session",
+        label: t("routines.editor.backToSession"),
       }
-    : { to: "/routines" as const, label: "Back to routines" };
+    : {
+        to: "/routines" as const,
+        label: t("routines.editor.backToRoutines"),
+      };
   if (!routine) {
     return (
       <Screen
-        header={<PageHeader title="Routine" back={back} />}
+        header={<PageHeader title={t("routines.editor.title")} back={back} />}
         scrollId="routine-deleted"
       >
-        <Empty>This routine was deleted.</Empty>
+        <Empty>{t("routines.editor.deleted")}</Empty>
       </Screen>
     );
   }
@@ -72,6 +77,7 @@ export function RoutineEditor() {
 
 /** Free text, edited in place; saves on blur. */
 function RoutineDescription({ routine }: { routine: RoutineDetail }) {
+  const { t } = useTranslation();
   const command = useCommand();
   const [draft, setDraft] = useState<string | null>(null);
   const save = () => {
@@ -82,12 +88,14 @@ function RoutineDescription({ routine }: { routine: RoutineDetail }) {
   };
   return (
     <label className="flex max-w-3xl flex-col gap-1.5 px-4 pb-2 lg:px-0">
-      <span className={fieldLabelClass}>Description</span>
+      <span className={fieldLabelClass}>
+        {t("routines.editor.description")}
+      </span>
       <textarea
         value={draft ?? routine.description}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
-        placeholder="What the routine is for, how to run it"
+        placeholder={t("routines.editor.descriptionPlaceholder")}
         rows={1}
         className="field-sizing-content block min-h-10 w-full resize-none rounded-xl bg-raised px-3 py-2 text-[0.9375rem] outline-none ring-1 ring-rule placeholder:text-ink-muted focus:ring-2 focus:ring-ink"
       />
@@ -108,6 +116,7 @@ function Editor({
   /** Just created with a placeholder name. */
   isNew: boolean;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (highlightDayId) {
       document
@@ -164,7 +173,10 @@ function Editor({
       archived: !routine.archived,
     });
   async function duplicate() {
-    const copyId = await command("duplicateRoutine", { routineId: routine.id });
+    const copyId = await command("duplicateRoutine", {
+      routineId: routine.id,
+      name: t("routines.copyName", { name: routine.name }),
+    });
     if (copyId) {
       await navigate({
         to: "/routines/$routineId",
@@ -180,7 +192,7 @@ function Editor({
         <PageHeader
           title={
             <InlineName
-              label="Routine name"
+              label={t("routines.editor.name")}
               value={routine.name}
               select={isNew}
               onSave={(name) =>
@@ -189,14 +201,18 @@ function Editor({
               className="w-full"
             />
           }
-          subtitle={routine.archived ? "Archived" : undefined}
+          subtitle={
+            routine.archived ? t("routines.editor.archivedSubtitle") : undefined
+          }
           back={back}
           actions={
             <MoreMenu
-              label="More actions"
+              label={t("routines.editor.moreActions")}
               items={[
                 {
-                  label: routine.archived ? "Unarchive" : "Archive",
+                  label: routine.archived
+                    ? t("routines.editor.unarchive")
+                    : t("routines.editor.archive"),
                   icon: routine.archived ? (
                     <ArchiveRestore size={18} />
                   ) : (
@@ -205,12 +221,12 @@ function Editor({
                   onClick: () => void toggleArchived(),
                 },
                 {
-                  label: "Duplicate",
+                  label: t("routines.editor.duplicate"),
                   icon: <Copy size={18} />,
                   onClick: () => void duplicate(),
                 },
                 {
-                  label: "Delete routine",
+                  label: t("routines.editor.deleteRoutine"),
                   icon: <Trash2 size={18} />,
                   danger: true,
                   onClick: () => setConfirmDelete(true),
@@ -223,21 +239,21 @@ function Editor({
     >
       <RoutineDescription routine={routine} />
       {routine.days.length === 0 && (
-        <Empty>Add your workout days in the order you do them.</Empty>
+        <Empty>{t("routines.editor.noDays")}</Empty>
       )}
       {routine.days.length > 1 && (
         <div className="flex items-center px-4 pt-2 lg:px-0">
           <span className={`${fieldLabelClass} flex-1`}>
-            {routine.days.length} days
+            {t("routines.editor.days", { count: routine.days.length })}
           </span>
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Reorder days"
+            aria-label={t("routines.editor.reorderDays")}
             onClick={() => setReordering(true)}
           >
             <ArrowUpDown size={16} />
-            Reorder
+            {t("routines.editor.reorder")}
           </Button>
         </div>
       )}
@@ -259,12 +275,12 @@ function Editor({
         <input
           value={dayName}
           onChange={(e) => setDayName(e.target.value)}
-          placeholder="New day, e.g. Upper A"
-          aria-label="New day name"
+          placeholder={t("routines.editor.newDayPlaceholder")}
+          aria-label={t("routines.editor.newDayName")}
           className="h-10 min-w-0 flex-1 rounded-xl bg-raised px-3 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
         />
         <Button type="submit" disabled={!dayName.trim()}>
-          Add day
+          {t("routines.editor.addDay")}
         </Button>
       </form>
 
@@ -294,23 +310,27 @@ function Editor({
             reopenSlot.current = null;
           }
         }}
-        title={pick ? PICKER_TITLES[pick.kind] : ""}
+        title={pick ? t(PICKER_TITLE_KEYS[pick.kind]) : ""}
         onPick={onPick}
       />
       <Confirm
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title={`Delete ${routine.name}?`}
-        description="Past sessions keep their sets. Archive it instead to hide it from the start screen."
+        title={t("routines.editor.deleteTitle", { name: routine.name })}
+        description={t("routines.editor.deleteDescription")}
         actions={[
           {
-            label: "Delete routine",
+            label: t("routines.editor.deleteRoutine"),
             variant: "danger",
             onClick: async () => {
               await command(
                 "deleteRoutine",
                 { routineId: routine.id },
-                { undoLabel: `Deleted ${routine.name}` },
+                {
+                  undoLabel: t("routines.editor.deletedUndo", {
+                    name: routine.name,
+                  }),
+                },
               );
               await goBack(back);
             },

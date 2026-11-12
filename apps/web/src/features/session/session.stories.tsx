@@ -90,6 +90,17 @@ export const TodayDark = pageStory({
   theme: "dark",
 });
 
+export const TodayFinnish = pageStory({
+  fixture: running,
+  url: () => "/",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/^Alkoi klo /)).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Tänään" })).toBeVisible();
+  },
+});
+
 export const StartNoRoutines = pageStory({
   fixture: empty,
   url: () => "/start",
@@ -309,6 +320,22 @@ export const LoggingDark = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
   theme: "dark",
+});
+
+export const LoggingFinnish = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("button", { name: "Kirjaa sarja 3" }),
+    ).toBeVisible();
+    await expect(canvas.getByLabelText("Toistot")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Aiemmat treenit" }),
+    ).toBeVisible();
+  },
 });
 
 export const EarlierSessions = pageStory({
@@ -576,7 +603,9 @@ export const EditSetInFooter = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
     await expect(canvas.getByText("Editing set 1")).toBeVisible();
     await expect(reps()).toHaveValue("8");
-    await userEvent.click(canvas.getByRole("button", { name: "More reps" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Increase reps" }),
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Save set 1" }));
 
     await expect(

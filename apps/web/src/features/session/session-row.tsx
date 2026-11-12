@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { effectiveSessionEnd, type ListedSession } from "@workout-logger/core";
+import { useTranslation } from "react-i18next";
 import { rowClass } from "../../components/list.ts";
 import {
   formatSessionDate,
@@ -28,6 +29,7 @@ export function SessionRow(props: {
   fromCalendar?: boolean;
 }) {
   const { session: s } = props;
+  const { t } = useTranslation();
   const end = effectiveSessionEnd(
     { started_at: s.startedAt, ended_at: s.endedAt, end_reason: s.endReason },
     s.lastSetAt,
@@ -47,23 +49,28 @@ export function SessionRow(props: {
       />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
-          {s.dayName ?? "Ad hoc"}
+          {s.dayName ?? t("session.row.adHoc")}
           {props.showRoutine && s.routineName && (
             <span className="font-normal text-ink-muted">
               {" "}
-              in {s.routineName}
+              {t("session.row.inRoutine", { routine: s.routineName })}
             </span>
           )}
         </p>
         <p className="text-sm text-ink-muted">
-          {props.when === "date"
-            ? formatSessionDate(s.startedAt, s.tz)
-            : formatTime(s.startedAt, s.tz)}
-          , {s.setCount} {s.setCount === 1 ? "set" : "sets"}
+          {t("session.row.whenAndSets", {
+            when:
+              props.when === "date"
+                ? formatSessionDate(s.startedAt, s.tz)
+                : formatTime(s.startedAt, s.tz),
+            count: s.setCount,
+          })}
         </p>
       </div>
       {end.running ? (
-        <span className="text-sm font-medium text-increase">Running</span>
+        <span className="text-sm font-medium text-increase">
+          {t("session.row.running")}
+        </span>
       ) : (
         end.reason !== "unknown" && (
           <span className="numerals text-lg">

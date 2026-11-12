@@ -15,7 +15,22 @@ export const Phone = pageStory({
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/It is not encrypted/)).toBeVisible();
     await expect(
-      canvas.getByText("Monthly backups: after 3 months"),
+      canvas.getByText("Monthly backups: deleted after 3 months"),
+    ).toBeVisible();
+  },
+});
+
+export const Finnish = pageStory({
+  fixture: empty,
+  url: () => "/privacy",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/Tietoja ei salata/)).toBeVisible();
+    await expect(
+      canvas.getByText(
+        "Kuukausittaiset varmuuskopiot: poistetaan 3 kuukauden kuluttua",
+      ),
     ).toBeVisible();
   },
 });

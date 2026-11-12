@@ -2,6 +2,7 @@ import { Toast } from "@base-ui/react/toast";
 import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { type CSSProperties, useLayoutEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMediaQuery, WIDE } from "../lib/use-media-query.ts";
 
 /** Usable outside React, e.g. from command handlers. */
@@ -77,6 +78,7 @@ const anchored = {
 };
 
 function ToastList(props: { anchor: "top" | "bottom" }) {
+  const { t } = useTranslation();
   const { toasts: list } = Toast.useToastManager();
   return list.map((toast) => (
     <Toast.Root
@@ -98,7 +100,7 @@ function ToastList(props: { anchor: "top" | "bottom" }) {
         </div>
         <Toast.Action className="h-9 shrink-0 rounded-xl px-3 text-sm font-semibold text-ink underline underline-offset-2 hover:bg-surface" />
         <Toast.Close
-          aria-label="Dismiss"
+          aria-label={t("ui.toasts.dismiss")}
           className="flex size-9 shrink-0 items-center justify-center rounded-xl opacity-70 hover:bg-surface hover:opacity-100"
         >
           <X size={16} />

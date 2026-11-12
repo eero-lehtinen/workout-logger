@@ -55,7 +55,9 @@ scheme picks the theme. Settings can force light or dark through
 (`lib/theme.ts`), not a synced setting: a phone and a PC may differ, and it
 must apply before the database loads. An inline script in `index.html` sets
 it before the first paint; the app then pins the matching `theme-color`
-and, on Android, the system bar style.
+and, on Android, the system bar style. The UI language (English or
+Finnish) is a device view preference for the same reasons
+([translations.md](translations.md)).
 
 ## Overview
 
@@ -105,6 +107,7 @@ Principles:
 | React compilation | React Compiler (`babel-plugin-react-compiler` through `@rolldown/plugin-babel`) | Automatic memoization; no hand-written `useMemo`/`useCallback`. The native Rust port in `@vitejs/plugin-react` is still experimental. |
 | Icons | `lucide-react` | Tree-shaken SVG icons. |
 | Dates | `Temporal` (built in) | Calendar dates in a session's zone, week starts, and day counts in `core` without DST arithmetic or a date library. Shipped in Chrome 144, Firefox 139, and Node 26; the Android WebView follows Chrome. Safari doesn't have it yet, which matches the platform scope (no iOS). |
+| UI text | i18next + react-i18next | English and Finnish. The most used i18n library for React; typed keys, plurals, and interpolation variables checked by `tsc`. See [translations.md](translations.md). |
 | Validation | Valibot | Small and fast at runtime and in type-checking. Used where stored or imported data may come from another app version, e.g. settings. |
 | Worker RPC | Comlink | Calls into the DB worker and proxies change events back. |
 | Lint/format | Biome | One fast tool for both. |
@@ -177,6 +180,7 @@ db/          DB worker, Comlink client, tab ownership, query and command hooks
 components/  Base UI wrappers and shared UI, styled with Tailwind; chart/ is
              the chart API the screens use and its ECharts implementation
 features/    screens by area: session, history, exercises, routines, settings
+i18n/        the language preference and the English and Finnish messages
 lib/         formatting, device-only view preferences (`localStorage`, not
              synced), the rest timer and its web and Android alarms,
              storage persistence, PWA install, the account and sign-in, the

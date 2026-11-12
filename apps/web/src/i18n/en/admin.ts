@@ -1,0 +1,86 @@
+export const admin = {
+  title: "Admin",
+  ownerOnly: "Only the owner can see this page.",
+  loading: "Loading…",
+  accounts: {
+    title: "Accounts",
+    loadFailed: "Couldn't load the accounts: {{error}}",
+    searchPlaceholder: "Search by name or email",
+    searchLabel: "Search accounts",
+    noMatch: "No account matches.",
+    owner: "owner",
+    disabled: "disabled",
+    usage: "{{stored}} stored · {{today}} today · {{synced}}",
+    usageOf: "{{used}} of {{limit}}",
+    neverSynced: "never synced",
+    synced: "synced {{ago}}",
+  },
+  cap: {
+    label: "Account cap",
+    hint_one:
+      "{{accounts}} of {{count}} account, you included. Sign-ups stop at the cap; a lower cap removes no one. Empty is {{defaultMax}}.",
+    hint_other:
+      "{{accounts}} of {{count}} accounts, you included. Sign-ups stop at the cap; a lower cap removes no one. Empty is {{defaultMax}}.",
+    saveFailed: "The cap didn't save",
+    invalid: "Enter a whole number of 1 or more, or leave it empty",
+  },
+  server: {
+    title: "Server",
+    status: "Status",
+    statusHint: "Not loaded yet. It loads when online.",
+    database: "Database",
+    databaseLarge:
+      "Over 700 MB, about 4 GB of backups in R2. Lower quotas or the account cap, or remove accounts.",
+    freeDisk: "Free disk",
+    replica: "Replica",
+    replicaHint: "Litestream, continuous. Stale after 1 hour.",
+    dailyCopy: "Daily copy",
+    dailyCopyHint: "The whole database, once a day. Stale after 2 days.",
+    backupStorage: "Backup storage",
+    storageHint: "The DB copies in R2. The Litestream replica isn't counted.",
+    storageHintGroups:
+      "The DB copies in R2: {{groups}}. The Litestream replica isn't counted.",
+    storageGroup: "{{objects}} {{prefix}} ({{bytes}})",
+    otherGroup: "other",
+    listFailed: "Couldn't list the bucket: {{error}}",
+    unknown: "Unknown",
+    off: "Off",
+    never: "Never",
+    stale: "Stale · {{value}}",
+    lastRunFailed: "Last run failed: {{error}}",
+  },
+  user: {
+    fields: {
+      bytesPerDay: "Upload per day (MB)",
+      maxBytes: "Storage (MB)",
+      requestsPerMinute: "Requests per minute",
+      snapshotsPerDay: "Full downloads per day",
+    },
+    saveFailed: "The change didn't save",
+    created: "Created {{created}}. {{stored}} stored.",
+    default: "Default {{value}}",
+    invalidQuotas: "Enter numbers of 0 or more, or leave empty",
+    saveQuotas: "Save quotas",
+    unlimited: "Unlimited uploads",
+    unlimitedHint:
+      "Lifts the daily upload limit for 24 hours, e.g. before an import. Storage stays limited.",
+    unlimitedActive: "The daily upload limit is lifted until {{until}}.",
+    allow24h: "Allow for 24 h",
+    disabledLabel: "Disabled",
+    disable: "Disable",
+    disabledHint: "Can't sign in or sync. The data stays on the server.",
+    disableHint:
+      "Signs the account out everywhere and refuses its sign-ins. The data stays.",
+    enable: "Enable",
+    delete: "Delete",
+    deleteHint:
+      "Deletes the account and all its data from the server, as the user's own deletion does. Backups keep it until they expire.",
+    deleteAccount: "Delete account",
+    confirmDeleteTitle: "Delete {{name}}?",
+    confirmDeleteBody:
+      "Everything the server holds for {{email}} is deleted now. This can't be undone; their devices keep their own data.",
+    confirmDisableTitle: "Disable {{name}}?",
+    confirmDisableBody:
+      "Their devices are signed out and stop syncing. Their local data stays, and you can enable the account again.",
+  },
+} as const;

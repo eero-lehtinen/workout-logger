@@ -1,4 +1,5 @@
 import { ArrowLeftRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button, dangerAlignClass } from "../../components/button.tsx";
 import { FieldLabel } from "../../components/headings.tsx";
 import { Sheet } from "../../components/sheet.tsx";
@@ -15,8 +16,9 @@ export function SlotSheet(props: {
   onAddAlternative: (slotId: string) => void;
 }) {
   const { slot } = props;
+  const { t } = useTranslation();
   const command = useCommand();
-  const name = slot?.exerciseName ?? "Deleted exercise";
+  const name = slot?.exerciseName ?? t("routines.slot.deletedExercise");
   return (
     <Sheet
       open={slot !== null}
@@ -30,10 +32,10 @@ export function SlotSheet(props: {
             onClick={() => props.onChangeExercise(slot.id)}
           >
             <ArrowLeftRight size={16} />
-            Change exercise
+            {t("routines.slot.changeExercise")}
           </Button>
           <div className="flex flex-col gap-1.5">
-            <FieldLabel as="h3">Alternatives</FieldLabel>
+            <FieldLabel as="h3">{t("routines.slot.alternatives")}</FieldLabel>
             <Alternatives
               slot={slot}
               onAdd={() => props.onAddAlternative(slot.id)}
@@ -48,11 +50,16 @@ export function SlotSheet(props: {
               void command(
                 "deleteSlot",
                 { slotId: slot.id },
-                { undoLabel: `Removed ${slot.exerciseName ?? "exercise"}` },
+                {
+                  undoLabel: t("routines.slot.removedUndo", {
+                    name:
+                      slot.exerciseName ?? t("routines.slot.exerciseFallback"),
+                  }),
+                },
               );
             }}
           >
-            Remove from day
+            {t("routines.slot.removeFromDay")}
           </Button>
         </div>
       )}

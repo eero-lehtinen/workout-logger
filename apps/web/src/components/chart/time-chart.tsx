@@ -1,6 +1,7 @@
 import type { LineSeriesOption, ScatterSeriesOption } from "echarts/charts";
 import type { ECharts } from "echarts/core";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChartFrame } from "./frame.tsx";
 import {
   baseOption,
@@ -24,6 +25,7 @@ interface AxisParam {
 }
 
 export default function EChartsTimeChart(props: TimeChartProps) {
+  const { t } = useTranslation();
   const theme = useChartTheme();
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const chart = useEChart(el);
@@ -51,6 +53,16 @@ export default function EChartsTimeChart(props: TimeChartProps) {
 
   const { formatTrend } = props;
   const several = props.series.length > 1;
+  const trendText = formatTrend
+    ? trends
+        .map(({ series, trend }) => {
+          const rate = formatTrend(trend.perDay);
+          return several
+            ? t("ui.chart.seriesTrend", { series: series.label, rate })
+            : t("ui.chart.trend", { rate });
+        })
+        .join(", ")
+    : "";
   return (
     <>
       <ChartFrame
@@ -75,13 +87,9 @@ export default function EChartsTimeChart(props: TimeChartProps) {
       )}
       {formatTrend && trends.length > 0 && (
         <p className="tabular pt-1 text-sm text-ink-muted">
-          {trends
-            .map(
-              ({ series, trend }) =>
-                `${several ? `${series.label} trend` : "Trend"} ${formatTrend(trend.perDay)}`,
-            )
-            .join(", ")}
-          {zoom.zoomed && " in the shown range"}
+          {zoom.zoomed
+            ? t("ui.chart.trendInRange", { trends: trendText })
+            : trendText}
         </p>
       )}
     </>

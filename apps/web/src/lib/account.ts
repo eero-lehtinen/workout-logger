@@ -3,9 +3,10 @@ import { Browser } from "@capacitor/browser";
 import { createAuthClient } from "better-auth/client";
 import { useSyncExternalStore } from "react";
 import { toasts } from "../components/toasts.tsx";
+import { i18n } from "../i18n/index.ts";
 import { clearToken, readToken, storeToken } from "./auth-token.ts";
 import { isNative } from "./platform.ts";
-import { apiHeaders, SERVER_URL } from "./server.ts";
+import { apiHeaders, SERVER_URL, serverAnswered } from "./server.ts";
 import type { SignInProvider } from "./sign-in-providers.ts";
 
 export interface AccountUser {
@@ -110,7 +111,9 @@ export async function signIn(provider: SignInProvider): Promise<void> {
       newUserCallbackURL: "/settings?welcome=1",
       errorCallbackURL: "/settings",
     });
-    if (error) throw new Error(error.message ?? "Sign-in failed");
+    if (error) {
+      throw new Error(error.message ?? i18n.t("ui.account.signInFailed"));
+    }
     return;
   }
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -155,7 +158,7 @@ export async function deleteAccount(email: string): Promise<void> {
     headers: { ...(await apiHeaders()), "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  if (!res.ok) throw new Error(`The server answered ${res.status}`);
+  if (!res.ok) throw serverAnswered(res.status);
   await clearToken();
   set({ status: "signed-out", expired: false });
 }
@@ -186,7 +189,9 @@ async function finishNativeSignIn(url: string) {
   const verifier = pendingVerifier;
   pendingVerifier = null;
   if (!code || !verifier) {
-    signInFailed(link.searchParams.get("error") ?? "The sign-in didn't finish");
+    signInFailed(
+      link.searchParams.get("error") ?? i18n.t("ui.account.signInUnfinished"),
+    );
     return;
   }
   try {
@@ -195,7 +200,7 @@ async function finishNativeSignIn(url: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, verifier }),
     });
-    if (!res.ok) throw new Error(`The server answered ${res.status}`);
+    if (!res.ok) throw serverAnswered(res.status);
     await storeToken(((await res.json()) as { token: string }).token);
     await refreshAccount();
     if (link.searchParams.has("welcome")) welcome();
@@ -224,21 +229,26 @@ function reportWebSignInReturn() {
 
 function welcome() {
   toasts.add({
-    title: "Welcome",
-    description:
-      "Your account is ready. What you logged on this device uploads in the first sync.",
+    title: i18n.t("ui.account.welcomeTitle"),
+    description: i18n.t("ui.account.welcomeText"),
   });
 }
 
-const SIGN_IN_ERRORS: Record<string, string> = {
-  signup_closed: "No new accounts at the moment.",
-  account_disabled: "This account is disabled.",
-};
+function signInErrorText(reason: string): string {
+  switch (reason) {
+    case "signup_closed":
+      return i18n.t("ui.account.signupClosed");
+    case "account_disabled":
+      return i18n.t("ui.account.accountDisabled");
+    default:
+      return reason.replaceAll("_", " ");
+  }
+}
 
 function signInFailed(reason: string) {
   toasts.add({
-    title: "Sign-in failed",
-    description: SIGN_IN_ERRORS[reason] ?? reason.replaceAll("_", " "),
+    title: i18n.t("ui.account.signInFailed"),
+    description: signInErrorText(reason),
     type: "error",
   });
 }

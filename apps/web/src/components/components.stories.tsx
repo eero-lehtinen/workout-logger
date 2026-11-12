@@ -33,7 +33,9 @@ export const StepperWeight: StoryObj = {
   render: () => <WeightStepper />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "More weight" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Increase weight" }),
+    );
     await expect(canvas.getByLabelText("Weight in kg")).toHaveValue("102.5");
   },
 };

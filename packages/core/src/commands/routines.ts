@@ -83,16 +83,19 @@ export const updateRoutine = defineCommand(
   },
 );
 
-/** A copy named "<name> (copy)" at the end of the list, with all live days. */
+/**
+ * A copy at the end of the list, with all live days. The UI names it, in its
+ * own language.
+ */
 export const duplicateRoutine = defineCommand(
-  async (w, args: { routineId: string }): Promise<string> => {
+  async (w, args: { routineId: string; name: string }): Promise<string> => {
     const routine = await w.db
       .selectFrom("routine")
-      .select(["name", "description"])
+      .select(["description"])
       .where("id", "=", args.routineId)
       .executeTakeFirstOrThrow();
     const routineId = await w.insert("routine", {
-      name: `${routine.name} (copy)`,
+      name: args.name,
       position: await appendPosition(w, "routine", null, null),
       archived: 0,
       description: routine.description,
@@ -114,12 +117,12 @@ export const duplicateRoutine = defineCommand(
   },
 );
 
-/** A copy named "<name> (copy)" right after the day. */
+/** A copy right after the day, named by the UI. */
 export const duplicateDay = defineCommand(
-  async (w, args: { dayId: string }): Promise<string> => {
+  async (w, args: { dayId: string; name: string }): Promise<string> => {
     const day = await w.db
       .selectFrom("routine_day")
-      .select(["routine_id", "name", "position"])
+      .select(["routine_id", "position"])
       .where("id", "=", args.dayId)
       .executeTakeFirstOrThrow();
     const siblings = await liveSiblings(
@@ -131,7 +134,7 @@ export const duplicateDay = defineCommand(
     const next = siblings.find((s) => s.position > day.position);
     return copyDay(w, args.dayId, {
       routine_id: day.routine_id,
-      name: `${day.name} (copy)`,
+      name: args.name,
       position: positionBetween(day.position, next?.position ?? null),
     });
   },

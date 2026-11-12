@@ -187,6 +187,24 @@ export const Overview = {
   beforeEach: asOwner(),
 };
 
+export const Finnish = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/admin",
+    language: "fi",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(await canvas.findByText("Alice Example")).toBeVisible();
+      await expect(
+        canvas.getByRole("heading", { name: "Ylläpito" }),
+      ).toBeVisible();
+      await expect(canvas.getByText(/· poistettu käytöstä/)).toBeVisible();
+      await expect(canvas.getByText(/ei koskaan synkronoitu$/)).toBeVisible();
+    },
+  }),
+  beforeEach: asOwner(),
+};
+
 export const OverviewPc = {
   ...pageStory({ fixture: empty, url: () => "/admin", viewport: "pc" }),
   beforeEach: asOwner(),

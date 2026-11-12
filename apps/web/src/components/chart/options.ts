@@ -5,6 +5,7 @@ import type {
   XAXisComponentOption,
   YAXisComponentOption,
 } from "echarts";
+import { i18n } from "../../i18n/index.ts";
 import { echarts } from "./echarts.ts";
 import type { ChartTheme } from "./theme.ts";
 
@@ -60,7 +61,7 @@ export function timeAxis(theme: ChartTheme): XAXisComponentOption {
       ...axisText(theme),
       hideOverlap: true,
       // Zoomed to weeks, a bare "15" doesn't say which month.
-      formatter: { day: "{MMM} {d}" },
+      formatter: { day: i18n.t("ui.chart.axisDay") },
     },
     axisPointer: { snap: true },
   };

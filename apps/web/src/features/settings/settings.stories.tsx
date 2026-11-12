@@ -126,9 +126,11 @@ export const ThemeChoice = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const root = canvasElement.ownerDocument.documentElement;
-    await expect(
-      canvas.getByRole("button", { name: "System" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    const theme = within(canvas.getByRole("group", { name: "Theme" }));
+    await expect(theme.getByRole("button", { name: "System" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Dark" }));
     await waitFor(() => expect(root.dataset.theme).toBe("dark"));
     await expect(localStorage.getItem("theme")).toBe("dark");
@@ -136,6 +138,44 @@ export const ThemeChoice = pageStory({
       "aria-pressed",
       "true",
     );
+  },
+});
+
+/**
+ * Switching the language re-renders the open screen in it at once, where it
+ * was scrolled to.
+ */
+export const LanguageChoice = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const root = canvasElement.ownerDocument.documentElement;
+    const body = () =>
+      canvasElement.querySelector<HTMLElement>(
+        '[data-scroll-restoration-id="settings"]',
+      );
+    canvas.getByRole("button", { name: "Suomi" }).scrollIntoView();
+    const scrolled = body()?.scrollTop ?? 0;
+    await expect(scrolled).toBeGreaterThan(0);
+    await userEvent.click(canvas.getByRole("button", { name: "Suomi" }));
+    await expect(
+      await canvas.findByRole("heading", { level: 1, name: "Asetukset" }),
+    ).toBeVisible();
+    await expect(body()?.scrollTop).toBe(scrolled);
+    await expect(root.lang).toBe("fi");
+    await expect(localStorage.getItem("language")).toBe("fi");
+    const language = within(canvas.getByRole("group", { name: "Kieli" }));
+    await expect(
+      language.getByRole("button", { name: "Suomi" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // Back again: the screen is replaced, not stacked on the old one.
+    await userEvent.click(canvas.getByRole("button", { name: "English" }));
+    await expect(
+      await canvas.findByRole("heading", { level: 1, name: "Settings" }),
+    ).toBeVisible();
+    await expect(canvas.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   },
 });
 
@@ -217,6 +257,25 @@ export const SignedOut = pageStory({
   },
 });
 
+export const SignedOutFinnish = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("heading", { name: "Asetukset" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("Tili ja synkronointi")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Kirjaudu sisään Google-tilillä" }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Tietosuoja" }),
+    ).toHaveAttribute("href", "/privacy");
+  },
+});
+
 /** One button per provider the server has enabled. */
 export const SignedOutTwoProviders = {
   ...pageStory({
@@ -252,6 +311,28 @@ export const SignedIn = {
       await expect(
         canvas.getByRole("link", { name: "Open privacy page" }),
       ).toHaveAttribute("href", "/privacy");
+    },
+  }),
+  beforeEach: signedIn(alice),
+};
+
+export const SignedInFinnish = {
+  ...pageStory({
+    fixture: inPounds,
+    url: () => "/settings",
+    language: "fi",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(await canvas.findByText("Alice Example")).toBeVisible();
+      await expect(
+        canvas.getByText(/^Ei vielä synkronoitu\. \d+ muutosta odottaa/),
+      ).toBeVisible();
+      await expect(
+        canvas.getByRole("button", { name: "Synkronoi nyt" }),
+      ).toBeVisible();
+      await expect(
+        canvas.getByText("Tallennustila palvelimella"),
+      ).toBeVisible();
     },
   }),
   beforeEach: signedIn(alice),
@@ -378,7 +459,7 @@ export const DeleteAccount = {
         await page.findByRole("dialog", { name: "Delete account" }),
       );
       await expect(
-        dialog.getByText("Daily backups: after 7 days"),
+        dialog.getByText("Daily backups: deleted after 7 days"),
       ).toBeVisible();
       await expect(
         dialog.getByRole("button", { name: "Export snapshot" }),

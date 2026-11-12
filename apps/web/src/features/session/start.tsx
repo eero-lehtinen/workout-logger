@@ -3,6 +3,7 @@ import { RadioGroup } from "@base-ui/react/radio-group";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { chipClass } from "../../components/chip.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -43,6 +44,7 @@ function StartRow(props: {
 }
 
 export function StartPage() {
+  const { t } = useTranslation();
   const options = useDbQuery("startOptions");
   const running = useRunningSession();
   const command = useCommand();
@@ -74,8 +76,8 @@ export function StartPage() {
     <Screen
       header={
         <PageHeader
-          title="Start session"
-          back={{ to: "/", label: "Back to today" }}
+          title={t("session.start.title")}
+          back={{ to: "/", label: t("session.backToToday") }}
         />
       }
       scrollId="start"
@@ -84,34 +86,40 @@ export function StartPage() {
     >
       {running && (
         <p className="mx-4 mb-3 rounded-2xl bg-surface px-4 py-3 text-[0.9375rem] lg:mx-0">
-          A session is still running.{" "}
-          <Link
-            to="/sessions/$sessionId"
-            params={{ sessionId: running.id }}
-            className="font-semibold underline underline-offset-2"
-          >
-            Continue it
-          </Link>{" "}
-          instead?
+          <Trans
+            i18nKey="session.start.stillRunning"
+            components={{
+              a: (
+                <Link
+                  to="/sessions/$sessionId"
+                  params={{ sessionId: running.id }}
+                  className="font-semibold underline underline-offset-2"
+                />
+              ),
+            }}
+          />
         </p>
       )}
 
       {options.routines.length === 0 ? (
         <Empty>
-          No routines yet.{" "}
-          <Link
-            to="/routines"
-            className="font-semibold text-ink underline underline-offset-2"
-          >
-            Create one
-          </Link>
-          , or start an ad hoc session.
+          <Trans
+            i18nKey="session.start.noRoutines"
+            components={{
+              a: (
+                <Link
+                  to="/routines"
+                  className="font-semibold text-ink underline underline-offset-2"
+                />
+              ),
+            }}
+          />
         </Empty>
       ) : (
         <>
           {options.routines.length > 1 && (
             <RadioGroup
-              aria-label="Routine"
+              aria-label={t("session.start.routine")}
               value={routine?.id ?? null}
               onValueChange={(value) => setRoutineId(value as string)}
               className="flex flex-wrap gap-2 px-4 lg:px-0"
@@ -126,19 +134,24 @@ export function StartPage() {
           {routine && (
             <section className="pt-4 first:pt-0">
               <SectionHeading>
-                {options.routines.length === 1 ? routine.name : "Pick a day"}
+                {options.routines.length === 1
+                  ? routine.name
+                  : t("session.start.pickDay")}
               </SectionHeading>
               {routine.days.length === 0 ? (
                 <Empty>
-                  This routine has no days.{" "}
-                  <Link
-                    to="/routines/$routineId"
-                    params={{ routineId: routine.id }}
-                    className="font-semibold text-ink underline underline-offset-2"
-                  >
-                    Add some
-                  </Link>
-                  .
+                  <Trans
+                    i18nKey="session.start.noDays"
+                    components={{
+                      a: (
+                        <Link
+                          to="/routines/$routineId"
+                          params={{ routineId: routine.id }}
+                          className="font-semibold text-ink underline underline-offset-2"
+                        />
+                      ),
+                    }}
+                  />
                 </Empty>
               ) : (
                 <ul className={listClass}>
@@ -157,17 +170,17 @@ export function StartPage() {
                         subtitle={
                           day.exercises.length > 0
                             ? exerciseSummary(day.exercises)
-                            : "No exercises"
+                            : t("session.start.noExercises")
                         }
                         note={
                           day.id === routine.nextDayId ? (
                             <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-sm font-medium">
-                              Next
+                              {t("session.start.next")}
                             </span>
                           ) : (
                             day.id === routine.lastDayId && (
                               <span className="shrink-0 text-sm text-ink-muted">
-                                Last time
+                                {t("session.start.lastTime")}
                               </span>
                             )
                           )
@@ -183,7 +196,7 @@ export function StartPage() {
       )}
 
       <section className="pt-6">
-        <SectionHeading>Without a routine</SectionHeading>
+        <SectionHeading>{t("session.start.withoutRoutine")}</SectionHeading>
         <ul className={listClass}>
           <li>
             <StartRow
@@ -196,8 +209,8 @@ export function StartPage() {
                   className="-mx-0.5 text-ink-muted"
                 />
               }
-              title="Ad hoc session"
-              subtitle="Add exercises as you go"
+              title={t("session.adHocSession")}
+              subtitle={t("session.start.adHocHint")}
             />
           </li>
         </ul>

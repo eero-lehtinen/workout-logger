@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { Confirm, Sheet } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
@@ -20,11 +21,11 @@ const MB = 1024 * 1024;
 type Field = keyof QuotaOverrides;
 
 /** In MB for the byte limits, as counts for the others. */
-const FIELDS: { key: Field; label: string; bytes: boolean }[] = [
-  { key: "bytesPerDay", label: "Upload per day (MB)", bytes: true },
-  { key: "maxBytes", label: "Storage (MB)", bytes: true },
-  { key: "requestsPerMinute", label: "Requests per minute", bytes: false },
-  { key: "snapshotsPerDay", label: "Full downloads per day", bytes: false },
+const FIELDS: { key: Field; bytes: boolean }[] = [
+  { key: "bytesPerDay", bytes: true },
+  { key: "maxBytes", bytes: true },
+  { key: "requestsPerMinute", bytes: false },
+  { key: "snapshotsPerDay", bytes: false },
 ];
 
 /** One account's quotas, exemption, and disable switch. */
@@ -33,6 +34,7 @@ export function UserSheet(props: {
   defaults: AdminUsers["defaults"];
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { user, defaults } = props;
   const queryClient = useQueryClient();
   const action = useMutation({
@@ -40,7 +42,7 @@ export function UserSheet(props: {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin"] }),
     onError: (error) =>
       toasts.add({
-        title: "The change didn't save",
+        title: t("admin.user.saveFailed"),
         description: error.message,
         type: "error",
       }),
@@ -84,16 +86,23 @@ export function UserSheet(props: {
       <div className="flex flex-col py-1">
         <Row
           label={user.email}
-          hint={`Created ${formatDateTime(user.createdAt)}. ${formatBytes(user.storedBytes)} stored.`}
+          hint={t("admin.user.created", {
+            created: formatDateTime(user.createdAt),
+            stored: formatBytes(user.storedBytes),
+          })}
         />
         <div className="grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-2">
-          {FIELDS.map(({ key, label, bytes }) => (
+          {FIELDS.map(({ key, bytes }) => (
             <label key={key} className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">{label}</span>
+              <span className="font-medium">
+                {t(`admin.user.fields.${key}`)}
+              </span>
               <input
                 inputMode="decimal"
                 value={drafts[key]}
-                placeholder={`Default ${bytes ? defaults[key] / MB : defaults[key]}`}
+                placeholder={t("admin.user.default", {
+                  value: bytes ? defaults[key] / MB : defaults[key],
+                })}
                 onChange={(e) =>
                   setDrafts((d) => ({ ...d, [key]: e.target.value }))
                 }
@@ -110,7 +119,7 @@ export function UserSheet(props: {
               const overrides = parsed();
               if (!overrides) {
                 toasts.add({
-                  title: "Enter numbers of 0 or more, or leave empty",
+                  title: t("admin.user.invalidQuotas"),
                   type: "error",
                 });
                 return;
@@ -118,32 +127,38 @@ export function UserSheet(props: {
               action.mutate(() => saveOverrides(user.id, overrides));
             }}
           >
-            Save quotas
+            {t("admin.user.saveQuotas")}
           </Button>
         </div>
         <Row
           stacked
-          label="Unlimited uploads"
+          label={t("admin.user.unlimited")}
           hint={
             user.exemptUntil === null
-              ? "Lifts the daily upload limit for 24 hours, e.g. before an import. Storage stays limited."
-              : `The daily upload limit is lifted until ${formatDateTime(user.exemptUntil)}.`
+              ? t("admin.user.unlimitedHint")
+              : t("admin.user.unlimitedActive", {
+                  until: formatDateTime(user.exemptUntil),
+                })
           }
         >
           <Button
             disabled={action.isPending}
             onClick={() => action.mutate(() => exemptUser(user.id))}
           >
-            Allow for 24 h
+            {t("admin.user.allow24h")}
           </Button>
         </Row>
         <Row
           stacked
-          label={user.disabled ? "Disabled" : "Disable"}
+          label={
+            user.disabled
+              ? t("admin.user.disabledLabel")
+              : t("admin.user.disable")
+          }
           hint={
             user.disabled
-              ? "Can't sign in or sync. The data stays on the server."
-              : "Signs the account out everywhere and refuses its sign-ins. The data stays."
+              ? t("admin.user.disabledHint")
+              : t("admin.user.disableHint")
           }
         >
           {user.disabled ? (
@@ -151,7 +166,7 @@ export function UserSheet(props: {
               disabled={action.isPending}
               onClick={() => action.mutate(() => setDisabled(user.id, false))}
             >
-              Enable
+              {t("admin.user.enable")}
             </Button>
           ) : (
             <Button
@@ -159,32 +174,32 @@ export function UserSheet(props: {
               disabled={action.isPending}
               onClick={() => setConfirmDisable(true)}
             >
-              Disable
+              {t("admin.user.disable")}
             </Button>
           )}
         </Row>
         <Row
           stacked
-          label="Delete"
-          hint="Deletes the account and all its data from the server, as the user's own deletion does. Backups keep it until they expire."
+          label={t("admin.user.delete")}
+          hint={t("admin.user.deleteHint")}
         >
           <Button
             variant="danger"
             disabled={action.isPending}
             onClick={() => setConfirmDelete(true)}
           >
-            Delete account
+            {t("admin.user.deleteAccount")}
           </Button>
         </Row>
       </div>
       <Confirm
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title={`Delete ${user.name}?`}
-        description={`Everything the server holds for ${user.email} is deleted now. This can't be undone; their devices keep their own data.`}
+        title={t("admin.user.confirmDeleteTitle", { name: user.name })}
+        description={t("admin.user.confirmDeleteBody", { email: user.email })}
         actions={[
           {
-            label: "Delete account",
+            label: t("admin.user.deleteAccount"),
             variant: "danger",
             onClick: () => action.mutate(() => deleteUser(user.id)),
           },
@@ -193,11 +208,11 @@ export function UserSheet(props: {
       <Confirm
         open={confirmDisable}
         onOpenChange={setConfirmDisable}
-        title={`Disable ${user.name}?`}
-        description="Their devices are signed out and stop syncing. Their local data stays, and you can enable the account again."
+        title={t("admin.user.confirmDisableTitle", { name: user.name })}
+        description={t("admin.user.confirmDisableBody")}
         actions={[
           {
-            label: "Disable",
+            label: t("admin.user.disable"),
             variant: "danger",
             onClick: () => action.mutate(() => setDisabled(user.id, true)),
           },

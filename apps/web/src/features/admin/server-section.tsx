@@ -1,5 +1,6 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 import type { BackupStorage } from "../../lib/admin-api.ts";
 import { formatAgo, formatBytes } from "../../lib/format.ts";
 import {
@@ -15,41 +16,41 @@ export function ServerSection(props: {
   storage: UseQueryResult<BackupStorage | null>;
   now: number;
 }) {
+  const { t } = useTranslation();
   const { status, now } = props;
   if (!status) {
     return (
-      <Section title="Server">
-        <Row label="Status" hint="Not loaded yet. It loads when online." />
+      <Section title={t("admin.server.title")}>
+        <Row
+          label={t("admin.server.status")}
+          hint={t("admin.server.statusHint")}
+        />
       </Section>
     );
   }
   const large = status.databaseBytes > DATABASE_WARNING_BYTES;
   return (
-    <Section title="Server">
+    <Section title={t("admin.server.title")}>
       <Row
-        label="Database"
-        hint={
-          large
-            ? "Over 700 MB, about 4 GB of backups in R2. Lower quotas or the account cap, or remove accounts."
-            : undefined
-        }
+        label={t("admin.server.database")}
+        hint={large ? t("admin.server.databaseLarge") : undefined}
       >
         <Value warn={large}>{formatBytes(status.databaseBytes)}</Value>
       </Row>
       {status.freeDiskBytes !== null && (
-        <Row label="Free disk">
+        <Row label={t("admin.server.freeDisk")}>
           <Value>{formatBytes(status.freeDiskBytes)}</Value>
         </Row>
       )}
       <BackupRow
-        label="Replica"
-        hint="Litestream, continuous. Stale after 1 hour."
+        label={t("admin.server.replica")}
+        hint={t("admin.server.replicaHint")}
         layer={status.backups.litestream}
         now={now}
       />
       <BackupRow
-        label="Daily copy"
-        hint="The whole database, once a day. Stale after 2 days."
+        label={t("admin.server.dailyCopy")}
+        hint={t("admin.server.dailyCopyHint")}
         layer={status.backups.dailyCopy}
         now={now}
       />
@@ -59,23 +60,28 @@ export function ServerSection(props: {
 }
 
 function StorageRow(props: { storage: UseQueryResult<BackupStorage | null> }) {
+  const { t } = useTranslation();
   const { data, error } = props.storage;
   const groups = data?.groups
-    .map(
-      (group) =>
-        `${group.objects} ${group.prefix || "other"} (${formatBytes(group.bytes)})`,
+    .map((group) =>
+      t("admin.server.storageGroup", {
+        objects: group.objects,
+        prefix: group.prefix || t("admin.server.otherGroup"),
+        bytes: formatBytes(group.bytes),
+      }),
     )
     .join(", ");
   return (
     <Row
-      label="Backup storage"
+      label={t("admin.server.backupStorage")}
       hint={
         <>
-          The DB copies in R2
-          {groups ? `: ${groups}` : ""}. The Litestream replica isn't counted.
+          {groups
+            ? t("admin.server.storageHintGroups", { groups })
+            : t("admin.server.storageHint")}
           {error && (
             <span className="block text-danger">
-              Couldn't list the bucket: {error.message}
+              {t("admin.server.listFailed", { error: error.message })}
             </span>
           )}
         </>
@@ -83,11 +89,11 @@ function StorageRow(props: { storage: UseQueryResult<BackupStorage | null> }) {
     >
       <Value warn={error !== null}>
         {error
-          ? "Unknown"
+          ? t("admin.server.unknown")
           : data === undefined
             ? "…"
             : data === null
-              ? "Off"
+              ? t("admin.server.off")
               : formatBytes(data.bytes)}
       </Value>
     </Row>
@@ -100,11 +106,12 @@ function BackupRow(props: {
   layer: BackupLayer;
   now: number;
 }) {
+  const { t } = useTranslation();
   const { layer } = props;
   const value = !layer.configured
-    ? "Off"
+    ? t("admin.server.off")
     : layer.lastOkAt === null
-      ? "Never"
+      ? t("admin.server.never")
       : formatAgo(layer.lastOkAt, props.now);
   return (
     <Row
@@ -114,14 +121,16 @@ function BackupRow(props: {
           {props.hint}
           {layer.lastError && (
             <span className="block text-danger">
-              Last run failed: {layer.lastError}
+              {t("admin.server.lastRunFailed", { error: layer.lastError })}
             </span>
           )}
         </>
       }
     >
       <Value warn={layer.stale}>
-        {layer.stale && layer.lastOkAt !== null ? `Stale · ${value}` : value}
+        {layer.stale && layer.lastOkAt !== null
+          ? t("admin.server.stale", { value })
+          : value}
       </Value>
     </Row>
   );

@@ -5,6 +5,7 @@ import { within } from "storybook/test";
 import type { DbClient } from "../db/client.ts";
 import { type MemoryDb, openMemoryDb } from "../db/memory.ts";
 import { DbClientProvider } from "../db/react.tsx";
+import type { Language } from "../i18n/index.ts";
 import { setSignInProvidersForStory } from "../lib/sign-in-providers.ts";
 import { setUsageForStory } from "../lib/usage.ts";
 import { createAppRouter } from "../router.ts";
@@ -24,6 +25,7 @@ export function pageStory(options: {
   url: (ids: FixtureIds) => string;
   viewport?: "phone" | "pc";
   theme?: "light" | "dark";
+  language?: Language;
   play?: StoryObj["play"];
 }): StoryObj {
   return {
@@ -46,6 +48,7 @@ export function pageStory(options: {
     globals: {
       viewport: { value: options.viewport ?? "phone", isRotated: false },
       ...(options.theme && { theme: options.theme }),
+      ...(options.language && { language: options.language }),
     },
     // Wait for the screen's data, so checks run on the screen, not on a
     // loading state.

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { i18n } from "../i18n/index.ts";
 import { checkForUpdate, downloadUpdate } from "../lib/app-update.ts";
 import { toasts } from "./toasts.tsx";
 
@@ -14,10 +15,10 @@ export function AppUpdatePrompt() {
       (update) => {
         if (!update || cancelled) return;
         id = toasts.add({
-          title: `Version ${update.version} is available`,
+          title: i18n.t("ui.appUpdate.available", { version: update.version }),
           timeout: 0,
           actionProps: {
-            children: "Download",
+            children: i18n.t("ui.appUpdate.download"),
             onClick: () => void downloadUpdate().catch(reportDownloadFailure),
           },
         });
@@ -35,7 +36,7 @@ export function AppUpdatePrompt() {
 
 export function reportDownloadFailure(error: unknown) {
   toasts.add({
-    title: "Couldn't start the download",
+    title: i18n.t("ui.appUpdate.downloadFailed"),
     description: error instanceof Error ? error.message : String(error),
     type: "error",
   });

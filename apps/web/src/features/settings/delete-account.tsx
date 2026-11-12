@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, dangerAlignClass } from "../../components/button.tsx";
 import { Sheet } from "../../components/sheet.tsx";
 import { toasts } from "../../components/toasts.tsx";
@@ -10,14 +11,15 @@ import { Row } from "./settings-rows.tsx";
 
 /** Deletes the account after the user types its email. Not for the owner. */
 export function DeleteAccountRow(props: { user: AccountUser }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <Row
-      label="Delete account"
-      hint="Removes your data from the server. This device keeps its copy."
+      label={t("settings.deleteAccount.label")}
+      hint={t("settings.deleteAccount.hint")}
     >
       <Button variant="danger" onClick={() => setOpen(true)}>
-        Delete
+        {t("common.delete")}
       </Button>
       {open && (
         <DeleteAccountSheet user={props.user} onClose={() => setOpen(false)} />
@@ -27,6 +29,7 @@ export function DeleteAccountRow(props: { user: AccountUser }) {
 }
 
 function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
+  const { t } = useTranslation();
   const db = useDb();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,10 +39,13 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
     setBusy(true);
     try {
       const where = await saveSnapshot(await db.exportSnapshot());
-      toasts.add({ title: "Snapshot saved", description: where });
+      toasts.add({
+        title: t("settings.data.snapshotSaved"),
+        description: where,
+      });
     } catch (error) {
       toasts.add({
-        title: "Export failed",
+        title: t("settings.data.exportFailed"),
         description: String(error),
         type: "error",
       });
@@ -53,13 +59,13 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
     try {
       await deleteAccount(email);
       toasts.add({
-        title: "Account deleted",
-        description: "This device keeps its data and no longer syncs.",
+        title: t("settings.deleteAccount.deleted"),
+        description: t("settings.deleteAccount.deletedHint"),
       });
       props.onClose();
     } catch (error) {
       toasts.add({
-        title: "The account wasn't deleted",
+        title: t("settings.deleteAccount.failed"),
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });
@@ -71,27 +77,27 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
     <Sheet
       open
       onOpenChange={(open) => !open && props.onClose()}
-      title="Delete account"
+      title={t("settings.deleteAccount.label")}
     >
       <div className="flex flex-col gap-4 px-4 py-4 text-[0.9375rem]">
-        <p>
-          The server deletes your account and all your workout data right away.
-          Your other devices stop syncing. This device keeps its data and signs
-          out.
-        </p>
+        <p>{t("settings.deleteAccount.body")}</p>
         <div>
-          <p>Older backups still contain your data until they are deleted:</p>
+          <p>{t("settings.deleteAccount.backups")}</p>
           <BackupRetention className="mt-1" />
         </div>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-ink-muted">Keep a copy of your data first.</p>
+          <p className="text-ink-muted">
+            {t("settings.deleteAccount.keepCopy")}
+          </p>
           <Button disabled={busy} onClick={exportFirst}>
-            Export snapshot
+            {t("settings.data.exportSnapshot")}
           </Button>
         </div>
         <label className="flex flex-col gap-1">
           <span className="font-medium">
-            Type {props.user.email} to confirm
+            {t("settings.deleteAccount.typeEmail", {
+              email: props.user.email,
+            })}
           </span>
           <input
             type="email"
@@ -107,7 +113,7 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
           disabled={!matches || busy}
           onClick={remove}
         >
-          Delete account
+          {t("settings.deleteAccount.label")}
         </Button>
       </div>
     </Sheet>

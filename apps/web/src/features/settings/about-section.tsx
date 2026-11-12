@@ -1,13 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { reportDownloadFailure } from "../../components/app-update-prompt.tsx";
 import { Button, buttonClass } from "../../components/button.tsx";
 import { toasts } from "../../components/toasts.tsx";
+import { i18n } from "../../i18n/index.ts";
 import {
   appVersion,
   checkForUpdate,
   downloadUpdate,
 } from "../../lib/app-update.ts";
+import { dateFormat } from "../../lib/format.ts";
 import { checkForLiveUpdate } from "../../lib/live-update.ts";
 import { isNative } from "../../lib/platform.ts";
 import { Row, Section } from "./settings-rows.tsx";
@@ -17,40 +20,44 @@ import { Row, Section } from "./settings-rows.tsx";
  * version and an update check.
  */
 export function AboutSection() {
+  const { t } = useTranslation();
   return (
-    <Section title="About">
+    <Section title={t("settings.about.title")}>
       {isNative && <AppVersionRow />}
-      <Row label="Web app build" hint={webBuild()} />
-      <Row label="Privacy" hint="What the server stores and for how long.">
+      <Row label={t("settings.about.webBuild")} hint={webBuild()} />
+      <Row
+        label={t("settings.about.privacy")}
+        hint={t("settings.about.privacyHint")}
+      >
         <Link
           to="/privacy"
-          aria-label="Open privacy page"
+          aria-label={t("settings.about.openPrivacy")}
           className={buttonClass("secondary")}
         >
-          Open
+          {t("settings.about.open")}
         </Link>
       </Row>
     </Section>
   );
 }
 
-const buildTimeFormat = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 function webBuild(): string {
-  const commit = import.meta.env.BUILD_COMMIT;
+  const commit = import.meta.env.BUILD_COMMIT
+    ? import.meta.env.BUILD_COMMIT.slice(0, 7)
+    : i18n.t("settings.about.unknownCommit");
   const time = Date.parse(import.meta.env.BUILD_TIME);
-  return [
-    commit ? commit.slice(0, 7) : "Unknown commit",
-    Number.isNaN(time) ? null : `built ${buildTimeFormat.format(time)}`,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  return Number.isNaN(time)
+    ? i18n.t("settings.about.webBuildCommit", { commit })
+    : i18n.t("settings.about.webBuildCommitTime", {
+        commit,
+        time: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(
+          time,
+        ),
+      });
 }
 
 function AppVersionRow() {
+  const { t } = useTranslation();
   const [version, setVersion] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   useEffect(() => {
@@ -67,23 +74,25 @@ function AppVersionRow() {
       ]);
       if (update) {
         toasts.add({
-          title: `Version ${update.version} is available`,
+          title: t("settings.about.updateAvailable", {
+            version: update.version,
+          }),
           actionProps: {
-            children: "Download",
+            children: t("settings.about.download"),
             onClick: () => void downloadUpdate().catch(reportDownloadFailure),
           },
         });
       } else if (waiting) {
         toasts.add({
-          title: "An update is downloaded",
-          description: "It takes over once the app is in the background.",
+          title: t("settings.about.updateDownloaded"),
+          description: t("settings.about.updateDownloadedHint"),
         });
       } else {
-        toasts.add({ title: "The app is up to date" });
+        toasts.add({ title: t("settings.about.upToDate") });
       }
     } catch (error) {
       toasts.add({
-        title: "Couldn't check for updates",
+        title: t("settings.about.checkFailed"),
         description: error instanceof Error ? error.message : String(error),
         type: "error",
       });
@@ -95,11 +104,11 @@ function AppVersionRow() {
   return (
     <Row
       stacked
-      label="Version"
-      hint={`${version ?? "…"}. Updates are also checked when the app starts.`}
+      label={t("settings.about.version")}
+      hint={t("settings.about.versionHint", { version: version ?? "…" })}
     >
       <Button disabled={checking} onClick={check}>
-        Check for updates
+        {t("settings.about.checkForUpdates")}
       </Button>
     </Row>
   );

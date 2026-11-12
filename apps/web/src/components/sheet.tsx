@@ -2,6 +2,7 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useCloseOnBack } from "../lib/navigation.ts";
 import { Button } from "./button.tsx";
 
@@ -56,13 +57,14 @@ export function FullScreen(props: {
 }
 
 function TitleBar(props: { title: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 border-b border-rule py-2 pr-2 pl-4">
       <Dialog.Title className="flex-1 text-lg font-semibold">
         {props.title}
       </Dialog.Title>
       <Dialog.Close
-        aria-label="Close"
+        aria-label={t("common.close")}
         className="flex size-10 items-center justify-center rounded-xl hover:bg-surface"
       >
         <X size={20} />
@@ -88,6 +90,7 @@ export function Confirm(props: {
   /** The cancel button only, not Escape or a press outside. */
   onCancel?: () => void;
 }) {
+  const { t } = useTranslation();
   useCloseOnBack(props.open, () => props.onOpenChange(false));
   return (
     <AlertDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
@@ -128,7 +131,7 @@ export function Confirm(props: {
               onClick={props.onCancel}
               className="h-10 rounded-xl text-[0.9375rem] font-medium text-ink-muted hover:bg-surface"
             >
-              {props.cancelLabel ?? "Cancel"}
+              {props.cancelLabel ?? t("common.cancel")}
             </AlertDialog.Close>
           </div>
         </AlertDialog.Popup>

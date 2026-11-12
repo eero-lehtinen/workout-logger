@@ -75,6 +75,34 @@ export const ListPc = pageStory({
   viewport: "pc",
 });
 
+export const ListFi = pageStory({
+  fixture: withRoutine,
+  url: () => "/routines",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("heading", { name: "Ohjelmat" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("Valmisohjelmat")).toBeVisible();
+  },
+});
+
+export const EditorFi = pageStory({
+  fixture: withRoutine,
+  url: (ids) => `/routines/${ids.routineId}`,
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("link", { name: "Takaisin ohjelmiin" }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Järjestä päivät" }),
+    ).toBeVisible();
+  },
+});
+
 export const Editor = pageStory({
   fixture: withRoutine,
   url: (ids) => `/routines/${ids.routineId}`,

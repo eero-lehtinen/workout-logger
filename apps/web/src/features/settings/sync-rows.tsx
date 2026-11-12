@@ -1,5 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { useDbQuery } from "../../db/react.tsx";
+import { i18n } from "../../i18n/index.ts";
 import { formatAgo, formatBytes } from "../../lib/format.ts";
 import { type SyncState, syncNow } from "../../lib/sync.ts";
 import { pausedBy, type Usage, useUsage } from "../../lib/usage.ts";
@@ -8,23 +10,25 @@ import { Row } from "./settings-rows.tsx";
 
 /** The last sync, what is waiting, and why sync is stuck, if it is. */
 export function SyncRows(props: { sync: SyncState }) {
+  const { t } = useTranslation();
   const { sync } = props;
   const { unsynced, lastSyncAt } = useDbQuery("syncStatus");
   const usage = useUsage(sync.running);
   const now = useNow(30_000);
   const last =
     lastSyncAt === null
-      ? "Not synced yet."
-      : `Synced ${formatAgo(lastSyncAt, now)}.`;
+      ? t("settings.sync.notYet")
+      : t("settings.sync.synced", { ago: formatAgo(lastSyncAt, now) });
   const pending =
-    unsynced === 0
-      ? ""
-      : ` ${unsynced} ${unsynced === 1 ? "change" : "changes"} not synced yet.`;
+    unsynced === 0 ? "" : ` ${t("settings.sync.pending", { count: unsynced })}`;
   return (
     <>
-      <Row label="Sync" hint={`${problem(sync, usage) ?? last}${pending}`}>
+      <Row
+        label={t("settings.sync.label")}
+        hint={`${problem(sync, usage) ?? last}${pending}`}
+      >
         <Button disabled={sync.running} onClick={() => void syncNow()}>
-          {sync.running ? "Syncing…" : "Sync now"}
+          {sync.running ? t("settings.sync.syncing") : t("settings.sync.now")}
         </Button>
       </Row>
       <UsageRow usage={usage} />
@@ -34,27 +38,27 @@ export function SyncRows(props: { sync: SyncState }) {
 
 function problem(sync: SyncState, usage: Usage | null): string | null {
   if (sync.failure === "account_disabled")
-    return "This account is disabled. Your data stays on this device; sync resumes if the owner enables it.";
-  if (sync.updateRequired) return "Update the app to keep syncing.";
+    return i18n.t("settings.sync.problem.accountDisabled");
+  if (sync.updateRequired)
+    return i18n.t("settings.sync.problem.updateRequired");
   if (sync.failure === "offline")
-    return "Offline; syncs when the server can be reached.";
-  if (sync.failure === "server")
-    return "The last sync failed; it is retried every minute.";
+    return i18n.t("settings.sync.problem.offline");
+  if (sync.failure === "server") return i18n.t("settings.sync.problem.server");
   if (sync.failure === "rate_limited")
-    return "Too many requests to the server; sync tries again in a minute.";
+    return i18n.t("settings.sync.problem.rateLimited");
   if (sync.failure === "quota")
-    return "Sync paused: this device downloaded everything too often today. It resumes tomorrow.";
+    return i18n.t("settings.sync.problem.downloadQuota");
   if (sync.rejected.quota) {
     return usage && pausedBy(usage) === "storage"
-      ? "Sync paused: your server storage is full. Ask the owner for more."
-      : "Sync paused: today's upload limit is reached. It resumes tomorrow.";
+      ? i18n.t("settings.sync.problem.storageFull")
+      : i18n.t("settings.sync.problem.uploadLimit");
   }
   if (
     sync.rejected.conflict ||
     sync.rejected.invalid ||
     sync.rejected.too_large
   ) {
-    return "The server refused some changes. They stay on this device.";
+    return i18n.t("settings.sync.problem.refused");
   }
   return null;
 }
@@ -64,24 +68,32 @@ function problem(sync: SyncState, usage: Usage | null): string | null {
  * row's height doesn't change when it arrives.
  */
 function UsageRow(props: { usage: Usage | null }) {
+  const { t } = useTranslation();
   const { usage } = props;
   const of = (used: number, limit: number | null) =>
     limit === null
       ? formatBytes(used)
-      : `${formatBytes(used)} of ${formatBytes(limit)}`;
+      : t("settings.sync.usage.of", {
+          used: formatBytes(used),
+          limit: formatBytes(limit),
+        });
   const stored = usage ? `${of(usage.storedBytes, usage.maxBytes)}.` : "…";
   const today = !usage
     ? "…"
     : usage.exemptUntil !== null
-      ? `${formatBytes(usage.bytesWritten)}, no limit for now.`
+      ? `${t("settings.sync.usage.noLimit", { used: formatBytes(usage.bytesWritten) })}.`
       : `${of(usage.bytesWritten, usage.bytesPerDay)}.`;
   return (
     <Row
-      label="Server storage"
+      label={t("settings.sync.usage.label")}
       hint={
         <>
-          <span className="block">Stored: {stored}</span>
-          <span className="block">Uploaded today: {today}</span>
+          <span className="block">
+            {t("settings.sync.usage.stored", { value: stored })}
+          </span>
+          <span className="block">
+            {t("settings.sync.usage.uploadedToday", { value: today })}
+          </span>
         </>
       }
     />

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../../components/button.tsx";
 import { toasts } from "../../components/toasts.tsx";
 import { saveMaxAccounts } from "../../lib/admin-api.ts";
@@ -11,6 +12,7 @@ export function AccountCap(props: {
   maxAccounts: number | null;
   defaultMaxAccounts: number;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(
     props.maxAccounts === null ? "" : String(props.maxAccounts),
@@ -20,7 +22,7 @@ export function AccountCap(props: {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin"] }),
     onError: (error) =>
       toasts.add({
-        title: "The cap didn't save",
+        title: t("admin.cap.saveFailed"),
         description: error.message,
         type: "error",
       }),
@@ -32,7 +34,7 @@ export function AccountCap(props: {
     const value = text === "" ? null : Number(text);
     if (value !== null && !(Number.isSafeInteger(value) && value >= 1)) {
       toasts.add({
-        title: "Enter a whole number of 1 or more, or leave it empty",
+        title: t("admin.cap.invalid"),
         type: "error",
       });
       return;
@@ -44,12 +46,16 @@ export function AccountCap(props: {
     <div className="mx-2 rounded-2xl bg-raised py-1 lg:mx-0">
       <Row
         stacked
-        label="Account cap"
-        hint={`${props.accounts} of ${cap} accounts, you included. Sign-ups stop at the cap; a lower cap removes no one. Empty is ${props.defaultMaxAccounts}.`}
+        label={t("admin.cap.label")}
+        hint={t("admin.cap.hint", {
+          accounts: props.accounts,
+          count: cap,
+          defaultMax: props.defaultMaxAccounts,
+        })}
       >
         <div className="flex items-center gap-2">
           <input
-            aria-label="Account cap"
+            aria-label={t("admin.cap.label")}
             inputMode="numeric"
             value={draft}
             placeholder={String(props.defaultMaxAccounts)}
@@ -58,7 +64,7 @@ export function AccountCap(props: {
             className="tabular h-10 w-20 rounded-xl bg-chalk px-3 text-right outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
           />
           <Button disabled={save.isPending} onClick={submit}>
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </Row>

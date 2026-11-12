@@ -1,6 +1,8 @@
 import type { ECharts, EChartsCoreOption } from "echarts/core";
 import { useEffect, useState } from "react";
+import { useCurrentLanguage } from "../../i18n/index.ts";
 import { echarts } from "./echarts.ts";
+import { chartLocale } from "./locale.ts";
 import { attachPinchZoom, currentWindow } from "./pinch.ts";
 import { attachTouchTooltip, hideTooltip } from "./touch-tooltip.ts";
 
@@ -17,9 +19,10 @@ import { attachTouchTooltip, hideTooltip } from "./touch-tooltip.ts";
  */
 export function useEChart(el: HTMLElement | null): ECharts | null {
   const [chart, setChart] = useState<ECharts | null>(null);
+  const language = useCurrentLanguage();
   useEffect(() => {
     if (!el) return;
-    const instance = echarts.init(el);
+    const instance = echarts.init(el, null, { locale: chartLocale(language) });
     const resize = new ResizeObserver(() => instance.resize());
     resize.observe(el);
     const wheel = (e: Event) => {
@@ -39,7 +42,7 @@ export function useEChart(el: HTMLElement | null): ECharts | null {
       instance.dispose();
       setChart(null);
     };
-  }, [el]);
+  }, [el, language]);
   return chart;
 }
 

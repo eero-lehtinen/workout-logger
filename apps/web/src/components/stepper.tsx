@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { Minus, Plus } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface StepperProps {
   label: string;
@@ -24,6 +25,7 @@ export interface StepperProps {
  * the copy/paste bar over the entry panel.
  */
 export function Stepper(props: StepperProps) {
+  const { t } = useTranslation();
   const id = useId();
   const format = props.format ?? String;
   const parse = props.parse ?? parseNumber;
@@ -40,7 +42,7 @@ export function Stepper(props: StepperProps) {
   return (
     <div className="flex items-center gap-2">
       <StepButton
-        label={`Less ${props.label.toLowerCase()}`}
+        label={t("ui.stepper.less", { label: props.label.toLowerCase() })}
         large={large}
         onClick={() => press(-1)}
       >
@@ -54,7 +56,12 @@ export function Stepper(props: StepperProps) {
       >
         <label htmlFor={id} className="flex h-full shrink-0 items-center">
           {props.label}
-          {props.unit && <span className="sr-only"> in {props.unit}</span>}
+          {props.unit && (
+            <span className="sr-only">
+              {" "}
+              {t("ui.stepper.inUnit", { unit: props.unit })}
+            </span>
+          )}
         </label>
         <input
           id={id}
@@ -92,7 +99,7 @@ export function Stepper(props: StepperProps) {
         )}
       </div>
       <StepButton
-        label={`More ${props.label.toLowerCase()}`}
+        label={t("ui.stepper.more", { label: props.label.toLowerCase() })}
         large={large}
         onClick={() => press(1)}
       >

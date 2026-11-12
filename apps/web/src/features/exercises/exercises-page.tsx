@@ -9,6 +9,7 @@ import type {
 import { clsx } from "clsx";
 import { Plus, Search } from "lucide-react";
 import { type CSSProperties, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, buttonClass } from "../../components/button.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
@@ -23,6 +24,7 @@ import { sortExercises, useExerciseSort } from "./sort.ts";
 import { ExerciseSortSelect } from "./sort-select.tsx";
 
 export function ExercisesPage() {
+  const { t } = useTranslation();
   const exercises = useDbQuery("exercises");
   const unit = useDbQuery("settings").weight_unit as WeightUnit;
   const muscles = useMuscleMap();
@@ -47,11 +49,11 @@ export function ExercisesPage() {
       scrollId="exercises"
       header={
         <PageHeader
-          title="Exercises"
+          title={t("exercises.list.title")}
           actions={
             <Link to="/exercises/new" className={buttonClass("ghost", "sm")}>
               <Plus size={17} />
-              New
+              {t("exercises.list.new")}
             </Link>
           }
         >
@@ -66,8 +68,8 @@ export function ExercisesPage() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search exercises"
-                  aria-label="Search exercises"
+                  placeholder={t("exercises.list.search")}
+                  aria-label={t("exercises.list.search")}
                   className="h-11 w-full rounded-xl bg-raised pr-3 pl-10 outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink"
                 />
               </div>
@@ -80,12 +82,12 @@ export function ExercisesPage() {
     >
       {active.length === 0 ? (
         <Empty>
-          No exercises match.{" "}
+          {t("exercises.list.noMatch")}{" "}
           <Link
             to="/exercises/new"
             className="font-semibold text-ink underline underline-offset-2"
           >
-            Create one
+            {t("exercises.list.createOne")}
           </Link>
         </Empty>
       ) : (
@@ -93,7 +95,7 @@ export function ExercisesPage() {
       )}
       {archived.length > 0 && showArchived && (
         <section className="pt-6">
-          <SectionHeading>Archived</SectionHeading>
+          <SectionHeading>{t("exercises.list.archived")}</SectionHeading>
           <ExerciseList exercises={archived} muscles={muscles} unit={unit} />
         </section>
       )}
@@ -104,8 +106,8 @@ export function ExercisesPage() {
             onClick={() => setShowArchived(!showArchived)}
           >
             {showArchived
-              ? "Hide archived exercises"
-              : `Show ${archived.length} archived ${archived.length === 1 ? "exercise" : "exercises"}`}
+              ? t("exercises.list.hideArchived")
+              : t("exercises.list.showArchived", { count: archived.length })}
           </Button>
         </div>
       )}
@@ -123,6 +125,7 @@ function ExerciseList(props: {
   muscles: Map<string, MuscleItem>;
   unit: WeightUnit;
 }) {
+  const { t } = useTranslation();
   const count = props.exercises.length;
   const half = Math.ceil(count / 2);
   return (
@@ -148,7 +151,8 @@ function ExerciseList(props: {
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{e.name}</p>
               <p className="truncate text-sm text-ink-muted">
-                {primaryMuscles(e, props.muscles) || "No muscles set"}
+                {primaryMuscles(e, props.muscles) ||
+                  t("exercises.list.noMuscles")}
               </p>
             </div>
             {e.loggedSets > 0 && (
@@ -159,7 +163,7 @@ function ExerciseList(props: {
                   </p>
                 )}
                 <p className="tabular text-sm text-ink-muted">
-                  {e.loggedSets} {e.loggedSets === 1 ? "set" : "sets"}
+                  {t("exercises.list.sets", { count: e.loggedSets })}
                 </p>
               </div>
             )}
