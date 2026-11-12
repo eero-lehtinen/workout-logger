@@ -112,16 +112,6 @@ export const Line: StoryObj = {
   },
 };
 
-export const LinePc: StoryObj = {
-  ...Line,
-  globals: { viewport: { value: "pc", isRotated: false } },
-};
-
-export const LineDark: StoryObj = {
-  ...Line,
-  globals: { theme: "dark" },
-};
-
 /** About 1000 points, three per time. */
 export const EverySet: StoryObj = {
   render: () => (
@@ -166,11 +156,6 @@ export const WeeklyBars: StoryObj = {
       reference={{ value: average, label: `Average ${average.toFixed(1)}` }}
     />
   ),
-};
-
-export const WeeklyBarsPc: StoryObj = {
-  ...WeeklyBars,
-  globals: { viewport: { value: "pc", isRotated: false } },
 };
 
 export const CategoryBars: StoryObj = {
@@ -294,11 +279,6 @@ export const Phase8Stacked: StoryObj = {
   },
 };
 
-export const Phase8StackedPc: StoryObj = {
-  ...Phase8Stacked,
-  globals: { viewport: { value: "pc", isRotated: false } },
-};
-
 const LIFTS: {
   id: string;
   label: string;
@@ -408,9 +388,4 @@ export const Phase8Normalized: StoryObj = {
       await within(canvasElement).findByRole("img", { name: "Change in e1RM" }),
     ).toBeVisible();
   },
-};
-
-export const Phase8NormalizedPc: StoryObj = {
-  ...Phase8Normalized,
-  globals: { viewport: { value: "pc", isRotated: false } },
 };

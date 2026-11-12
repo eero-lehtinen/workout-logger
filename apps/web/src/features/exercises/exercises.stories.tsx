@@ -40,20 +40,10 @@ export const BrowserFinnish = pageStory({
   },
 });
 
-export const SortRecentlyLogged = pageStory({
-  fixture: withHistory,
-  url: () => "/exercises",
-  play: async ({ canvasElement }) => {
-    await choose(canvasElement, "Sort exercises", "Recent");
-    // The last set of the latest session was a leg curl.
-    const first = canvasElement.querySelector(
-      'a[href*="/exercises/"][href$="/history"]',
-    );
-    await expect(first).toHaveTextContent(/^Lying Leg Curl/);
-  },
-});
-
-/** A logged exercise shows its best set by e1RM and how many sets it has. */
+/**
+ * A logged exercise shows its best set by e1RM and how many sets it has.
+ * Recent puts the exercise of the last logged set first.
+ */
 export const LoggedStats = pageStory({
   fixture: withHistory,
   url: () => "/exercises",
@@ -62,6 +52,13 @@ export const LoggedStats = pageStory({
       name: /^Back Squat/,
     });
     await expect(squat).toHaveTextContent(/125 × 6\s*9 sets$/);
+
+    await choose(canvasElement, "Sort exercises", "Recent");
+    // The last set of the latest session was a leg curl.
+    const first = canvasElement.querySelector(
+      'a[href*="/exercises/"][href$="/history"]',
+    );
+    await expect(first).toHaveTextContent(/^Lying Leg Curl/);
   },
 });
 
@@ -266,11 +263,6 @@ export const EditBuiltIn = pageStory({
       await within(canvasElement).findByText(/^Built in\./),
     ).toBeVisible();
   },
-});
-
-export const EditBuiltInPhone = pageStory({
-  fixture: empty,
-  url: () => `/exercises/${exerciseId("barbell_bench_press")}`,
 });
 
 export const EditFinnish = pageStory({

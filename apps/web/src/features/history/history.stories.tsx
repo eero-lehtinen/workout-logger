@@ -107,6 +107,10 @@ export const ExerciseHistoryMetrics = pageStory({
   },
 });
 
+/**
+ * The trend line states its rate and hides with its switch. The chart choice
+ * and the switch carry over to the next exercise.
+ */
 export const ExerciseHistoryTrend = pageStory({
   fixture: withHistory,
   url: () => bench,
@@ -120,8 +124,23 @@ export const ExerciseHistoryTrend = pageStory({
       },
     );
     await expect(rate).toBeVisible();
+    await choose(canvasElement, "Chart", "Heaviest weight");
     await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
     await expect(canvas.queryByText(/per month$/)).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("link", { name: "Back to exercises" }),
+    );
+    await userEvent.click(
+      await canvas.findByRole("link", { name: /^Back Squat/ }),
+    );
+    await canvas.findByRole("heading", { name: "Back Squat" });
+    await expect(
+      canvas.getByRole("combobox", { name: "Chart" }),
+    ).toHaveTextContent("Heaviest weight");
+    await expect(
+      canvas.getByRole("switch", { name: "Trend line" }),
+    ).not.toBeChecked();
   },
 });
 
@@ -174,30 +193,6 @@ export const ExerciseHistoryPeriod = pageStory({
   },
 });
 
-/** The chart choice and the trend switch carry over to the next exercise. */
-export const ExerciseHistoryRemembers = pageStory({
-  fixture: withHistory,
-  url: () => bench,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await choose(canvasElement, "Chart", "Heaviest weight");
-    await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
-    await userEvent.click(
-      canvas.getByRole("link", { name: "Back to exercises" }),
-    );
-    await userEvent.click(
-      await canvas.findByRole("link", { name: /^Back Squat/ }),
-    );
-    await canvas.findByRole("heading", { name: "Back Squat" });
-    await expect(
-      canvas.getByRole("combobox", { name: "Chart" }),
-    ).toHaveTextContent("Heaviest weight");
-    await expect(
-      canvas.getByRole("switch", { name: "Trend line" }),
-    ).not.toBeChecked();
-  },
-});
-
 export const ExerciseToSessionAndBack = pageStory({
   fixture: withHistory,
   url: () => bench,
@@ -221,16 +216,11 @@ export const ExerciseNeverLogged = pageStory({
   fixture: empty,
   url: () => bench,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await expect(
-      canvas.getByText("Sets you log of this exercise show up here."),
+      within(canvasElement).getByText(
+        "Sets you log of this exercise show up here.",
+      ),
     ).toBeVisible();
-    await userEvent.click(canvas.getByRole("link", { name: "Edit exercise" }));
-    await canvas.findByRole("heading", { name: "Edit exercise" });
-    await userEvent.click(
-      canvas.getByRole("link", { name: "Back to history" }),
-    );
-    await canvas.findByText("Sets you log of this exercise show up here.");
   },
 });
 

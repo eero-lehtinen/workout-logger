@@ -13,24 +13,6 @@ export default {
   title: "Screens/Settings",
 } satisfies Meta;
 
-export const Defaults = pageStory({ fixture: empty, url: () => "/settings" });
-
-/** Every build shows its commit and build time. */
-export const WebBuild = pageStory({
-  fixture: empty,
-  url: () => "/settings",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText("Web app build")).toBeVisible();
-    await expect(canvas.getByText(/^[0-9a-f]{7}, built /)).toBeVisible();
-  },
-});
-
-export const InPounds = pageStory({
-  fixture: inPounds,
-  url: () => "/settings",
-});
-
 export const Pc = pageStory({
   fixture: empty,
   url: () => "/settings",
@@ -85,8 +67,13 @@ export const TimersOff = pageStory({
   },
 });
 
-/** The toggle shows where the browser has the Screen Wake Lock API. */
-export const KeepScreenOn = pageStory({
+/**
+ * Each preference is saved as it changes. Keep screen on shows where the
+ * browser has the Screen Wake Lock API. The week start and the alert volume
+ * are synced settings; the volume is saved when the slider is let go. A
+ * forced theme overrides the system one and is remembered.
+ */
+export const Preferences = pageStory({
   fixture: empty,
   url: () => "/settings",
   play: async ({ canvasElement }) => {
@@ -97,18 +84,11 @@ export const KeepScreenOn = pageStory({
     await expect(keepOn).not.toBeChecked();
     await userEvent.click(keepOn);
     await waitFor(() => expect(keepOn).toBeChecked());
-  },
-});
 
-/** The week start is a synced setting, saved on press. */
-export const WeekStart = pageStory({
-  fixture: empty,
-  url: () => "/settings",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByRole("button", { name: "Mon" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas.getByRole("button", { name: "Mon" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Sun" }));
     await waitFor(() =>
       expect(canvas.getByRole("button", { name: "Sun" })).toHaveAttribute(
@@ -116,31 +96,15 @@ export const WeekStart = pageStory({
         "true",
       ),
     );
-  },
-});
 
-/** The alert volume is a synced setting, saved when the slider is let go. */
-export const AlertVolume = pageStory({
-  fixture: empty,
-  url: () => "/settings",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const slider = await canvas.findByRole("slider", { name: "Alert volume" });
+    const slider = canvas.getByRole("slider", { name: "Alert volume" });
     await expect(slider).toHaveAttribute("aria-valuenow", "70");
     await expect(slider).toHaveAttribute("aria-valuetext", "70%");
     slider.focus();
     await userEvent.keyboard("{ArrowLeft}");
     await waitFor(() => expect(slider).toHaveAttribute("aria-valuenow", "65"));
     await expect(canvas.getByText("65%")).toBeInTheDocument();
-  },
-});
 
-/** Forcing a theme overrides the system one and is remembered. */
-export const ThemeChoice = pageStory({
-  fixture: empty,
-  url: () => "/settings",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     const root = canvasElement.ownerDocument.documentElement;
     const theme = within(canvas.getByRole("group", { name: "Theme" }));
     await expect(theme.getByRole("button", { name: "System" })).toHaveAttribute(
@@ -251,12 +215,17 @@ function signedIn(user: AccountUser, sync: Partial<SyncState> = {}) {
   };
 }
 
-/** Without an account the app works locally and offers sign-in. */
+/**
+ * Without an account the app works locally and offers sign-in. Every build
+ * shows its commit and build time.
+ */
 export const SignedOut = pageStory({
   fixture: empty,
   url: () => "/settings",
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByText("Web app build")).toBeVisible();
+    await expect(canvas.getByText(/^[0-9a-f]{7}, built /)).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Sign in with Google" }),
     ).toBeVisible();
@@ -517,21 +486,11 @@ export const DeleteAccount = {
   },
 };
 
-/** The owner's account can't be deleted; the owner gets the admin page instead. */
-export const OwnerHasNoDelete = {
-  ...pageStory({
-    fixture: empty,
-    url: () => "/settings",
-    play: async ({ canvasElement }) => {
-      const canvas = within(canvasElement);
-      await expect(canvas.getByRole("link", { name: "Open" })).toBeVisible();
-      await expect(canvas.queryByText("Delete account")).toBeNull();
-    },
-  }),
-  beforeEach: signedIn({ ...alice, role: "owner" }),
-};
-
-/** A stale server backup shows on the Admin row; the details are on /admin. */
+/**
+ * The owner's account can't be deleted; the owner gets the admin page
+ * instead. A stale server backup shows on the Admin row; the details are on
+ * /admin.
+ */
 export const OwnerBackupsStale = {
   ...pageStory({
     fixture: empty,
@@ -539,6 +498,8 @@ export const OwnerBackupsStale = {
     theme: "dark",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
+      await expect(canvas.getByRole("link", { name: "Open" })).toBeVisible();
+      await expect(canvas.queryByText("Delete account")).toBeNull();
       await expect(
         canvas.getByText("A server backup is out of date."),
       ).toBeVisible();

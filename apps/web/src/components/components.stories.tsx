@@ -30,6 +30,7 @@ function WeightStepper() {
   );
 }
 
+/** A tap shows the value it replaces; typing replaces it. */
 export const StepperWeight: StoryObj = {
   render: () => <WeightStepper />,
   play: async ({ canvasElement }) => {
@@ -40,6 +41,14 @@ export const StepperWeight: StoryObj = {
     const input = canvas.getByRole("textbox", { name: "Weight in kg" });
     await expect(input).toHaveValue("102.5");
     await expectStepperCentered(input);
+
+    await userEvent.click(input);
+    await expect(canvas.getByTestId("stepper-replace-hint")).toHaveTextContent(
+      "102.5",
+    );
+    await userEvent.keyboard("8");
+    await expect(input).toHaveValue("8");
+    await expect(canvas.queryByTestId("stepper-replace-hint")).toBeNull();
   },
 };
 
@@ -90,21 +99,6 @@ export const StepperSizes: StoryObj = {
     const canvas = within(canvasElement);
     await expectStepperCentered(canvas.getByLabelText("Reps lg"));
     await expectStepperCentered(canvas.getByLabelText("Reps md"));
-  },
-};
-
-export const StepperReplaceHint: StoryObj = {
-  render: () => <WeightStepper />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const input = canvas.getByLabelText("Weight in kg");
-    await userEvent.click(input);
-    await expect(canvas.getByTestId("stepper-replace-hint")).toHaveTextContent(
-      "100",
-    );
-    await userEvent.keyboard("8");
-    await expect(input).toHaveValue("8");
-    await expect(canvas.queryByTestId("stepper-replace-hint")).toBeNull();
   },
 };
 

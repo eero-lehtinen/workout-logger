@@ -251,8 +251,11 @@ export const ServerTrouble = {
   ),
 };
 
-/** Overrides are entered in MB; an empty field is the default. */
-export const EditQuotas = {
+/**
+ * Overrides are entered in MB; an empty field is the default. Disabling asks
+ * first.
+ */
+export const EditAccount = {
   ...pageStory({
     fixture: empty,
     url: () => "/admin",
@@ -285,6 +288,21 @@ export const EditQuotas = {
         expect(requests).toHaveBeenCalledWith(
           "POST",
           "/api/admin/users/u1/exempt",
+          null,
+        ),
+      );
+
+      await userEvent.click(sheet.getByRole("button", { name: "Disable" }));
+      const confirm = await page.findByRole("alertdialog", {
+        name: "Disable Alice Example?",
+      });
+      await userEvent.click(
+        within(confirm).getByRole("button", { name: "Disable" }),
+      );
+      await waitFor(() =>
+        expect(requests).toHaveBeenCalledWith(
+          "POST",
+          "/api/admin/users/u1/disable",
           null,
         ),
       );
@@ -338,38 +356,6 @@ export const Search = {
       await expect(
         await canvas.findByText("No account matches."),
       ).toBeVisible();
-    },
-  }),
-  beforeEach: asOwner(),
-};
-
-/** Disabling asks first. */
-export const Disable = {
-  ...pageStory({
-    fixture: empty,
-    url: () => "/admin",
-    play: async ({ canvasElement }) => {
-      const canvas = within(canvasElement);
-      await userEvent.click(
-        await canvas.findByRole("button", { name: /^Alice Example/ }),
-      );
-      const page = within(canvasElement.ownerDocument.body);
-      await userEvent.click(
-        await page.findByRole("button", { name: "Disable" }),
-      );
-      const confirm = await page.findByRole("alertdialog", {
-        name: "Disable Alice Example?",
-      });
-      await userEvent.click(
-        within(confirm).getByRole("button", { name: "Disable" }),
-      );
-      await waitFor(() =>
-        expect(requests).toHaveBeenCalledWith(
-          "POST",
-          "/api/admin/users/u1/disable",
-          null,
-        ),
-      );
     },
   }),
   beforeEach: asOwner(),

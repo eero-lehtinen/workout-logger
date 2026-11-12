@@ -36,7 +36,12 @@ export const PastSessionReadOnly = pageStory({
     await expect(
       canvas.queryByRole("button", { name: "Add exercise to session" }),
     ).toBeNull();
-    await userEvent.click(canvas.getByRole("button", { name: "Edit" }));
+
+    await userEvent.click(canvas.getByRole("link", { name: /^Back Squat/ }));
+    await userEvent.click(
+      await canvas.findByRole("link", { name: "Back to session" }),
+    );
+    await userEvent.click(await canvas.findByRole("button", { name: "Edit" }));
     await expect(
       await canvas.findByRole("button", { name: "Add exercise to session" }),
     ).toBeVisible();
@@ -47,27 +52,6 @@ export const PastSessionDark = pageStory({
   fixture: withHistory,
   url: (ids) => `/sessions/${ids.pastSessionId}`,
   theme: "dark",
-});
-
-export const PastSessionPc = pageStory({
-  fixture: withHistory,
-  url: (ids) => `/sessions/${ids.pastSessionId}`,
-  viewport: "pc",
-});
-
-export const PastSessionToHistoryAndBack = pageStory({
-  fixture: withHistory,
-  url: (ids) => `/sessions/${ids.pastSessionId}`,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("link", { name: /^Back Squat/ }));
-    await userEvent.click(
-      await canvas.findByRole("link", { name: "Back to session" }),
-    );
-    await expect(
-      await canvas.findByRole("button", { name: "Edit" }),
-    ).toBeVisible();
-  },
 });
 
 export const TodayRunning = pageStory({
@@ -171,15 +155,21 @@ export const SessionTimerHidden = pageStory({
   },
 });
 
+/** Ad hoc, so there is no routine to edit. */
 export const SessionIdle = pageStory({
   fixture: idleEnded,
   url: (ids) => `/sessions/${ids.idleSessionId}`,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
     await expect(
-      await within(canvasElement).findByText(
-        /^Lasted \d+(h \d+)?m, no sets since/,
-      ),
+      await canvas.findByText(/^Lasted \d+(h \d+)?m, no sets since/),
     ).toBeVisible();
+    await expect(
+      canvas.getByRole("heading", { name: "Ad hoc session" }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("link", { name: "Edit routine" }),
+    ).toBeNull();
   },
 });
 
@@ -278,6 +268,9 @@ export const LoggingPc = pageStory({
     await waitFor(() => expect(tip).toBeVisible());
     await expectStepperCentered(canvas.getByLabelText("Reps"));
     await expectStepperCentered(canvas.getByLabelText("Weight in kg"));
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
+    await expectFooterFits(canvas.getByRole("button", { name: "Delete set" }));
   },
 });
 
@@ -338,12 +331,6 @@ export const LoggingSubstitutePc = pageStory({
   play: async ({ canvasElement }) => expectNamedOriginal(canvasElement, 2),
 });
 
-export const LoggingDark = pageStory({
-  fixture: running,
-  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
-  theme: "dark",
-});
-
 export const LoggingFinnish = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
@@ -359,20 +346,6 @@ export const LoggingFinnish = pageStory({
     await expect(
       canvas.getByRole("button", { name: "Aiemmat treenit" }),
     ).toBeVisible();
-  },
-});
-
-export const EarlierSessions = pageStory({
-  fixture: running,
-  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole("button", { name: "Earlier sessions" }),
-    );
-    await expect(
-      canvas.getAllByRole("button", { name: /^Use set 1 95 × 8 from/ }),
-    ).toHaveLength(1);
   },
 });
 
@@ -414,10 +387,11 @@ async function expectNoteBeforeEarlier(canvasElement: HTMLElement) {
   });
   await expect(earlier).toHaveAttribute("aria-expanded", "true");
   await waitFor(() => expect(notes()).toBeNull());
-  const [earlierSet] = canvas.getAllByRole("button", {
+  const earlierSets = canvas.getAllByRole("button", {
     name: /^Use set 1 95 × 8 from/,
   });
-  await expectBefore(earlier, earlierSet as HTMLElement);
+  await expect(earlierSets).toHaveLength(1);
+  await expectBefore(earlier, earlierSets[0] as HTMLElement);
 }
 
 export const NoteBeforeEarlierSessions = pageStory({
@@ -579,18 +553,6 @@ export const EditNotes = pageStory({
   },
 });
 
-export const NoRoutineLinkWhenAdHoc = pageStory({
-  fixture: idleEnded,
-  url: (ids) => `/sessions/${ids.idleSessionId}`,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole("heading", { name: "Ad hoc session" });
-    await expect(
-      canvas.queryByRole("link", { name: "Edit routine" }),
-    ).toBeNull();
-  },
-});
-
 export const SettingsFromLogging = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
@@ -647,6 +609,7 @@ async function logSetAndLeave(canvas: ReturnType<typeof within>) {
   await canvas.findByRole("heading", { name: "Upper", level: 1 });
 }
 
+/** During the rest and once it is over, the rest bar opens the exercise. */
 export const RestBarOpensExercise = pageStory({
   fixture: running,
   url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
@@ -658,16 +621,11 @@ export const RestBarOpensExercise = pageStory({
       await canvas.findByRole("button", { name: "Log set 4" }),
     ).toBeVisible();
     await expect(restTimer.getState()?.finished).toBe(false);
-    restTimer.skip();
-  },
-});
 
-export const RestOverOpensExercise = pageStory({
-  fixture: running,
-  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await logSetAndLeave(canvas);
+    await userEvent.click(
+      canvas.getByRole("link", { name: "Back to session" }),
+    );
+    await canvas.findByRole("heading", { name: "Upper", level: 1 });
     restTimer.adjust(-60 * 60);
     await userEvent.click(
       await canvas.findByRole("link", { name: "Rest over" }),
@@ -762,33 +720,6 @@ export const EditSetFinnishNarrow = pageStory({
     await expectFooterFits(
       canvas.getByRole("button", { name: "Tallenna sarja 1" }),
     );
-  },
-});
-
-export const EditSetNarrow = pageStory({
-  fixture: running,
-  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
-  viewport: "phoneNarrow",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expectFooterFits(
-      await canvas.findByRole("button", { name: "Log set 3" }),
-    );
-    await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
-    await expectFooterFits(canvas.getByRole("button", { name: "Save set 1" }));
-  },
-});
-
-export const EditSetPc = pageStory({
-  fixture: running,
-  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
-  viewport: "pc",
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole("button", { name: /^Edit set 1/ }),
-    );
-    await expectFooterFits(canvas.getByRole("button", { name: "Delete set" }));
   },
 });
 

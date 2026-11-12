@@ -112,6 +112,7 @@ export const EditorPc = pageStory({
   fixture: withRoutine,
   url: (ids) => `/routines/${ids.routineId}`,
   viewport: "pc",
+  theme: "dark",
 });
 
 /** A slot's row sums it up; its sheet edits it. */
