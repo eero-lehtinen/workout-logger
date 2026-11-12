@@ -5,7 +5,8 @@
 // so it is made as loud as the format allows: the beeps hold their level
 // instead of decaying, are long enough to be heard at full loudness (short
 // beeps sound quieter), and are saturated with tanh towards a square wave,
-// which raises loudness by about 4 LU at the same -0.5 dBFS peak. The
+// which raises loudness by about 2.3 LU at the same -0.5 dBFS peak. More
+// drive is louder still but harsh, from the harmonics above 4 kHz. The
 // harmonics (~2.4 and ~3.9 kHz) are where small speakers and hearing are
 // most sensitive.
 import { writeFileSync } from "node:fs";
@@ -15,7 +16,7 @@ const rate = 44100,
   beep = 0.4,
   gap = 0.14,
   tail = 0.05,
-  drive = 4,
+  drive = 2.5,
   peak = 10 ** (-0.5 / 20);
 const total = Math.round((beep * 2 + gap + tail) * rate);
 const samples = new Float64Array(total);
