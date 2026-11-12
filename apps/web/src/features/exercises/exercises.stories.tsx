@@ -161,10 +161,26 @@ export const CopyAsNew = pageStory({
   },
 });
 
+/** Both columns keep the same width whatever names they hold. */
 export const BrowserPc = pageStory({
   fixture: empty,
   url: () => "/exercises",
   viewport: "pc",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rowWidths = () =>
+      new Set(
+        [
+          ...canvasElement.querySelectorAll("li:has(> a[href$='/history'])"),
+        ].map((li) => Math.round(li.getBoundingClientRect().width)),
+      );
+    await canvas.findByText("Back Squat");
+    await expect(rowWidths().size).toBe(1);
+    for (const group of ["Legs", "Chest", "Core"]) {
+      await userEvent.click(canvas.getByRole("button", { name: group }));
+      await expect(rowWidths().size).toBe(1);
+    }
+  },
 });
 
 /** Nothing is red before a save was tried. */

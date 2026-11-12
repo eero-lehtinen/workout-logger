@@ -117,7 +117,7 @@ function ExerciseList(props: {
   const half = Math.ceil(count / 2);
   return (
     <ul
-      className={`${listClass} lg:grid lg:grid-flow-col lg:grid-rows-(--rows) lg:gap-x-4 lg:overflow-visible lg:rounded-none lg:bg-transparent`}
+      className={`${listClass} lg:grid lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-(--rows) lg:gap-x-4 lg:overflow-visible lg:rounded-none lg:bg-transparent`}
       style={{ "--rows": `repeat(${half}, auto)` } as CSSProperties}
     >
       {props.exercises.map((e, i) => (
