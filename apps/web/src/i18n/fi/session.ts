@@ -55,7 +55,6 @@ export const session = {
     sessionDeleted: "Treeni poistettu",
     noExercises: "Ei liikkeitä.",
     noSets: "Ei sarjoja",
-    weightsIn: "Painot: {{unit}}.",
     done: "Valmis",
     notStarted: "Ei aloitettu",
   },

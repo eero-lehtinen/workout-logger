@@ -396,57 +396,47 @@ function ReadOnlyExercises(props: { view: SessionView; unit: WeightUnit }) {
   if (view.exercises.length === 0) {
     return <Empty>{t("session.view.noExercises")}</Empty>;
   }
-  const weighted = view.exercises.some(
-    (e) => e.type === "weight_reps" || e.type === "bodyweight_reps",
-  );
   return (
-    <>
-      <ul className={listClass}>
-        {view.exercises.map((exercise) => (
-          <li key={exercise.id}>
-            <Link
-              to="/exercises/$exerciseId/history"
-              params={{ exerciseId: exercise.exerciseId }}
-              search={{ sessionId: view.session.id }}
-              className={`${rowClass} flex items-center gap-3 py-3`}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="pb-1 font-medium">
-                  {exercise.name}
-                  {exercise.substitutesName && (
-                    <span className="font-normal text-ink-muted">
-                      {" "}
-                      <Substitutes name={exercise.substitutesName} />
-                    </span>
-                  )}
+    <ul className={listClass}>
+      {view.exercises.map((exercise) => (
+        <li key={exercise.id}>
+          <Link
+            to="/exercises/$exerciseId/history"
+            params={{ exerciseId: exercise.exerciseId }}
+            search={{ sessionId: view.session.id }}
+            className={`${rowClass} flex items-center gap-3 py-3`}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="pb-1 font-medium">
+                {exercise.name}
+                {exercise.substitutesName && (
+                  <span className="font-normal text-ink-muted">
+                    {" "}
+                    <Substitutes name={exercise.substitutesName} />
+                  </span>
+                )}
+              </p>
+              {exercise.sets.length === 0 ? (
+                <p className="text-sm text-ink-muted">
+                  {t("session.view.noSets")}
                 </p>
-                {exercise.sets.length === 0 ? (
-                  <p className="text-sm text-ink-muted">
-                    {t("session.view.noSets")}
-                  </p>
-                ) : (
-                  <SetLine
-                    sets={exercise.sets}
-                    type={exercise.type}
-                    unit={unit}
-                  />
-                )}
-                {exercise.notes && (
-                  <p className="whitespace-pre-wrap pt-1 text-sm text-ink-muted">
-                    {exercise.notes}
-                  </p>
-                )}
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      {weighted && (
-        <p className="px-4 pt-2 text-xs text-ink-muted lg:px-0">
-          {t("session.view.weightsIn", { unit })}
-        </p>
-      )}
-    </>
+              ) : (
+                <SetLine
+                  sets={exercise.sets}
+                  type={exercise.type}
+                  unit={unit}
+                />
+              )}
+              {exercise.notes && (
+                <p className="whitespace-pre-wrap pt-1 text-sm text-ink-muted">
+                  {exercise.notes}
+                </p>
+              )}
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

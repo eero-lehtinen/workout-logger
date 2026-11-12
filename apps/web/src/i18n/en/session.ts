@@ -52,7 +52,6 @@ export const session = {
     sessionDeleted: "Session deleted",
     noExercises: "No exercises.",
     noSets: "No sets",
-    weightsIn: "Weights in {{unit}}.",
     done: "Done",
     notStarted: "Not started",
   },
