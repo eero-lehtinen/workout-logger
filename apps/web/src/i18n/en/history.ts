@@ -5,9 +5,9 @@ export const history = {
   adHoc: "Ad hoc",
   periods: {
     label: "Period",
-    "3m": "3 months",
-    "6m": "6 months",
-    "1y": "1 year",
+    "3m": "3 mo",
+    "6m": "6 mo",
+    "1y": "1 yr",
     all: "All",
   },
   periodSessions: {

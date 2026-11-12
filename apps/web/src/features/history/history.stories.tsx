@@ -159,7 +159,7 @@ export const ExerciseHistoryPeriod = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("3 sessions")).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "3 months" }));
+    await userEvent.click(canvas.getByRole("button", { name: "3 mo" }));
     await expect(
       canvas.getByText("3 sessions in the last 3 months"),
     ).toBeVisible();
@@ -169,7 +169,7 @@ export const ExerciseHistoryPeriod = pageStory({
     await userEvent.click(canvas.getByRole("link", { name: "History" }));
     await canvas.findByRole("heading", { name: "History" });
     await expect(
-      canvas.getByRole("button", { name: "3 months", pressed: true }),
+      canvas.getByRole("button", { name: "3 mo", pressed: true }),
     ).toBeVisible();
   },
 });
