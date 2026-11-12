@@ -49,7 +49,7 @@ The app is shared with a few other users, each with their own private data. See
 | --- | --- | --- |
 | Built-in exercise list with exercise types and muscle targets | P0 | Seeded from an open dataset and curated. |
 | Custom exercises: create, edit, archive, copy | P0 | Copying prefills a new exercise from any exercise, built-in ones included. |
-| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. Both sort by name, most recently logged, or most logged (sessions with a logged set); the order is shared and remembered on the device. |
+| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. Both sort by name, most recently logged, or most logged (logged sets); the order is shared and remembered on the device. A logged exercise's row in the list shows its set count and best set: the set that holds the first record of the records headline, e.g. best e1RM. Of sets with equal e1RM, the one with fewer reps is shown. |
 | Edit an exercise's muscle targets | P1 | |
 | Per-exercise default rest time and notes | P1 | |
 

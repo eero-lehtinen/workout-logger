@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import type { ExerciseItem, MuscleItem } from "@workout-logger/core";
+import type {
+  BestSet,
+  ExerciseItem,
+  ExerciseType,
+  MuscleItem,
+  WeightUnit,
+} from "@workout-logger/core";
 import { clsx } from "clsx";
 import { Plus, Search } from "lucide-react";
 import { type CSSProperties, useState } from "react";
@@ -8,7 +14,9 @@ import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { useDbQuery } from "../../db/react.tsx";
+import { formatSet } from "../../lib/format.ts";
 import { matchesSearch } from "../../lib/search.ts";
+import { formatHeadline } from "../history/metrics.ts";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
 import { inMuscleGroup, primaryMuscles, useMuscleMap } from "./muscles.ts";
 import { sortExercises, useExerciseSort } from "./sort.ts";
@@ -16,6 +24,7 @@ import { ExerciseSortSelect } from "./sort-select.tsx";
 
 export function ExercisesPage() {
   const exercises = useDbQuery("exercises");
+  const unit = useDbQuery("settings").weight_unit as WeightUnit;
   const muscles = useMuscleMap();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<string | null>(null);
@@ -80,12 +89,12 @@ export function ExercisesPage() {
           </Link>
         </Empty>
       ) : (
-        <ExerciseList exercises={active} muscles={muscles} />
+        <ExerciseList exercises={active} muscles={muscles} unit={unit} />
       )}
       {archived.length > 0 && showArchived && (
         <section className="pt-6">
           <SectionHeading>Archived</SectionHeading>
-          <ExerciseList exercises={archived} muscles={muscles} />
+          <ExerciseList exercises={archived} muscles={muscles} unit={unit} />
         </section>
       )}
       {archived.length > 0 && (
@@ -112,6 +121,7 @@ export function ExercisesPage() {
 function ExerciseList(props: {
   exercises: ExerciseItem[];
   muscles: Map<string, MuscleItem>;
+  unit: WeightUnit;
 }) {
   const count = props.exercises.length;
   const half = Math.ceil(count / 2);
@@ -141,9 +151,28 @@ function ExerciseList(props: {
                 {primaryMuscles(e, props.muscles) || "No muscles set"}
               </p>
             </div>
+            {e.loggedSets > 0 && (
+              <div className="shrink-0 text-right">
+                {e.best && (
+                  <p className="tabular text-[0.9375rem] text-ink/85">
+                    {formatBest(e.best, e.type, props.unit)}
+                  </p>
+                )}
+                <p className="tabular text-sm text-ink-muted">
+                  {e.loggedSets} {e.loggedSets === 1 ? "set" : "sets"}
+                </p>
+              </div>
+            )}
           </Link>
         </li>
       ))}
     </ul>
   );
+}
+
+/** The best set as a set, e.g. `100 × 8`; reps, time, or distance alone. */
+function formatBest(best: BestSet, type: ExerciseType, unit: WeightUnit) {
+  return best.set
+    ? formatSet(best.set, type, unit)
+    : formatHeadline(best.kind, best.value, unit);
 }

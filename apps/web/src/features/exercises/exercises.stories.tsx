@@ -38,6 +38,18 @@ export const SortRecentlyLogged = pageStory({
   },
 });
 
+/** A logged exercise shows its best set by e1RM and how many sets it has. */
+export const LoggedStats = pageStory({
+  fixture: withHistory,
+  url: () => "/exercises",
+  play: async ({ canvasElement }) => {
+    const squat = await within(canvasElement).findByRole("link", {
+      name: /^Back Squat/,
+    });
+    await expect(squat).toHaveTextContent(/125 × 6\s*9 sets$/);
+  },
+});
+
 /**
  * A substitution lists the slot's alternatives, then exercises sharing a
  * primary muscle, then the rest, each in the chosen order.

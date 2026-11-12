@@ -29,9 +29,7 @@ export function sortExercises(
             (a.lastLoggedAt ?? Number.NEGATIVE_INFINITY) || byName(a, b),
       );
     case "most":
-      return sorted.sort(
-        (a, b) => b.loggedSessions - a.loggedSessions || byName(a, b),
-      );
+      return sorted.sort((a, b) => b.loggedSets - a.loggedSets || byName(a, b));
   }
 }
 

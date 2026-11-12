@@ -5,7 +5,7 @@ import { sortExercises } from "./sort.ts";
 const exercise = (
   name: string,
   lastLoggedAt: number | null,
-  loggedSessions: number,
+  loggedSets: number,
 ): ExerciseItem => ({
   id: name,
   name,
@@ -14,7 +14,8 @@ const exercise = (
   builtin: true,
   muscles: {},
   lastLoggedAt,
-  loggedSessions,
+  loggedSets,
+  best: null,
 });
 
 const list = [

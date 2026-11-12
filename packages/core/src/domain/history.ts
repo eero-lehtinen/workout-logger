@@ -8,7 +8,7 @@ import {
 import { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./e1rm.ts";
 import { perWeek, type WeekTotal } from "./frequency.ts";
 import type { SetValues } from "./markers.ts";
-import { WEIGHT_EPSILON_KG } from "./units.ts";
+import { greater, hasWeight, sameWeight } from "./weight-compare.ts";
 
 /** One session's sets of an exercise, in set order. */
 export interface PerformanceSets {
@@ -261,6 +261,11 @@ const HEADLINES: Record<ExerciseType, readonly HeadlineKind[]> = {
   distance_time: ["distance"],
 };
 
+/** The records an exercise type headlines, most telling first. */
+export function headlineKinds(type: ExerciseType): readonly HeadlineKind[] {
+  return HEADLINES[type];
+}
+
 /**
  * The exercise's records over all its performances. The first session to
  * reach a value holds the record; ties don't take it over. For
@@ -349,21 +354,9 @@ function setE1rm(set: SetValues, cap: number): number | undefined {
   return estimateOneRepMax(set.weight_kg ?? 0, set.reps ?? 0, cap);
 }
 
-function hasWeight(set: SetValues) {
-  return (set.weight_kg ?? 0) > WEIGHT_EPSILON_KG;
-}
-
-function sameWeight(a: number, b: number) {
-  return Math.abs(a - b) <= WEIGHT_EPSILON_KG;
-}
-
 /** Groups weights that differ by float noise, e.g. converted from lb. */
 function weightKey(kg: number) {
   return kg.toFixed(4);
-}
-
-function greater(a: number, b: number) {
-  return a > b + WEIGHT_EPSILON_KG;
 }
 
 function positive(value: number | null | undefined): number | undefined {

@@ -427,9 +427,9 @@ describe("session exercises", () => {
 });
 
 describe("exercise list", () => {
-  it("counts sessions with logged sets and the latest set", async () => {
+  it("counts logged sets, the latest set, and the best set", async () => {
     const { query, run, advance, ids } = await setup();
-    for (let i = 0; i < 2; i++) {
+    for (const second of [set(105, 3), set(100, 8)]) {
       advance(24 * 60 * MIN);
       const sessionId = await run("startSession", {
         routineId: null,
@@ -442,19 +442,21 @@ describe("exercise list", () => {
       advance(MIN);
       await run("logSet", { sessionExerciseId: bench, values: set(100, 5) });
       advance(MIN);
-      await run("logSet", { sessionExerciseId: bench, values: set(100, 5) });
+      await run("logSet", { sessionExerciseId: bench, values: second });
       // Added but never logged: doesn't count.
       await run("addSessionExercise", { sessionId, exerciseId: ids.squat });
     }
     const list = await query("exercises", undefined);
     const item = (id: string) => list.find((e) => e.id === id);
     expect(item(ids.bench)).toMatchObject({
-      loggedSessions: 2,
+      loggedSets: 4,
       lastLoggedAt: T0 + 2 * 24 * 60 * MIN + 4 * MIN,
+      best: { kind: "e1rm", set: { weight_kg: 100, reps: 8 } },
     });
     expect(item(ids.squat)).toMatchObject({
-      loggedSessions: 0,
+      loggedSets: 0,
       lastLoggedAt: null,
+      best: null,
     });
   });
 });
