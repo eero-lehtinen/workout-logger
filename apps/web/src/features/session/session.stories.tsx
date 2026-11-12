@@ -6,6 +6,7 @@ import {
   idleEnded,
   inPounds,
   running,
+  setRecordHistory,
   substituted,
   timed,
   timersOff,
@@ -240,6 +241,24 @@ export const LoggingWithMarkers = pageStory({
     await expect(
       await canvas.findByRole("button", { name: /^Edit set 3/ }),
     ).toBeVisible();
+  },
+});
+
+export const SetRecordOverAllEarlier = pageStory({
+  fixture: setRecordHistory,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole("button", { name: /^Edit set 2/ });
+    // 97.5 × 8 beats last time's 95 × 7, and every earlier set 2: the best
+    // was 95 × 8, 16 days ago.
+    await userEvent.click(canvas.getByRole("button", { name: "Set record" }));
+    const record = await body.findByRole("dialog", { name: /Set record/ });
+    await expect(record).toHaveTextContent(
+      /This set123\.5 kg e1RMBest set 2 before120\.3 kg e1RM95 × 8 on /,
+    );
+    await userEvent.keyboard("{Escape}");
   },
 });
 
