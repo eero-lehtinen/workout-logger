@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { SectionHeading } from "../../components/headings.tsx";
 import { PageHeader, Screen } from "../../components/page.tsx";
+import { BackupRetention } from "./backup-retention.tsx";
 
 // The content of docs/accounts.md#privacy. Google's consent screen links
 // here, so it must stay true to what the server does.
@@ -16,14 +17,6 @@ function Part(props: { title: string; children: ReactNode }) {
     </section>
   );
 }
-
-const RETENTION = [
-  ["Continuous replica", "3 days"],
-  ["Daily copies", "7 days"],
-  ["Monthly copies", "3 months"],
-  ["Copies made before a server update", "14 days"],
-  ["The owner's own backup", "per its retention policy"],
-];
 
 export function PrivacyPage() {
   return (
@@ -59,16 +52,11 @@ export function PrivacyPage() {
             → Export snapshot saves all your data to a file.
           </p>
           <p>
-            Settings → Delete account deletes everything the server holds for
-            your account. Backups made before that keep it until they expire:
+            Settings → Delete account deletes everything the server has for your
+            account. Older backups still contain your data until they are
+            deleted:
           </p>
-          <ul className="list-disc pl-5 text-ink-muted">
-            {RETENTION.map(([what, how]) => (
-              <li key={what}>
-                {what}: {how}
-              </li>
-            ))}
-          </ul>
+          <BackupRetention />
         </Part>
       </div>
     </Screen>

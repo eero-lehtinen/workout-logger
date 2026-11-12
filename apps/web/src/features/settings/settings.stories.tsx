@@ -377,7 +377,9 @@ export const DeleteAccount = {
       const dialog = within(
         await page.findByRole("dialog", { name: "Delete account" }),
       );
-      await expect(dialog.getByText("Daily copies: 7 days")).toBeVisible();
+      await expect(
+        dialog.getByText("Daily backups: after 7 days"),
+      ).toBeVisible();
       await expect(
         dialog.getByRole("button", { name: "Export snapshot" }),
       ).toBeVisible();

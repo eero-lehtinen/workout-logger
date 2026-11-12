@@ -21,10 +21,7 @@ export function AboutSection() {
     <Section title="About">
       {isNative && <AppVersionRow />}
       <Row label="Web app build" hint={webBuild()} />
-      <Row
-        label="Privacy"
-        hint="What the server stores, who handles it, and how long backups keep it."
-      >
+      <Row label="Privacy" hint="What the server stores and for how long.">
         <Link
           to="/privacy"
           aria-label="Open privacy page"

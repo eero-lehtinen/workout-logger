@@ -14,7 +14,9 @@ export const Phone = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/It is not encrypted/)).toBeVisible();
-    await expect(canvas.getByText("Monthly copies: 3 months")).toBeVisible();
+    await expect(
+      canvas.getByText("Monthly backups: after 3 months"),
+    ).toBeVisible();
   },
 });
 

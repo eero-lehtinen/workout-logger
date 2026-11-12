@@ -5,16 +5,8 @@ import { toasts } from "../../components/toasts.tsx";
 import { useDb } from "../../db/react.tsx";
 import { type AccountUser, deleteAccount } from "../../lib/account.ts";
 import { saveSnapshot } from "../../lib/device-snapshots.ts";
+import { BackupRetention } from "../privacy/backup-retention.tsx";
 import { Row } from "./settings-rows.tsx";
-
-/** docs/accounts.md#privacy; keep the two in step. */
-const RETENTION = [
-  ["Continuous replica", "3 days"],
-  ["Daily copies", "7 days"],
-  ["Monthly copies", "3 months"],
-  ["Copies before server updates", "14 days"],
-  ["The owner's own backup", "per its retention"],
-];
 
 /** Deletes the account after the user types its email. Not for the owner. */
 export function DeleteAccountRow(props: { user: AccountUser }) {
@@ -83,21 +75,13 @@ function DeleteAccountSheet(props: { user: AccountUser; onClose: () => void }) {
     >
       <div className="flex flex-col gap-4 px-4 py-4 text-[0.9375rem]">
         <p>
-          The server deletes your account, its sign-ins, and all the workout
-          data it holds for it, right away. Your other devices stop syncing.
-          This device keeps its data and signs out.
+          The server deletes your account and all your workout data right away.
+          Your other devices stop syncing. This device keeps its data and signs
+          out.
         </p>
         <div>
-          <p>
-            Backups made before today still hold your data until they expire:
-          </p>
-          <ul className="mt-1 list-disc pl-5 text-ink-muted">
-            {RETENTION.map(([what, how]) => (
-              <li key={what}>
-                {what}: {how}
-              </li>
-            ))}
-          </ul>
+          <p>Older backups still contain your data until they are deleted:</p>
+          <BackupRetention className="mt-1" />
         </div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-ink-muted">Keep a copy of your data first.</p>
