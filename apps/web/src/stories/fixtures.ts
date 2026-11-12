@@ -242,11 +242,19 @@ export const withBusyDays: Fixture = async (db) => {
 
 /**
  * History plus an Upper session in progress: bench has a PR and a weight
- * increase logged and a third set to go, rows have set records.
+ * increase logged and a third set to go, rows have set records. The bench
+ * slot has a note.
  */
 export const running: Fixture = async (db) => {
   const ids = await withHistory(db);
   const { routineId } = ids;
+  if (routineId) {
+    const detail = await db.client.query("routineDetail", { routineId });
+    const benchSlot = detail?.days[0]?.slots[0]?.id;
+    if (benchSlot) {
+      await db.run("updateSlot", { slotId: benchSlot, note: "heavy, 6–10" });
+    }
+  }
   const options = await db.client.query("startOptions", undefined);
   const upper = options.routines[0]?.days[0]?.id ?? null;
   const current = await session(db, {

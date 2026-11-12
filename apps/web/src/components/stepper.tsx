@@ -16,6 +16,8 @@ export interface StepperProps {
 
 /**
  * A number with −/+ buttons and a text field that opens the numeric keypad.
+ * The label and unit sit inside the field, beside the number, so the number
+ * gets the width a label column would take.
  * While the field has focus it shows the typed text; otherwise `format`.
  * The first character typed after focusing replaces the value, like a
  * select-all, without selecting: on phones a selection brings up handles and
@@ -37,18 +39,6 @@ export function Stepper(props: StepperProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <label
-        htmlFor={id}
-        className="flex w-16 shrink-0 flex-col text-sm leading-tight text-ink-muted"
-      >
-        {props.label}
-        {props.unit && (
-          <span className="text-xs">
-            <span className="sr-only"> in </span>
-            {props.unit}
-          </span>
-        )}
-      </label>
       <StepButton
         label={`Less ${props.label.toLowerCase()}`}
         large={large}
@@ -56,7 +46,16 @@ export function Stepper(props: StepperProps) {
       >
         <Minus size={large ? 22 : 18} />
       </StepButton>
-      <div className="min-w-0 flex-1">
+      <div
+        className={clsx(
+          "flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-raised px-3 text-ink-muted ring-1 ring-rule focus-within:ring-2 focus-within:ring-ink",
+          large ? "h-14 text-sm" : "h-11 text-xs",
+        )}
+      >
+        <label htmlFor={id} className="flex h-full shrink-0 items-center">
+          {props.label}
+          {props.unit && <span className="sr-only"> in {props.unit}</span>}
+        </label>
         <input
           id={id}
           type="text"
@@ -82,12 +81,15 @@ export function Stepper(props: StepperProps) {
           }}
           onBlur={() => setDraft(null)}
           className={clsx(
-            "w-full rounded-xl bg-raised text-center outline-none ring-1 ring-rule focus:ring-2 focus:ring-ink",
-            large
-              ? "numerals h-14 text-[1.75rem]"
-              : "tabular h-11 text-lg font-semibold",
+            "h-full w-full min-w-0 bg-transparent text-center text-ink outline-none",
+            large ? "numerals text-[1.75rem]" : "tabular text-lg font-semibold",
           )}
         />
+        {props.unit && (
+          <span aria-hidden className="shrink-0">
+            {props.unit}
+          </span>
+        )}
       </div>
       <StepButton
         label={`More ${props.label.toLowerCase()}`}

@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Free text edited in place. Saves on blur, trimmed, and only when it changed,
@@ -10,19 +10,28 @@ export function NotesField(props: {
   value: string;
   placeholder: string;
   onSave: (notes: string) => void;
+  /** Focus when shown, for a field opened by an "Add note" button. */
+  focusOnMount?: boolean;
+  /** After saving, with the trimmed text. */
+  onBlur?: (text: string) => void;
   className?: string;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (props.focusOnMount) ref.current?.focus();
+  }, [props.focusOnMount]);
   return (
     <textarea
+      ref={ref}
       aria-label={props.label}
       value={draft ?? props.value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        if (draft !== null && draft.trim() !== props.value) {
-          props.onSave(draft.trim());
-        }
+        const text = (draft ?? props.value).trim();
+        if (draft !== null && text !== props.value) props.onSave(text);
         setDraft(null);
+        props.onBlur?.(text);
       }}
       placeholder={props.placeholder}
       rows={2}
