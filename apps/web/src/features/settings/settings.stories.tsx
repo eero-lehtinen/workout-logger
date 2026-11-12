@@ -249,6 +249,9 @@ export const SignedIn = {
         canvas.getByRole("button", { name: "Sync now" }),
       ).toBeVisible();
       await expect(canvas.queryByText("Clock ahead")).toBeNull();
+      await expect(
+        canvas.getByRole("link", { name: "Open privacy page" }),
+      ).toHaveAttribute("href", "/privacy");
     },
   }),
   beforeEach: signedIn(alice),

@@ -166,7 +166,7 @@ backup or a database over 700 MB instead of its description.
 
 ## Privacy
 
-- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says the data is not encrypted and links to a `/privacy` page with this section's content; the Google consent screen links to it too.
+- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says the data is not encrypted and links to a `/privacy` page with this section's content. Settings → About links to it in every account state, and the Google consent screen links to it too.
 - There is no end-to-end encryption. It would complicate the CLI and server-side restores, and a lost key would mean lost data.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
 - **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.
