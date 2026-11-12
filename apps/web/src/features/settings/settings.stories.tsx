@@ -119,6 +119,22 @@ export const WeekStart = pageStory({
   },
 });
 
+/** The alert volume is a synced setting, saved when the slider is let go. */
+export const AlertVolume = pageStory({
+  fixture: empty,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const slider = await canvas.findByRole("slider", { name: "Alert volume" });
+    await expect(slider).toHaveAttribute("aria-valuenow", "70");
+    await expect(slider).toHaveAttribute("aria-valuetext", "70%");
+    slider.focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(slider).toHaveAttribute("aria-valuenow", "65"));
+    await expect(canvas.getByText("65%")).toBeInTheDocument();
+  },
+});
+
 /** Forcing a theme overrides the system one and is remembered. */
 export const ThemeChoice = pageStory({
   fixture: empty,

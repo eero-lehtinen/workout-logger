@@ -18,11 +18,8 @@ export const settings = {
     restTime: "Tauon pituus",
     restTimeHint: "m:ss. Liikkeelle voi asettaa oman.",
     alertVolume: "Merkkiäänen voimakkuus",
-    alertVolumeHintNative: "Suhteessa puhelimen hälytysten äänenvoimakkuuteen.",
+    alertVolumeHintNative: "Suhteessa puhelimen median äänenvoimakkuuteen.",
     alertVolumeHintWeb: "Ääni, joka soi tauon lopussa.",
-    volumeLow: "Hiljainen",
-    volumeMedium: "Keskitaso",
-    volumeHigh: "Kova",
     sessionTimer: "Treeniajastin",
     sessionTimerHint:
       "Näyttää, kuinka kauan käynnissä oleva treeni on kestänyt.",

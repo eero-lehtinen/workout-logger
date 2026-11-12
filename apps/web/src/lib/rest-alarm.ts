@@ -13,10 +13,13 @@ export interface RestState {
 }
 
 /**
- * The `rest_alert_volume` setting as a gain. Steps are far apart because
- * loudness follows the gain's logarithm.
+ * The `rest_alert_volume` percent as a gain. Perceived loudness grows with
+ * about the 0.6th power of amplitude (it doubles every 10 dB), so this keeps
+ * loudness proportional to the slider: 50 % is -10 dB and sounds half as loud.
  */
-export const ALERT_VOLUMES = { low: 0.12, medium: 0.35, high: 1 } as const;
+export function alertGain(percent: number): number {
+  return (percent / 100) ** (1 / 0.6);
+}
 
 /** A rest as the alarm knows it: when it ends and whether it has. */
 export interface AlarmRest {

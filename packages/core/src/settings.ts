@@ -11,6 +11,11 @@ const number = (min: number, max: number) =>
 const integer = (min: number, max: number) =>
   v.pipe(v.number(), v.integer(), v.minValue(min), v.maxValue(max));
 
+export const ALERT_VOLUME_MIN = 5;
+
+/** The old levels' gains (0.12, 0.35, 1) as percent of loudness. */
+const LEGACY_ALERT_VOLUMES = { low: 30, medium: 55, high: 100 } as const;
+
 /**
  * User settings, one `setting` row per key with the value as JSON. A missing
  * or invalid value (e.g. written by a newer app) reads as the default.
@@ -28,10 +33,20 @@ export const SETTINGS = {
   },
   rest_default_s: { schema: integer(0, 3600), default: 120 },
   rest_timer_enabled: { schema: v.boolean(), default: true },
-  /** How loud the end-of-rest alert is, relative to the device's own volume. */
+  /**
+   * How loud the end-of-rest alert is, in percent of full loudness, relative
+   * to the device's own volume. Older apps stored one of three levels, which
+   * still sync in from their devices.
+   */
   rest_alert_volume: {
-    schema: v.picklist(["low", "medium", "high"]),
-    default: "high",
+    schema: v.union([
+      integer(ALERT_VOLUME_MIN, 100),
+      v.pipe(
+        v.picklist(["low", "medium", "high"]),
+        v.transform((level) => LEGACY_ALERT_VOLUMES[level]),
+      ),
+    ]),
+    default: 70,
   },
   /** Display only: sessions keep their start and end times either way. */
   session_timer_shown: { schema: v.boolean(), default: true },

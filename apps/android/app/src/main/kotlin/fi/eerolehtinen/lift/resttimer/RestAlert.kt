@@ -21,9 +21,9 @@ import androidx.core.app.NotificationManagerCompat
 import fi.eerolehtinen.lift.R
 
 /**
- * The end-of-rest alert: a short sound at alarm volume with music ducked,
- * an alarm vibration, and a notification. Call from a foreground service:
- * on Android 15+ a background app gets no audio focus, so music isn't ducked.
+ * The end-of-rest alert: a short sound with music ducked, an alarm
+ * vibration, and a notification. Call from a foreground service: on
+ * Android 15+ a background app gets no audio focus, so music isn't ducked.
  */
 object RestAlert {
     private const val TAG = "RestTimer"
@@ -33,12 +33,21 @@ object RestAlert {
     /** Mirrors how long the UI shows "Rest over" (FINISHED_VISIBLE_MS in rest-timer.ts). */
     private const val NOTIFICATION_TIMEOUT_MS = 60_000L
 
-    // The sound is about 0.6 s; this bounds the service's life if playback stalls.
+    // The sound is 0.75 s; this bounds the service's life if playback stalls.
     private const val MAX_RUN_MS = 8_000L
     private val VIBRATION_PATTERN = longArrayOf(0, 400, 200, 400, 200, 600)
 
-    // USAGE_ALARM plays at the alarm volume and ignores the ringer mode.
-    private val ALARM_AUDIO: AudioAttributes = AudioAttributes.Builder()
+    // Navigation guidance routes like media: headphones only when connected,
+    // at the media volume. USAGE_ALARM would also play on the speaker, and
+    // the audio policy mutes music for a speaker+headphones pair instead of
+    // ducking it.
+    private val SOUND_AUDIO: AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+
+    // Alarm vibration ignores the ringer mode.
+    private val ALARM_VIBRATION_AUDIO: AudioAttributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ALARM)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
         .build()
@@ -106,11 +115,11 @@ object RestAlert {
     private fun playSound(ctx: Context, volume: Float, finish: Runnable) {
         val audio = ctx.getSystemService(AudioManager::class.java)
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-            .setAudioAttributes(ALARM_AUDIO)
+            .setAudioAttributes(SOUND_AUDIO)
             .build()
         focusRequest = request
         audio.requestAudioFocus(request)
-        val mp = MediaPlayer.create(ctx, R.raw.rest_beep, ALARM_AUDIO, audio.generateAudioSessionId())
+        val mp = MediaPlayer.create(ctx, R.raw.rest_beep, SOUND_AUDIO, audio.generateAudioSessionId())
             ?: throw IllegalStateException("MediaPlayer.create returned null")
         mp.setOnCompletionListener { finish.run() }
         mp.setOnErrorListener { _, what, extra ->
@@ -136,7 +145,7 @@ object RestAlert {
             vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(effect, ALARM_AUDIO)
+            vibrator.vibrate(effect, ALARM_VIBRATION_AUDIO)
         }
     }
 

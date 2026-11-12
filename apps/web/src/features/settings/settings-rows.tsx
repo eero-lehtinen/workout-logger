@@ -17,6 +17,8 @@ export function Row(props: {
   hint?: React.ReactNode;
   /** For a control too wide to sit beside the text on a phone: it goes below. */
   stacked?: boolean;
+  /** A stacked control that spans the row on a phone, like a slider. */
+  fill?: boolean;
   children?: React.ReactNode;
 }) {
   return (
@@ -31,7 +33,15 @@ export function Row(props: {
         {props.hint && <p className="text-sm text-ink-muted">{props.hint}</p>}
       </div>
       {props.stacked ? (
-        <div className="self-end lg:self-auto">{props.children}</div>
+        <div
+          className={
+            props.fill
+              ? "self-stretch lg:w-64 lg:self-auto"
+              : "self-end lg:self-auto"
+          }
+        >
+          {props.children}
+        </div>
       ) : (
         props.children
       )}

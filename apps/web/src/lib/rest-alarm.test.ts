@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { mergeAlarmRest, type RestState } from "./rest-alarm.ts";
+import { alertGain, mergeAlarmRest, type RestState } from "./rest-alarm.ts";
+
+const decibels = (gain: number) => 20 * Math.log10(gain);
+
+describe("alertGain", () => {
+  it("is full gain at 100 %", () => {
+    expect(alertGain(100)).toBe(1);
+  });
+
+  it("loses 10 dB, half the loudness, for every halving of the percent", () => {
+    expect(decibels(alertGain(50))).toBeCloseTo(-10, 0);
+    expect(decibels(alertGain(25))).toBeCloseTo(-20, 0);
+  });
+});
 
 const state: RestState = {
   endsAt: 100_000,
