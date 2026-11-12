@@ -149,6 +149,17 @@
     isolation: isolate;
   }
 
+  /* Tailwind v4 gives buttons the arrow cursor, like native apps. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  input:is([type="checkbox"], [type="radio"]):not(:disabled),
+  label:has(> input:is([type="checkbox"], [type="radio"]):not(:disabled)) {
+    cursor: pointer;
+  }
+
   input[type="search"]::-webkit-search-cancel-button {
     appearance: none;
   }
