@@ -59,7 +59,7 @@ export const exercises = {
     type: "Mitä sarjasta kirjataan",
     muscles: "Lihakset",
     musclesHint:
-      "Napauta lihasta kerran, niin se on apulihas, ja kahdesti, niin se on päälihas. Valitse vähintään yksi päälihas.",
+      "Napauta lihasta kerran, niin se on päälihas, ja kahdesti, niin se on apulihas. Valitse vähintään yksi päälihas.",
     restTime: "Tauon pituus",
     restTimeHint: "m:ss. Tyhjänä käytetään oletusta.",
     restTimeError: "Anna aika muodossa m:ss.",

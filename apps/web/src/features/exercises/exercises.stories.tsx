@@ -227,7 +227,7 @@ export const NewUntouched = pageStory({
 });
 
 /**
- * A muscle chip steps through secondary, primary, and none. What's missing
+ * A muscle chip steps through primary, secondary, and none. What's missing
  * turns red only once a save was tried.
  */
 export const New = pageStory({
@@ -247,11 +247,11 @@ export const New = pageStory({
       canvas.getByRole("group", { name: "Chest" }),
     ).getByRole("button", { name: "Chest" });
     await userEvent.click(chest);
-    await expect(chest).toHaveAttribute("aria-pressed", "mixed");
-    await expect(hint).toHaveClass("text-danger");
-    await userEvent.click(chest);
     await expect(chest).toHaveAttribute("aria-pressed", "true");
     await expect(hint).not.toHaveClass("text-danger");
+    await userEvent.click(chest);
+    await expect(chest).toHaveAttribute("aria-pressed", "mixed");
+    await expect(hint).toHaveClass("text-danger");
     await userEvent.click(chest);
     await expect(chest).toHaveAttribute("aria-pressed", "false");
   },

@@ -54,7 +54,7 @@ export const exercises = {
     type: "What a set records",
     muscles: "Muscles",
     musclesHint:
-      "Tap a muscle once for secondary, twice for primary. Pick at least one primary.",
+      "Tap a muscle once for primary, twice for secondary. Pick at least one primary.",
     restTime: "Rest time",
     restTimeHint: "m:ss. Empty uses your default.",
     restTimeError: "Enter a time as m:ss.",

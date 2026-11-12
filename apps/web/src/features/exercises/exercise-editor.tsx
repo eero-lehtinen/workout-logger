@@ -393,11 +393,11 @@ function byGroup(muscles: MuscleItem[]) {
   })).filter((g) => g.muscles.length > 0);
 }
 
-const NEXT_FACTOR: Record<number, number> = { 0: 0.5, 0.5: 1, 1: 0 };
+const NEXT_FACTOR: Record<number, number> = { 0: 1, 1: 0.5, 0.5: 0 };
 
 /**
- * One chip per muscle, by region, that steps through none, secondary, and
- * primary. Secondary is `aria-pressed="mixed"`: outlined with a hollow dot;
+ * One chip per muscle, by region, that steps through none, primary, and
+ * secondary. Secondary is `aria-pressed="mixed"`: outlined with a hollow dot;
  * primary is a selected chip with a filled dot.
  */
 function MuscleCycle(props: {
