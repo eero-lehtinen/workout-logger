@@ -20,9 +20,6 @@ export const settings = {
     alertVolume: "Merkkiäänen voimakkuus",
     alertVolumeHintNative: "Suhteessa puhelimen median äänenvoimakkuuteen.",
     alertVolumeHintWeb: "Ääni, joka soi tauon lopussa.",
-    volumeLow: "Hiljainen",
-    volumeMedium: "Keskitaso",
-    volumeHigh: "Kova",
     sessionTimer: "Treeniajastin",
     sessionTimerHint:
       "Näyttää, kuinka kauan käynnissä oleva treeni on kestänyt.",

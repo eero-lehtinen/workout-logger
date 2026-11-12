@@ -1,8 +1,9 @@
-import type { SettingChange } from "@workout-logger/core";
+import { ALERT_VOLUME_MIN, type SettingChange } from "@workout-logger/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
+import { Slider } from "../../components/slider.tsx";
 import { parseDuration, parseNumber } from "../../components/stepper.tsx";
 import { Switch } from "../../components/switch.tsx";
 import { toasts } from "../../components/toasts.tsx";
@@ -11,7 +12,7 @@ import { useLanguage } from "../../i18n/index.ts";
 import { formatDuration, numberFormat } from "../../lib/format.ts";
 import { keepAwakeSupported } from "../../lib/keep-awake.ts";
 import { isNative } from "../../lib/platform.ts";
-import { ALERT_VOLUMES } from "../../lib/rest-alarm.ts";
+import { alertGain } from "../../lib/rest-alarm.ts";
 import { restTimer } from "../../lib/rest-timer.ts";
 import { useTheme } from "../../lib/theme.ts";
 import { AboutSection } from "./about-section.tsx";
@@ -102,6 +103,7 @@ export function SettingsPage() {
         {settings.rest_timer_enabled && (
           <Row
             stacked
+            fill
             label={t("settings.timers.alertVolume")}
             hint={
               isNative
@@ -109,16 +111,17 @@ export function SettingsPage() {
                 : t("settings.timers.alertVolumeHintWeb")
             }
           >
-            <Segmented
+            <Slider
               label={t("settings.timers.alertVolume")}
               value={settings.rest_alert_volume}
-              options={[
-                { value: "low", label: t("settings.timers.volumeLow") },
-                { value: "medium", label: t("settings.timers.volumeMedium") },
-                { value: "high", label: t("settings.timers.volumeHigh") },
-              ]}
-              onChange={(value) => {
-                restTimer.previewAlert(ALERT_VOLUMES[value]);
+              min={ALERT_VOLUME_MIN}
+              max={100}
+              step={5}
+              format={(value) =>
+                numberFormat({ style: "percent" }).format(value / 100)
+              }
+              onCommit={(value) => {
+                restTimer.previewAlert(alertGain(value));
                 void set({ key: "rest_alert_volume", value });
               }}
             />
