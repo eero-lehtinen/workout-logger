@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 export interface Insets {
   top: number;
@@ -63,13 +63,10 @@ function subscribe(onChange: () => void) {
  */
 export function usePopupCollisionPadding(): Insets {
   const insets = useSyncExternalStore(subscribe, getSnapshot);
-  return useMemo(
-    () => ({
-      top: insets.top + POPUP_EDGE_GAP,
-      right: insets.right + POPUP_EDGE_GAP,
-      bottom: insets.bottom + POPUP_EDGE_GAP,
-      left: insets.left + POPUP_EDGE_GAP,
-    }),
-    [insets],
-  );
+  return {
+    top: insets.top + POPUP_EDGE_GAP,
+    right: insets.right + POPUP_EDGE_GAP,
+    bottom: insets.bottom + POPUP_EDGE_GAP,
+    left: insets.left + POPUP_EDGE_GAP,
+  };
 }
