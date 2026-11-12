@@ -328,7 +328,7 @@ function ExerciseForm({
               <input
                 value={rest}
                 onChange={(e) => setRest(e.target.value)}
-                inputMode="numeric"
+                inputMode="decimal"
                 placeholder={t("exercises.editor.defaultValue", {
                   value: formatDuration(settings.rest_default_s),
                 })}
