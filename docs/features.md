@@ -148,7 +148,7 @@ don't count.
 | Adjust with +/-15 s, skip, restart | P0 | |
 | Alert volume: quiet, medium, loud | P1 | A setting; selecting a level previews it. On Android it scales the alert down from the phone's media volume. |
 | Countdown floats over other screens | P0 | Tapping it opens the exercise whose set started the rest; opening "Rest over" also dismisses it. "Rest over" clears itself after a minute. |
-| Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at media volume, in headphones only when they are connected, also in silent mode; music is ducked during the alert. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
+| Vibration and sound on finish, including in the background and over music | P0 (Android) | Plays at media volume, in headphones only when they are connected; music is ducked during the alert. Vibrates in silent mode. See [architecture.md](architecture.md#rest-timer). Web: works only while the page is visible. Web is best effort. |
 | Countdown in a notification or on the lock screen while running | P0 (Android) | Comes with the countdown service that drives the timer. The notification has "+15 s" and "Skip". |
 
 ## Measurements (custom data)

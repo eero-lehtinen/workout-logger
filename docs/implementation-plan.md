@@ -38,7 +38,7 @@ These are human estimates. AI agents can do large phases very quickly.
 Throwaway code in a `spikes/` directory, deleted once the findings are recorded
 in the design docs.
 
-1. **RestTimer plugin** [done]. A minimal Capacitor app with a Kotlin plugin: an exact alarm, a `USAGE_ALARM` sound, and a vibrator.
+1. **RestTimer plugin** [done]. A minimal Capacitor app with a Kotlin plugin: an exact alarm, a short alert sound, and a vibrator.
    - Test matrix on your phone: music playing (Spotify), silent mode, DND, screen locked, app swiped away, exact-alarm permission revoked.
    - Exit: all pass, or the failures are documented with a workaround.
    - Result: all pass with a FitNotes-style countdown service instead of an exact alarm. Design and results in [architecture.md](architecture.md#rest-timer).

@@ -508,16 +508,16 @@ From the phase 1 spike; the app runs the same service and alert code. On the own
 | Process killed mid-rest | No alert (the accepted gap). |
 | Started while the phone was locked | Refused by Android (`ForegroundServiceStartNotAllowedException`). |
 
-The alert itself, measured with the same alert code started by an alarm:
+The alert itself, started by an alarm, with the sound on `USAGE_ALARM` (since replaced by navigation guidance):
 
 | Case | Result |
 | --- | --- |
 | Alert slider on vibrate or silent | Pass. Sound plays unmuted on the speaker; vibration plays in full. |
 | DND (priority mode, alarms allowed) | Pass. |
-| Music playing (YouTube Music on the speaker) | Pass from a foreground service: music ducks to 20% for the alert and resumes. Measured with `USAGE_ALARM`; the duck depends only on the focus request. |
-| Music playing in headphones, `USAGE_ALARM` | Fail, reported by a user: music cut out instead of ducking. Led to the navigation-guidance usage. |
+| Music playing (YouTube Music on the speaker) | Pass from a foreground service: music ducks to 20% for the alert and resumes. The duck depends only on the focus request. |
+| Music playing in headphones | Fail, reported by a user: music cut out instead of ducking. Led to the navigation-guidance usage. |
 
-Not tested: the navigation-guidance usage with headphones and on the speaker, DND configured to block media, battery saver, the "+15 s" and "Skip" notification actions, the Live Update chip.
+Not tested with the navigation-guidance usage: any of the cases above, the alert slider on silent, DND with media blocked, Bluetooth earbuds connected with no music playing (an idle A2DP link may clip the start of the beep; if so, add leading silence in `rest-beep.mjs`). Not tested at all: battery saver, the "+15 s" and "Skip" notification actions, the Live Update chip.
 
 ### Health Connect
 
