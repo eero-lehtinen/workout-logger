@@ -25,7 +25,7 @@ export const PastSessionReadOnly = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      canvas.getByRole("link", { name: /^Squat \(Barbell\)/ }),
+      canvas.getByRole("link", { name: /^Back Squat/ }),
     ).toHaveAttribute("href", expect.stringMatching(/\/history\?sessionId=/));
     await expect(
       canvas.getByText("Short on sleep, kept it easy."),
@@ -58,9 +58,7 @@ export const PastSessionToHistoryAndBack = pageStory({
   url: (ids) => `/sessions/${ids.pastSessionId}`,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("link", { name: /^Squat \(Barbell\)/ }),
-    );
+    await userEvent.click(canvas.getByRole("link", { name: /^Back Squat/ }));
     await userEvent.click(
       await canvas.findByRole("link", { name: "Back to session" }),
     );
@@ -105,10 +103,12 @@ export const StartNextDay = pageStory({
     const canvas = within(canvasElement);
     const upper = await canvas.findByRole("button", { name: /Upper/ });
     await expect(upper).toHaveTextContent("Next");
-    await expect(upper).toHaveTextContent("Bench Press, Bent-Over Row, +1");
+    await expect(upper).toHaveTextContent(
+      "Barbell Bench Press, Barbell Row, +1",
+    );
     const lower = canvas.getByRole("button", { name: /Lower/ });
     await expect(lower).not.toHaveTextContent("Next");
-    await expect(lower).toHaveTextContent("Squat, Romanian Deadlift, +1");
+    await expect(lower).toHaveTextContent("Back Squat, Romanian Deadlift, +1");
   },
 });
 
@@ -253,9 +253,7 @@ async function expectNamedOriginal(canvasElement: HTMLElement, count: number) {
   const canvas = within(canvasElement);
   await canvas.findByRole("button", { name: "Log set 1" });
   const named = canvas
-    .getAllByText(
-      (_, el) => el?.textContent === "Instead of Overhead Press (Barbell)",
-    )
+    .getAllByText((_, el) => el?.textContent === "Instead of Overhead Press")
     .filter((el) => el.checkVisibility());
   await expect(named).toHaveLength(count);
 }
@@ -272,26 +270,26 @@ export const LoggingSubstitute = pageStory({
     const body = within(canvasElement.ownerDocument.body);
     await userEvent.click(
       canvas.getByRole("link", {
-        name: "Not started Seated Shoulder Press (Dumbbell) Instead of Overhead Press (Barbell)",
+        name: "Not started Dumbbell Shoulder Press Instead of Overhead Press",
       }),
     );
     await expectNamedOriginal(canvasElement, 1);
 
     await userEvent.click(
       canvas.getByRole("button", {
-        name: "Instead of Overhead Press (Barbell)",
+        name: "Instead of Overhead Press",
       }),
     );
     const picker = await body.findByRole("dialog", {
-      name: "Instead of Seated Shoulder Press (Dumbbell)",
+      name: "Instead of Dumbbell Shoulder Press",
     });
     await userEvent.click(
       await within(picker).findByRole("button", {
-        name: /^Overhead Press \(Barbell\)/,
+        name: /^Overhead Press/,
       }),
     );
     await expect(
-      await canvas.findByRole("heading", { name: "Overhead Press (Barbell)" }),
+      await canvas.findByRole("heading", { name: "Overhead Press" }),
     ).toBeVisible();
     await expect(
       canvas.queryByRole("button", { name: /^Instead of/ }),
@@ -355,10 +353,12 @@ export const ReorderByKeyboard = pageStory({
     const canvas = within(canvasElement);
     const names = () =>
       canvas
-        .getAllByRole("link", { name: /\(Barbell\)/ })
+        .getAllByRole("link", {
+          name: /Barbell Bench Press|Barbell Row|Overhead Press/,
+        })
         .map((link) => link.querySelector("p")?.textContent);
     const grip = await canvas.findByRole("button", {
-      name: "Move Bench Press (Barbell)",
+      name: "Move Barbell Bench Press",
     });
     grip.focus();
     await userEvent.keyboard("[Space]");
@@ -366,9 +366,9 @@ export const ReorderByKeyboard = pageStory({
     await userEvent.keyboard("[Space]");
     await waitFor(() =>
       expect(names()).toEqual([
-        "Bent-Over Row (Barbell)",
-        "Bench Press (Barbell)",
-        "Overhead Press (Barbell)",
+        "Barbell Row",
+        "Barbell Bench Press",
+        "Overhead Press",
       ]),
     );
   },
@@ -388,10 +388,10 @@ export const AddExerciseByMuscleGroup = pageStory({
     );
     await userEvent.click(await picker.findByRole("button", { name: "Legs" }));
     await expect(
-      await picker.findByRole("button", { name: /^Squat \(Barbell\)/ }),
+      await picker.findByRole("button", { name: /^Back Squat/ }),
     ).toBeVisible();
     await expect(
-      picker.queryByRole("button", { name: /^Bench Press \(Barbell\)/ }),
+      picker.queryByRole("button", { name: /^Barbell Bench Press/ }),
     ).toBeNull();
 
     await userEvent.type(
@@ -399,7 +399,7 @@ export const AddExerciseByMuscleGroup = pageStory({
       "press",
     );
     await expect(
-      await picker.findByRole("button", { name: /^Leg Press/ }),
+      await picker.findByRole("button", { name: /^Leg Press(?! Calf)/ }),
     ).toBeVisible();
     await expect(
       picker.queryByRole("button", { name: /^Overhead Press/ }),
@@ -421,7 +421,9 @@ export const RemoveFromSession = pageStory({
     );
     await canvas.findByRole("heading", { name: "Upper" });
     await waitFor(() =>
-      expect(canvas.queryByRole("link", { name: /^Bench Press/ })).toBeNull(),
+      expect(
+        canvas.queryByRole("link", { name: /Barbell Bench Press/ }),
+      ).toBeNull(),
     );
   },
 });
@@ -433,7 +435,7 @@ export const EditNotes = pageStory({
     const canvas = within(canvasElement);
     const exerciseNotes = () =>
       canvas.queryByRole("textbox", {
-        name: /^Notes on Bench Press .* in this session$/,
+        name: "Notes on Barbell Bench Press in this session",
       });
     const addNote = await canvas.findByRole("button", { name: "Add note" });
     await expect(exerciseNotes()).toBeNull();

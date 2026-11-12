@@ -94,19 +94,19 @@ export const SlotNoteAndRest = pageStory({
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     const row = canvas.getByRole("button", {
-      name: /^Bench Press \(Barbell\)/,
+      name: /^Barbell Bench Press/,
     });
-    await expect(row).toHaveTextContent("or Bench Press (Dumbbell)");
+    await expect(row).toHaveTextContent("or Dumbbell Bench Press");
     await userEvent.click(row);
     const sheet = within(
-      await body.findByRole("dialog", { name: "Bench Press (Barbell)" }),
+      await body.findByRole("dialog", { name: "Barbell Bench Press" }),
     );
     const note = sheet.getByRole("textbox", {
-      name: "Note for Bench Press (Barbell)",
+      name: "Note for Barbell Bench Press",
     });
     await userEvent.type(note, "heavy, 6-10{Enter}");
     const rest = sheet.getByRole("textbox", {
-      name: "Rest for Bench Press (Barbell), m:ss",
+      name: "Rest for Barbell Bench Press, m:ss",
     });
     await userEvent.type(rest, "3:00{Enter}");
     await waitFor(() => expect(rest).toHaveValue("3:00"));
@@ -114,7 +114,7 @@ export const SlotNoteAndRest = pageStory({
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(row).toHaveTextContent(
-        "heavy, 6-10 · Rest 3:00 · or Bench Press (Dumbbell)",
+        "heavy, 6-10 · Rest 3:00 · or Dumbbell Bench Press",
       ),
     );
   },
@@ -125,7 +125,7 @@ export const SlotSheetOpen = pageStory({
   url: (ids) => `/routines/${ids.routineId}`,
   play: async ({ canvasElement }) => {
     await userEvent.click(
-      within(canvasElement).getByRole("button", { name: /^Bent-Over Row/ }),
+      within(canvasElement).getByRole("button", { name: /^Barbell Row/ }),
     );
   },
 });

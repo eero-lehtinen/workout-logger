@@ -12,7 +12,7 @@ test("works offline after the first visit", async ({ page, context }) => {
     )
     .toBe(true);
 
-  await startWithExercise(page, "squat barbell", /^Squat \(Barbell\)/);
+  await startWithExercise(page, "back squat", /^Back Squat/);
   await logSet(page, "140", "5");
 
   await context.setOffline(true);

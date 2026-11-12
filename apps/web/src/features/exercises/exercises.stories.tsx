@@ -20,8 +20,8 @@ export const Browser = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Legs" }));
-    await expect(await canvas.findByText("Squat (Barbell)")).toBeVisible();
-    await expect(canvas.queryByText("Bench Press (Barbell)")).toBeNull();
+    await expect(await canvas.findByText("Back Squat")).toBeVisible();
+    await expect(canvas.queryByText("Barbell Bench Press")).toBeNull();
   },
 });
 
@@ -29,11 +29,12 @@ export const SortRecentlyLogged = pageStory({
   fixture: withHistory,
   url: () => "/exercises",
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await choose(canvasElement, "Sort exercises", "Recent");
     // The last set of the latest session was a leg curl.
-    const [first] = canvas.getAllByRole("link", { name: /\(/ });
-    await expect(first).toHaveTextContent(/^Lying Leg Curl \(Machine\)/);
+    const first = canvasElement.querySelector(
+      'a[href*="/exercises/"][href$="/history"]',
+    );
+    await expect(first).toHaveTextContent(/^Lying Leg Curl/);
   },
 });
 
@@ -62,9 +63,7 @@ export const SubstitutionSections = pageStory({
         .getAllByRole("button")
         .map((b) => b.textContent ?? "");
     await within(sheet).findByRole("heading", { name: "Alternatives" });
-    await expect(section("Alternatives")[0]).toMatch(
-      /^Bench Press \(Dumbbell\)/,
-    );
+    await expect(section("Alternatives")[0]).toMatch(/^Dumbbell Bench Press/);
     const names = section("Same muscles");
     await expect(names.length).toBeGreaterThan(1);
     await expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
@@ -85,16 +84,16 @@ export const ScrollKeptOnReturn = pageStory({
       );
     const main = list();
     if (!main) throw new Error("no scroll container");
-    const squat = await canvas.findByRole("link", {
-      name: /^Squat \(Barbell\)/,
+    const calfRaise = await canvas.findByRole("link", {
+      name: /^Standing Calf Raise/,
     });
-    squat.scrollIntoView({ block: "center" });
+    calfRaise.scrollIntoView({ block: "center" });
     // The router records scroll positions on a throttled scroll listener.
     await new Promise((resolve) => setTimeout(resolve, 300));
     const scrolled = main.scrollTop;
     await expect(scrolled).toBeGreaterThan(0);
-    await userEvent.click(squat);
-    await canvas.findByRole("heading", { name: "Squat (Barbell)" });
+    await userEvent.click(calfRaise);
+    await canvas.findByRole("heading", { name: "Standing Calf Raise" });
     const history = canvasElement.ownerDocument.querySelector(
       '[data-scroll-restoration-id="exercise-history"]',
     );
@@ -118,7 +117,7 @@ export const WithArchived = pageStory({
     await expect(
       await canvas.findByRole("heading", { name: "Archived" }),
     ).toBeVisible();
-    await expect(canvas.getByText("Pec Deck (Old Gym)")).toBeVisible();
+    await expect(canvas.getByText("Old Gym Pec Deck")).toBeVisible();
   },
 });
 
@@ -136,7 +135,7 @@ export const CopyAsNew = pageStory({
     );
     await canvas.findByRole("heading", { name: "Copy exercise" });
     const name = canvas.getByRole("textbox", { name: "Name" });
-    await expect(name).toHaveValue("Bench Press (Barbell) (copy)");
+    await expect(name).toHaveValue("Barbell Bench Press (copy)");
     const chest = within(canvas.getByRole("group", { name: "Chest" }));
     await expect(chest.getByRole("button", { name: "Chest" })).toHaveAttribute(
       "aria-pressed",
@@ -144,7 +143,7 @@ export const CopyAsNew = pageStory({
     );
 
     await userEvent.clear(name);
-    await userEvent.type(name, "Bench Press (Close Grip Pause)");
+    await userEvent.type(name, "Close-Grip Pause Bench Press");
     await userEvent.click(
       canvas.getByRole("button", { name: "Create exercise" }),
     );
@@ -153,13 +152,11 @@ export const CopyAsNew = pageStory({
       name: "Search exercises",
     });
     await userEvent.type(search, "bench press barbell");
-    await expect(
-      await canvas.findByText("Bench Press (Barbell)"),
-    ).toBeVisible();
+    await expect(await canvas.findByText("Barbell Bench Press")).toBeVisible();
     await userEvent.clear(search);
     await userEvent.type(search, "close grip pause");
     await expect(
-      await canvas.findByText("Bench Press (Close Grip Pause)"),
+      await canvas.findByText("Close-Grip Pause Bench Press"),
     ).toBeVisible();
   },
 });

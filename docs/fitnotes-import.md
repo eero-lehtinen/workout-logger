@@ -302,5 +302,10 @@ merge overwrites edits made to imported rows in the app, and doesn't remove
 rows deleted in FitNotes. So the owner imports once, from a backup taken on
 cutover day, and stops using FitNotes.
 
+The device must run the same catalog revision the conversion was built
+with. Replace re-stamps every row that differs from the device's copy, so
+built-in rows from another revision become the user's edits and stop
+receiving catalog updates.
+
 The conversion checks its output against the backup: per target exercise,
 the set count, session count, and best e1RM must match.

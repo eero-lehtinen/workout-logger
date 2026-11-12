@@ -40,13 +40,13 @@ async function setup() {
       notes: "",
       muscles,
     });
-  const bench = await exercise("Bench Press (Barbell)", {
+  const bench = await exercise("Barbell Bench Press", {
     chest: 1,
     triceps: 0.5,
   });
-  const dbBench = await exercise("Bench Press (Dumbbell)", { chest: 1 });
+  const dbBench = await exercise("Dumbbell Bench Press", { chest: 1 });
   const dips = await exercise("Dip", { chest: 1, triceps: 1 });
-  const squat = await exercise("Squat (Barbell)", { quads: 1 });
+  const squat = await exercise("Back Squat", { quads: 1 });
 
   const routineId = await run("createRoutine", { name: "Upper/Lower" });
   const upper = await run("addDay", { routineId, name: "Upper" });
@@ -114,9 +114,9 @@ describe("starting sessions", () => {
       {
         id: ids.upper,
         name: "Upper",
-        exercises: ["Bench Press (Barbell)", "Dip"],
+        exercises: ["Barbell Bench Press", "Dip"],
       },
-      { id: ids.lower, name: "Lower", exercises: ["Squat (Barbell)"] },
+      { id: ids.lower, name: "Lower", exercises: ["Back Squat"] },
     ]);
   });
 
@@ -321,9 +321,9 @@ describe("session exercises", () => {
     expect(
       view?.exercises.map((e) => [e.id === added, e.name, e.substitutesName]),
     ).toEqual([
-      [false, "Bench Press (Dumbbell)", "Bench Press (Barbell)"],
-      [true, "Dip", "Bench Press (Barbell)"],
-      [false, "Squat (Barbell)", null],
+      [false, "Dumbbell Bench Press", "Barbell Bench Press"],
+      [true, "Dip", "Barbell Bench Press"],
+      [false, "Back Squat", null],
     ]);
     const logs = await Promise.all(
       (view?.exercises ?? []).map((e) =>
@@ -331,8 +331,8 @@ describe("session exercises", () => {
       ),
     );
     expect(logs.map((l) => l?.substitutesName)).toEqual([
-      "Bench Press (Barbell)",
-      "Bench Press (Barbell)",
+      "Barbell Bench Press",
+      "Barbell Bench Press",
       null,
     ]);
   });
@@ -355,31 +355,19 @@ describe("session exercises", () => {
       sessionExerciseId: squat?.id ?? "",
       toIndex: 0,
     });
-    expect(await names()).toEqual([
-      "Squat (Barbell)",
-      "Bench Press (Barbell)",
-      "Dip",
-    ]);
+    expect(await names()).toEqual(["Back Squat", "Barbell Bench Press", "Dip"]);
     await run("moveSessionExercise", {
       sessionExerciseId: bench?.id ?? "",
       toIndex: 9,
     });
-    expect(await names()).toEqual([
-      "Squat (Barbell)",
-      "Dip",
-      "Bench Press (Barbell)",
-    ]);
+    expect(await names()).toEqual(["Back Squat", "Dip", "Barbell Bench Press"]);
     await run("moveSessionExercise", {
       sessionExerciseId: bench?.id ?? "",
       toIndex: 1,
     });
-    expect(await names()).toEqual([
-      "Squat (Barbell)",
-      "Bench Press (Barbell)",
-      "Dip",
-    ]);
+    expect(await names()).toEqual(["Back Squat", "Barbell Bench Press", "Dip"]);
     await run("removeSessionExercise", { sessionExerciseId: dip?.id ?? "" });
-    expect(await names()).toEqual(["Squat (Barbell)", "Bench Press (Barbell)"]);
+    expect(await names()).toEqual(["Back Squat", "Barbell Bench Press"]);
   });
 
   it("renumbers when concurrent inserts left equal positions", async () => {
@@ -479,8 +467,8 @@ describe("routines and exercises", () => {
     expect(detail?.days.map((d) => d.name)).toEqual(["Lower", "Upper"]);
     expect(detail?.days[1]?.slots).toMatchObject([
       {
-        exerciseName: "Bench Press (Barbell)",
-        alternatives: [{ exerciseName: "Bench Press (Dumbbell)" }],
+        exerciseName: "Barbell Bench Press",
+        alternatives: [{ exerciseName: "Dumbbell Bench Press" }],
       },
     ]);
   });
@@ -526,9 +514,9 @@ describe("routines and exercises", () => {
     expect(copy?.days.map((d) => d.name)).toEqual(["Upper", "Lower"]);
     expect(copy?.days[0]?.slots).toMatchObject([
       {
-        exerciseName: "Bench Press (Barbell)",
+        exerciseName: "Barbell Bench Press",
         note: "heavy",
-        alternatives: [{ exerciseName: "Bench Press (Dumbbell)" }],
+        alternatives: [{ exerciseName: "Dumbbell Bench Press" }],
       },
     ]);
     expect(copy?.days[0]?.slots[0]?.id).not.toBe(ids.benchSlot);
@@ -580,9 +568,9 @@ describe("routines and exercises", () => {
     expect(detail?.days.map((d) => d.name)).toEqual(["Push", "Legs"]);
     expect(detail?.days[0]?.slots).toMatchObject([
       {
-        exerciseName: "Bench Press (Barbell)",
+        exerciseName: "Barbell Bench Press",
         alternatives: [
-          { exerciseName: "Bench Press (Dumbbell)" },
+          { exerciseName: "Dumbbell Bench Press" },
           { exerciseName: "Dip" },
         ],
       },

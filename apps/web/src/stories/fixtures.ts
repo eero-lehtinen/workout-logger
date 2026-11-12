@@ -354,7 +354,7 @@ export const timersOff: Fixture = async (db) => {
 export const withArchived: Fixture = async (db) => {
   const muscles = await db.client.query("muscles", undefined);
   const chest = muscles.find((m) => m.name === "Chest")?.id ?? "";
-  for (const name of ["Cable Fly (Old Gym)", "Pec Deck (Old Gym)"]) {
+  for (const name of ["Old Gym Cable Fly", "Old Gym Pec Deck"]) {
     const { result: exerciseId } = await db.run("createExercise", {
       name,
       type: "weight_reps",

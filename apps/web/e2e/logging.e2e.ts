@@ -4,7 +4,7 @@ import { logSet, startWithExercise } from "./helpers.ts";
 test("logged sets survive a reload, and a delete can be undone", async ({
   page,
 }) => {
-  await startWithExercise(page, "bench barbell", /^Bench Press \(Barbell\)/);
+  await startWithExercise(page, "bench barbell", /^Barbell Bench Press/);
   await logSet(page, "100", "8");
   await logSet(page, "102.5", "8");
   await expect(page.getByText(/^Rest/).first()).toBeVisible();

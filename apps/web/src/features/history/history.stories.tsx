@@ -129,9 +129,9 @@ export const ExerciseHistoryRemembers = pageStory({
       canvas.getByRole("link", { name: "Back to exercises" }),
     );
     await userEvent.click(
-      await canvas.findByRole("link", { name: /^Squat \(Barbell\)/ }),
+      await canvas.findByRole("link", { name: /^Back Squat/ }),
     );
-    await canvas.findByRole("heading", { name: "Squat (Barbell)" });
+    await canvas.findByRole("heading", { name: "Back Squat" });
     await expect(
       canvas.getByRole("combobox", { name: "Metric" }),
     ).toHaveTextContent("Top weight");
@@ -155,7 +155,7 @@ export const ExerciseToSessionAndBack = pageStory({
       await canvas.findByRole("link", { name: "Back to exercise" }),
     );
     await expect(
-      await canvas.findByRole("heading", { name: "Bench Press (Barbell)" }),
+      await canvas.findByRole("heading", { name: "Barbell Bench Press" }),
     ).toBeVisible();
   },
 });
