@@ -2,6 +2,7 @@ import { Select as BaseSelect } from "@base-ui/react/select";
 import { clsx } from "clsx";
 import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
+import { usePopupCollisionPadding } from "../lib/safe-area.ts";
 
 /**
  * A dropdown drawn by the app. A native `<select>` would open the Android
@@ -20,6 +21,7 @@ export function Select<T extends string>(props: {
   className?: string | undefined;
 }) {
   const sm = props.size === "sm";
+  const collisionPadding = usePopupCollisionPadding();
   return (
     <BaseSelect.Root
       items={props.options}
@@ -54,6 +56,7 @@ export function Select<T extends string>(props: {
           className="z-50 outline-none select-none"
           sideOffset={6}
           alignItemWithTrigger={false}
+          collisionPadding={collisionPadding}
         >
           <BaseSelect.Popup className="min-w-[var(--anchor-width)] origin-[var(--transform-origin)] rounded-2xl bg-raised p-1 text-ink shadow-lg ring-1 ring-rule transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <BaseSelect.List className="max-h-[var(--available-height)] overflow-y-auto">
