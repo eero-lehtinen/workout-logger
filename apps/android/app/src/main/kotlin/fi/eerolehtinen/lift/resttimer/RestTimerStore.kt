@@ -34,7 +34,7 @@ object RestTimerStore {
         editor.commit()
     }
 
-    /** The alert's volume, 0..1 of the alarm volume. Kept across rests. */
+    /** The alert's volume, 0..1 of the media volume. Kept across rests. */
     fun volume(ctx: Context): Float = prefs(ctx).getFloat(KEY_VOLUME, 1f)
 
     fun setVolume(ctx: Context, volume: Float) {

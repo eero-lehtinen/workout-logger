@@ -14,7 +14,7 @@ export const settings = {
     restTime: "Rest time",
     restTimeHint: "m:ss. Exercises can set their own.",
     alertVolume: "Alert volume",
-    alertVolumeHintNative: "Relative to the phone's alarm volume.",
+    alertVolumeHintNative: "Relative to the phone's media volume.",
     alertVolumeHintWeb: "The sound at the end of a rest.",
     volumeLow: "Quiet",
     volumeMedium: "Medium",

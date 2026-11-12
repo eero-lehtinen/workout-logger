@@ -47,7 +47,7 @@ class RestTimerPlugin : Plugin() {
 
     /**
      * Starts a rest ending at `endsAt` (epoch ms), or moves the running one
-     * there. `volume` (0..1 of the alarm volume) is remembered for later rests.
+     * there. `volume` (0..1 of the media volume) is remembered for later rests.
      */
     @PluginMethod
     fun start(call: PluginCall) {
