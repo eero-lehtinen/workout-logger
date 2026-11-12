@@ -89,15 +89,19 @@ export function SlotDetails(props: {
   );
 }
 
-/** One line about a slot: its alternatives, note, and rest override. */
+/**
+ * One line about a slot: its note, rest override, and alternatives. The
+ * alternatives go last so a truncated line loses only their tail.
+ */
 export function slotSummary(slot: Slot): string {
-  const alternatives = slot.alternatives.length;
   return [
-    alternatives === 0
-      ? "No alternatives"
-      : `${alternatives} ${alternatives === 1 ? "alternative" : "alternatives"}`,
     slot.note,
     slot.restS === null ? null : `Rest ${formatDuration(slot.restS)}`,
+    slot.alternatives.length === 0
+      ? "No alternatives"
+      : `or ${slot.alternatives
+          .map((alt) => alt.exerciseName ?? "Deleted exercise")
+          .join(", ")}`,
   ]
     .filter(Boolean)
     .join(" · ");
