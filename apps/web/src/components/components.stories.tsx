@@ -55,6 +55,32 @@ export const StepperReplaceHint: StoryObj = {
   },
 };
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const StepperHold: StoryObj = {
+  render: () => <WeightStepper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const more = canvas.getByRole("button", { name: "Increase weight" });
+    const weight = () =>
+      Number((canvas.getByLabelText("Weight in kg") as HTMLInputElement).value);
+
+    const user = userEvent.setup();
+    await user.pointer({ keys: "[MouseLeft>]", target: more });
+    await wait(1000);
+    await user.pointer({ keys: "[/MouseLeft]", target: more });
+    const held = weight();
+    await expect(held).toBeGreaterThanOrEqual(107.5);
+
+    await wait(300);
+    await expect(weight()).toBe(held);
+
+    more.focus();
+    await user.keyboard("{Enter}");
+    await expect(weight()).toBe(held + 2.5);
+  },
+};
+
 export const Markers: StoryObj = {
   render: () => (
     <ul className="flex flex-col gap-2">
