@@ -21,10 +21,10 @@ test("logged sets survive a reload, and a delete can be undone", async ({
 
   await page.reload();
   await expect(
-    page.getByRole("button", { name: /^Edit set 1: 100 × 8/ }),
+    page.getByRole("button", { name: /^Edit set 1: 100 kg × 8/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /^Edit set 2: 102.5 × 8/ }),
+    page.getByRole("button", { name: /^Edit set 2: 102.5 kg × 8/ }),
   ).toBeVisible();
 
   await page.getByRole("link", { name: "Back to session" }).click();

@@ -28,7 +28,7 @@ test("two devices of one account see each other's sets", async ({
     await phone.getByRole("link", { name: /Running since/ }).click();
     await phone.getByRole("link", { name: /Barbell Bench Press/ }).click();
     await expect(
-      phone.getByRole("button", { name: /^Edit set 2: 105 × 6/ }),
+      phone.getByRole("button", { name: /^Edit set 2: 105 kg × 6/ }),
     ).toBeVisible({ timeout: 2000 });
   }).toPass({ timeout: 20_000 });
 });

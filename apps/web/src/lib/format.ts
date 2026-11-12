@@ -76,45 +76,57 @@ export function formatKm(meters: number): string {
   return numberFormat({ maximumFractionDigits: 2 }).format(meters / 1000);
 }
 
-/** A set as it reads in a list, e.g. `100 × 8`, `+10 × 6`, `1:30`. */
+/**
+ * A weighted set split for display: `+10` `kg` `6`. Sets without a weight
+ * are plain text: `12 reps`, `1:30`.
+ */
+export type SetParts =
+  | { weight: string; unit: WeightUnit; reps: number }
+  | { text: string };
+
+export function setParts(
+  set: SetValues,
+  type: ExerciseType,
+  unit: WeightUnit,
+): SetParts {
+  const reps = set.reps ?? 0;
+  const weight = set.weight_kg ?? 0;
+  switch (type) {
+    case "weight_reps":
+      return { weight: formatWeight(weight, unit), unit, reps };
+    case "bodyweight_reps":
+      return weight > 0
+        ? { weight: `+${formatWeight(weight, unit)}`, unit, reps }
+        : { text: i18n.t("format.reps", { count: reps }) };
+    case "reps":
+      return { text: i18n.t("format.reps", { count: reps }) };
+    case "time":
+      return { text: formatDuration(set.duration_s ?? 0) };
+    case "distance_time":
+      return {
+        text: i18n.t("format.distanceTime", {
+          distance: formatKm(set.distance_m ?? 0),
+          duration: formatDuration(set.duration_s ?? 0),
+        }),
+      };
+  }
+}
+
+/** A set as plain text, e.g. `100 kg × 8`, `+10 kg × 6`, `1:30`. */
 export function formatSet(
   set: SetValues,
   type: ExerciseType,
   unit: WeightUnit,
 ): string {
-  const reps = set.reps ?? 0;
-  const weight = set.weight_kg ?? 0;
-  switch (type) {
-    case "weight_reps":
-      return `${formatWeight(weight, unit)} × ${reps}`;
-    case "bodyweight_reps":
-      return weight > 0
-        ? `+${formatWeight(weight, unit)} × ${reps}`
-        : i18n.t("format.reps", { count: reps });
-    case "reps":
-      return i18n.t("format.reps", { count: reps });
-    case "time":
-      return formatDuration(set.duration_s ?? 0);
-    case "distance_time":
-      return i18n.t("format.distanceTime", {
-        distance: formatKm(set.distance_m ?? 0),
-        duration: formatDuration(set.duration_s ?? 0),
-      });
-  }
+  const parts = setParts(set, type, unit);
+  return "text" in parts
+    ? parts.text
+    : `${parts.weight} ${parts.unit} × ${parts.reps}`;
 }
 
 /** `102.5 kg` */
 export function formatWeightWithUnit(kg: number, unit: WeightUnit): string {
   return `${formatWeight(kg, unit)} ${unit}`;
-}
-
-/** The unit shown after a set, if one applies. */
-export function setUnit(type: ExerciseType, unit: WeightUnit): string | null {
-  return type === "weight_reps"
-    ? unit
-    : type === "bodyweight_reps"
-      ? unit
-      : null;
 }
 
 /** `Mon 5 Jan`, or with the year when it isn't this year, in the session's zone. */

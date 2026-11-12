@@ -8,11 +8,8 @@ import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { Segmented } from "../../components/segmented.tsx";
-import {
-  formatSessionDate,
-  formatSet,
-  formatWeightWithUnit,
-} from "../../lib/format.ts";
+import { SetText } from "../../components/set-text.tsx";
+import { formatSessionDate, formatWeightWithUnit } from "../../lib/format.ts";
 import { usePreference } from "../../lib/preference.ts";
 import { formatHeadline, headlineLabel, isWeighted } from "./metrics.ts";
 import { type Period, periodRecordsTitle } from "./period.ts";
@@ -49,7 +46,12 @@ export function RecordsSection(props: {
               {formatHeadline(r.kind, r.value, unit)}
             </p>
             <p className="text-sm text-ink-muted">
-              {r.set && `${formatSet(r.set, exercise.type, unit)}, `}
+              {r.set && (
+                <>
+                  <SetText set={r.set} type={exercise.type} unit={unit} />
+                  {", "}
+                </>
+              )}
               <RecordDate at={r.at} exerciseId={exercise.id} />
             </p>
           </li>

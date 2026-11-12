@@ -26,6 +26,7 @@ import {
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
+import { SetText } from "../../components/set-text.tsx";
 import { Confirm } from "../../components/sheet.tsx";
 import { IconTip } from "../../components/tooltip.tsx";
 import { useCommand, useDbQuery } from "../../db/react.tsx";
@@ -576,13 +577,14 @@ function Ledger(props: {
     <table className="w-full table-fixed border-collapse">
       <thead>
         <tr className="text-left text-sm text-ink-muted">
-          <th scope="col" className="w-8 pb-1 font-normal">
+          <th scope="col" className="w-6 pb-1 font-normal">
             <span className="sr-only">{t("session.ledger.set")}</span>
           </th>
-          <th scope="col" className="pb-1 font-normal">
+          {/* Of the whole table, so wider than last time's column, whose figures are smaller. */}
+          <th scope="col" className="w-1/2 pb-1 font-normal">
             {t("session.ledger.today")}
           </th>
-          <th scope="col" className="pb-1 pl-3 font-normal">
+          <th scope="col" className="pb-1 pl-2 font-normal">
             {previous
               ? formatSessionDate(previous.startedAt, previous.tz)
               : t("session.ledger.lastTime")}
@@ -600,7 +602,7 @@ function Ledger(props: {
               <td className="tabular py-1 text-sm text-ink-muted">{i + 1}</td>
               <td className="py-1">
                 {today ? (
-                  <div className="-ml-2 flex items-center gap-1">
+                  <div className="-ml-1.5 flex items-center">
                     <button
                       type="button"
                       onClick={() => props.onEdit(today)}
@@ -609,10 +611,14 @@ function Ledger(props: {
                         number: i + 1,
                         set: formatSet(today, log.exercise.type, unit),
                       })}
-                      className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
+                      className="flex h-12 min-w-0 items-center rounded-xl px-1.5 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
                     >
                       <span className="numerals truncate text-2xl">
-                        {formatSet(today, log.exercise.type, unit)}
+                        <SetText
+                          set={today}
+                          type={log.exercise.type}
+                          unit={unit}
+                        />
                       </span>
                     </button>
                     <Marker
@@ -627,7 +633,7 @@ function Ledger(props: {
                     type="button"
                     onClick={props.onStopEditing}
                     aria-label={t("session.ledger.stopEditing")}
-                    className="-ml-2 flex h-12 items-center rounded-xl px-2 text-2xl text-ink-muted hover:bg-surface hover:text-ink"
+                    className="-ml-1.5 flex h-12 items-center rounded-xl px-1.5 text-2xl text-ink-muted hover:bg-surface hover:text-ink"
                   >
                     {t("session.ledger.next")}
                   </button>
@@ -637,19 +643,23 @@ function Ledger(props: {
                   </span>
                 )}
               </td>
-              <td className="py-1 pl-3">
+              <td className="py-1 pl-2">
                 {before && (
-                  <div className="-ml-2 flex items-center gap-1">
+                  <div className="-ml-1.5 flex items-center">
                     <button
                       type="button"
                       onClick={() => props.onCopy(before)}
                       aria-label={t("session.ledger.useForNext", {
                         set: formatSet(before, log.exercise.type, unit),
                       })}
-                      className="flex h-12 min-w-0 items-center rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
+                      className="flex h-12 min-w-0 items-center rounded-xl px-1.5 text-left text-ink-muted hover:bg-surface hover:text-ink"
                     >
                       <span className="numerals truncate text-xl">
-                        {formatSet(before, log.exercise.type, unit)}
+                        <SetText
+                          set={before}
+                          type={log.exercise.type}
+                          unit={unit}
+                        />
                       </span>
                     </button>
                     <Marker
@@ -683,32 +693,31 @@ function EarlierPerformance(props: {
     <li className="min-w-0">
       <h2 className="pb-1 text-sm text-ink-muted">{date}</h2>
       <ol>
-        {performance.sets.map((set, i) => {
-          const text = formatSet(set, log.exercise.type, unit);
-          return (
-            <li key={set.id} className="-ml-2 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => props.onCopy(set)}
-                aria-label={t("session.ledger.useSetFrom", {
-                  number: i + 1,
-                  set: text,
-                  date,
-                })}
-                className="flex h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-left text-ink-muted hover:bg-surface hover:text-ink"
-              >
-                <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>{" "}
-                <span className="numerals truncate text-lg">{text}</span>
-              </button>
-              <Marker
-                marker={set.marker}
-                basis={set.markerBasis}
-                type={log.exercise.type}
-                unit={unit}
-              />
-            </li>
-          );
-        })}
+        {performance.sets.map((set, i) => (
+          <li key={set.id} className="-ml-1.5 flex items-center">
+            <button
+              type="button"
+              onClick={() => props.onCopy(set)}
+              aria-label={t("session.ledger.useSetFrom", {
+                number: i + 1,
+                set: formatSet(set, log.exercise.type, unit),
+                date,
+              })}
+              className="flex h-10 min-w-0 items-center gap-1.5 rounded-xl px-1.5 text-left text-ink-muted hover:bg-surface hover:text-ink"
+            >
+              <span className="tabular w-4 shrink-0 text-xs">{i + 1}</span>{" "}
+              <span className="numerals truncate text-lg">
+                <SetText set={set} type={log.exercise.type} unit={unit} />
+              </span>
+            </button>
+            <Marker
+              marker={set.marker}
+              basis={set.markerBasis}
+              type={log.exercise.type}
+              unit={unit}
+            />
+          </li>
+        ))}
       </ol>
     </li>
   );

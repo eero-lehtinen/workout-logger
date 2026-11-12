@@ -4,13 +4,13 @@ import type {
   SetValues,
   WeightUnit,
 } from "@workout-logger/core";
-import { formatSet } from "../../lib/format.ts";
+import { SetText } from "../../components/set-text.tsx";
 import { Marker } from "./marker.tsx";
 
 /**
  * Logged sets as they read anywhere outside the logging screen: one quiet,
  * wrapping line of dot-separated sets, each with the marker it earned, e.g.
- * "100 × 8 🏆 · 100 × 7". The logging screen has its own large figures, since sets there
+ * "100 kg × 8 🏆 · 100 kg × 7". The logging screen has its own large figures, since sets there
  * are tapped and compared. Markers are icons only: the line usually sits
  * inside a link, and an explained marker is a button.
  */
@@ -35,7 +35,9 @@ export function SetLine(props: {
               className="mr-1 size-1 shrink-0 rounded-full bg-ink-muted/35"
             />
           )}
-          {formatSet(set, props.type, props.unit)}
+          <span>
+            <SetText set={set} type={props.type} unit={props.unit} />
+          </span>
           {set.marker && (
             <Marker
               marker={set.marker}

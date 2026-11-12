@@ -213,7 +213,7 @@ export const LoggingWithMarkers = pageStory({
     await userEvent.click(todayPr as HTMLElement);
     const pr = await body.findByRole("dialog", { name: /Personal record/ });
     await expect(pr).toHaveTextContent(
-      /This set129\.8 kg e1RMBest before126\.7 kg e1RM100 × 8 on /,
+      /This set129\.8 kg e1RMBest before126\.7 kg e1RM100 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
 
@@ -224,7 +224,7 @@ export const LoggingWithMarkers = pageStory({
       name: /Weight increase/,
     });
     await expect(increase).toHaveTextContent(
-      /This set102\.5 kgLast time, set 2100 kg100 × 8 on /,
+      /This set102\.5 kgLast time, set 2100 kg100 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
 
@@ -247,7 +247,7 @@ export const SetRecordOverAllEarlier = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: "Set record" }));
     const record = await body.findByRole("dialog", { name: /Set record/ });
     await expect(record).toHaveTextContent(
-      /This set123\.5 kg e1RMBest set 2 before120\.3 kg e1RM95 × 8 on /,
+      /This set123\.5 kg e1RMBest set 2 before120\.3 kg e1RM95 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
     // Until the closing popover unmounts, its focus guards are aria-hidden
@@ -391,7 +391,7 @@ async function expectNoteBeforeEarlier(canvasElement: HTMLElement) {
   await expect(earlier).toHaveAttribute("aria-expanded", "true");
   await waitFor(() => expect(notes()).toBeNull());
   const earlierSets = canvas.getAllByRole("button", {
-    name: /^Use set 1 95 × 8 from/,
+    name: /^Use set 1 95 kg × 8 from/,
   });
   await expect(earlierSets).toHaveLength(1);
   await expectBefore(earlier, earlierSets[0] as HTMLElement);
@@ -658,7 +658,7 @@ export const EditSetInFooter = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: "Save set 1" }));
 
     await expect(
-      await canvas.findByRole("button", { name: /^Edit set 1: 102.5 × 9/ }),
+      await canvas.findByRole("button", { name: /^Edit set 1: 102.5 kg × 9/ }),
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Log set 3" }),

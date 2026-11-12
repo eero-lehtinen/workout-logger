@@ -14,8 +14,8 @@ import { Button, buttonClass } from "../../components/button.tsx";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
+import { SetText } from "../../components/set-text.tsx";
 import { useDbQuery } from "../../db/react.tsx";
-import { formatSet } from "../../lib/format.ts";
 import { matchesSearch } from "../../lib/search.ts";
 import { formatHeadline } from "../history/metrics.ts";
 import { MuscleGroupFilter } from "./muscle-group-filter.tsx";
@@ -159,7 +159,7 @@ function ExerciseList(props: {
               <div className="shrink-0 text-right">
                 {e.best && (
                   <p className="tabular text-[0.9375rem] text-ink/85">
-                    {formatBest(e.best, e.type, props.unit)}
+                    <Best best={e.best} type={e.type} unit={props.unit} />
                   </p>
                 )}
                 <p className="tabular text-sm text-ink-muted">
@@ -174,9 +174,12 @@ function ExerciseList(props: {
   );
 }
 
-/** The best set as a set, e.g. `100 × 8`; reps, time, or distance alone. */
-function formatBest(best: BestSet, type: ExerciseType, unit: WeightUnit) {
-  return best.set
-    ? formatSet(best.set, type, unit)
-    : formatHeadline(best.kind, best.value, unit);
+/** The best set as a set, e.g. `100 kg × 8`; reps, time, or distance alone. */
+function Best(props: { best: BestSet; type: ExerciseType; unit: WeightUnit }) {
+  const { best, type, unit } = props;
+  return best.set ? (
+    <SetText set={best.set} type={type} unit={unit} />
+  ) : (
+    formatHeadline(best.kind, best.value, unit)
+  );
 }

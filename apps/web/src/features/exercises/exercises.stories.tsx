@@ -51,7 +51,7 @@ export const LoggedStats = pageStory({
     const squat = await within(canvasElement).findByRole("link", {
       name: /^Back Squat/,
     });
-    await expect(squat).toHaveTextContent(/125 × 6\s*9 sets$/);
+    await expect(squat).toHaveTextContent(/125 kg × 6\s*9 sets$/);
 
     await choose(canvasElement, "Sort exercises", "Recent");
     // The last set of the latest session was a leg curl.

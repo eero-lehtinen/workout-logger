@@ -59,7 +59,7 @@ export function Marker(props: {
     <Popover.Root>
       <Popover.Trigger
         aria-label={label}
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl hover:bg-surface data-popup-open:bg-surface"
+        className="inline-flex h-9 w-7 shrink-0 items-center justify-center rounded-xl hover:bg-surface data-popup-open:bg-surface"
       >
         <MarkerIcon marker={marker} size={props.size ?? 18} />
       </Popover.Trigger>
