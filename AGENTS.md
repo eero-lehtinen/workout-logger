@@ -99,10 +99,10 @@ pinned in `packageManager`). Run from the repo root.
 | `pnpm storybook` | Storybook on http://localhost:6006: every screen with fixture data, at phone and PC widths, light and dark. |
 | `pnpm start` | Serve the last `pnpm build` of the web app with the production server on http://localhost:3000, with its database in `apps/server/data/app.db`. `pnpm dev` proxies `/api` to it. Sign-in needs a Google OAuth client or GitHub OAuth app ([docs/deployment.md](docs/deployment.md#google-oauth-client)). |
 | `pnpm --filter @workout-logger/server exec node src/cli.ts create-owner --email <email>` | Create the owner account in the local server database, `apps/server/data/app.db` (`new-epoch` ends a restore). Run from the repo root, `node apps/server/src/cli.ts` would open `data/app.db` there instead. |
-| `pnpm e2e` | Playwright end-to-end tests against a fresh production build, served by `apps/server`. |
+| `pnpm e2e` | Playwright end-to-end tests against a fresh production build, served by `apps/server`. With `CI` set it tests the last `pnpm build` instead. |
 | `docker build -t workout-logger . && docker run --rm -p 3000:3000 workout-logger` | Build and run the deployed image locally. |
 | `SYNC_FUZZ_RUNS=5000 pnpm test fuzz` | Longer sync fuzz run (CI runs 300). Run it after changing clock, merge, or sync code. |
-| `pnpm check` | lint, typecheck, test, build, e2e: what CI runs. |
+| `pnpm check` | lint, typecheck, test, build, e2e: what CI runs, there split into parallel jobs. |
 | `pnpm android:sync` | Build the web app and copy it, with the plugin wiring, into `apps/android`. Run it before any Gradle build. |
 | `./gradlew assembleDebug` in `apps/android` | Debug APK (`gradlew.bat` on Windows). Needs JDK 21 and the Android SDK; see [docs/deployment.md](docs/deployment.md#android-releases). |
 

@@ -86,9 +86,9 @@ the service worker and offline use.
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), on push to `main`:
 
-1. `check`: lint, type checks, tests, build, and e2e, as on every branch and PR.
-2. `image`: builds the [Dockerfile](../Dockerfile) and pushes it to `ghcr.io/eero-lehtinen/workout-logger`, tagged with the commit SHA. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous. The build signs the Android app's [live-update bundle](#live-updates).
-3. `deploy`: uploads [`deploy/compose.yaml`](../deploy/compose.yaml) with `IMAGE_TAG` replaced by the SHA (`compose.update` in the Dokploy API), queues a deploy (`compose.deploy`), and waits until `/api/status` reports the new commit.
+1. The checks, as on every branch and PR, in parallel jobs: `unit` (lint, type checks, unit tests), `fuzz` (the sync fuzz test), `stories` (story tests, in two shards), and `e2e` (build and e2e tests). Pushes that change only docs and Markdown run no CI.
+2. `image`, alongside the checks: builds the [Dockerfile](../Dockerfile) and pushes it to `ghcr.io/eero-lehtinen/workout-logger`, tagged with the commit SHA. Deployments always use pinned SHA tags, never `latest`, so a rollback is unambiguous. The build signs the Android app's [live-update bundle](#live-updates). An image of a commit that fails the checks is pushed but never deployed.
+3. `deploy`, once the checks and `image` pass: uploads [`deploy/compose.yaml`](../deploy/compose.yaml) with `IMAGE_TAG` replaced by the SHA (`compose.update` in the Dokploy API), queues a deploy (`compose.deploy`), and waits until `/api/status` reports the new commit.
 
 Dokploy's deploy webhooks can't choose a tag (the compose webhook only
 redeploys, and the application webhook refuses any tag but the configured
@@ -99,7 +99,7 @@ reach only this service, because Dokploy API keys can't be scoped themselves.
 
 When GitHub Actions can't run (runs stuck in "queued" with no jobs), deploy
 the commit on `main` from a workstation. Run `pnpm check` on it first,
-because this skips the `check` job.
+because this skips CI's checks.
 
 1. Export the commit to a clean directory: `git archive <sha> | tar -x -C <dir>`.
 2. Build the image with the commit and the live-update key, which the
@@ -158,7 +158,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The `android-release` job in `ci.yml` runs after `check`. It builds the web app, syncs it into `apps/android`, builds the release APK with the tag as its version, signs it, verifies the signature, and attaches `workout-logger-<version>.apk` to a GitHub release for the tag (creating the release if it doesn't exist, with the `feat` and `fix` commit subjects since the previous tag as its notes). On other pushes the `android` job builds a debug APK, so the Android build doesn't rot between releases.
+The `android-release` job in `ci.yml` runs after the checks. It builds the web app, syncs it into `apps/android`, builds the release APK with the tag as its version, signs it, verifies the signature, and attaches `workout-logger-<version>.apk` to a GitHub release for the tag (creating the release if it doesn't exist, with the `feat` and `fix` commit subjects since the previous tag as its notes). On other pushes that change `apps/android`, the Capacitor config, dependencies, or `.github`, the `android` job builds a debug APK, so the Android build doesn't rot between releases.
 
 A new version must be higher than the installed one: Android refuses to install a lower `versionCode` over a higher one.
 
@@ -224,7 +224,7 @@ A shell below `minNative` keeps its web build, and the APK prompt offers the rel
 - The private key is on the owner's PC in `~/Documents/ai-doc/workout-logger/android-release/live-update-private.pem`, next to the APK keystore, and is never committed. Keep a second copy with the keystore's.
 - CI reads it from the GitHub Actions secret `LIVE_UPDATE_PRIVATE_KEY` (the PEM file's content) and passes it to the image build as a BuildKit secret, so it is in no image layer. The `image` job fails without the secret: an unsigned bundle would deploy fine and every phone would refuse it.
 - The build fails if the key doesn't match the public key in the app config.
-- Builds without the key, such as local ones and CI's `check` job, make an unsigned bundle. To test live updates against a local server, set `LIVE_UPDATE_PRIVATE_KEY` for `pnpm build`.
+- Builds without the key, such as local ones and CI's `e2e` job, make an unsigned bundle. To test live updates against a local server, set `LIVE_UPDATE_PRIVATE_KEY` for `pnpm build`.
 - The signature covers the zip, not the manifest. A server could at worst hand out an older signed build, or claim a `minNative` that keeps phones from updating.
 
 **A bundle that fails.** A bundle that doesn't open the database and render within 20 s of foreground time is rolled back by the shell and never downloaded again; the phone waits for the next commit ([architecture.md](architecture.md#live-updates)). A bundle that starts but misbehaves is a bad deploy ([recovery procedures](#recovery-procedures)).

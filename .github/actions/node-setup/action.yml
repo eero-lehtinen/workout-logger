@@ -1,0 +1,38 @@
+name: Node setup
+description: >
+  Installs Node, pnpm, and the workspace dependencies, and optionally the
+  Chromium that story and e2e tests run in.
+
+inputs:
+  playwright:
+    description: Whether to install Playwright's Chromium headless shell.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # Reads the pnpm version from packageManager in package.json.
+    - uses: pnpm/setup@v3
+      with:
+        runtime: node@26
+        cache: true
+        install: false
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+
+    # Story tests and e2e tests run headless, so the headless shell is
+    # enough. No --with-deps: the runner image already has Chromium's
+    # libraries, and the extra fonts it would add came from a mirror that
+    # sometimes took minutes.
+    - id: playwright
+      if: inputs.playwright == 'true'
+      run: echo "version=$(pnpm --filter @workout-logger/web exec playwright --version)" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - if: inputs.playwright == 'true'
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-${{ steps.playwright.outputs.version }}-headless-shell
+    - if: inputs.playwright == 'true'
+      run: timeout 5m pnpm --filter @workout-logger/web exec playwright install --only-shell chromium
+      shell: bash

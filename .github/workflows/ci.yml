@@ -1,8 +1,11 @@
 name: CI
 
 on:
+  # Path filters don't apply to tag pushes, so a release always builds.
   push:
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
 
 permissions:
   contents: read
@@ -14,58 +17,96 @@ concurrency:
 env:
   IMAGE: ghcr.io/${{ github.repository }}
 
+# The checks are split into parallel jobs because the private repo's runners
+# have 2 vCPUs, on which Vitest and Playwright run one test file at a time.
+# Each job pays ~20 s of setup and is billed in whole minutes.
 jobs:
-  check:
+  unit:
+    name: lint, typecheck, unit tests
     runs-on: ubuntu-latest
     # A hung download otherwise holds the run for the 6-hour default.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-setup
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test --project '!storybook' --exclude '**/*.fuzz.test.ts'
+
+  fuzz:
+    name: sync fuzz test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-setup
+      - run: pnpm test --project @workout-logger/core fuzz
+
+  stories:
+    name: story tests (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-setup
+        with:
+          playwright: "true"
+      # Vitest shards by a hash of the file path, not by duration, so one
+      # large story file can leave the shards unbalanced.
+      - run: pnpm test --project storybook --shard=${{ matrix.shard }}/2
+
+  e2e:
+    name: build, e2e tests
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-
-      # Reads the pnpm version from packageManager in package.json.
-      - uses: pnpm/setup@v3
+      - uses: ./.github/actions/node-setup
         with:
-          runtime: node@26
-          cache: true
-          install: false
-
-      - run: pnpm install --frozen-lockfile
-      # Story tests and e2e tests run headless, so the headless shell is
-      # enough. No --with-deps: the runner image already has Chromium's
-      # libraries, and the extra fonts it would add came from a mirror that
-      # sometimes took minutes.
-      - id: playwright
-        run: echo "version=$(pnpm --filter @workout-logger/web exec playwright --version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ steps.playwright.outputs.version }}-headless-shell
-      - run: pnpm --filter @workout-logger/web exec playwright install --only-shell chromium
-        timeout-minutes: 5
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
+          playwright: "true"
       - run: pnpm build
-      - run: pnpm e2e
-
       - name: Check committed route tree is up to date
         run: git diff --exit-code -- apps/web/src/routeTree.gen.ts
+      - run: pnpm e2e
 
-  # Keeps the Android build working between releases.
+  # Keeps the Android build working between releases. Only the Android
+  # project, the Capacitor wiring, and dependencies can break it; web code
+  # changes reach it as an unchanged copy of the build.
   android:
     if: "!startsWith(github.ref, 'refs/tags/v')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      # dorny/paths-filter lists a pull request's files through the API.
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/android-setup
-      - run: ./gradlew assembleDebug
+      - uses: dorny/paths-filter@v4
+        id: changes
+        with:
+          filters: |
+            android:
+              - apps/android/**
+              - apps/web/capacitor.config.ts
+              - apps/web/package.json
+              - package.json
+              - pnpm-lock.yaml
+              - .github/**
+      - if: steps.changes.outputs.android == 'true'
+        uses: ./.github/actions/android-setup
+      - if: steps.changes.outputs.android == 'true'
+        run: ./gradlew assembleDebug
         working-directory: apps/android
 
   # A tag v<major>.<minor>.<patch> publishes a signed APK as a GitHub
   # release; the server offers it to installed apps (docs/deployment.md).
   android-release:
-    needs: check
+    needs: [unit, fuzz, stories, e2e]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -114,8 +155,10 @@ jobs:
             ${previous:+"$previous.."}"$GITHUB_REF_NAME" > "$notes"
           if [ ! -s "$notes" ]; then echo "No user-facing changes." > "$notes"; fi
           gh release create "$GITHUB_REF_NAME" "$apk" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$notes"
+
+  # Builds alongside the checks, which gate only the deploy. An image of a
+  # commit that fails them is pushed but never deployed.
   image:
-    needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -151,7 +194,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: image
+    needs: [image, unit, fuzz, stories, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

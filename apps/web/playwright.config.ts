@@ -35,7 +35,8 @@ export default defineConfig({
   },
   projects: [{ name: "phone", use: { ...devices["Pixel 7"] } }],
   webServer: {
-    command: "pnpm build && pnpm --filter @workout-logger/server start",
+    // CI's e2e job runs `pnpm build` in the step before.
+    command: `${process.env.CI ? "" : "pnpm build && "}pnpm --filter @workout-logger/server start`,
     env: { PORT: String(PORT), DATABASE_PATH: process.env.E2E_DATABASE_PATH },
     url: `http://localhost:${PORT}/api/status`,
     reuseExistingServer: false,
