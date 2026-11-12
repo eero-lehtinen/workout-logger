@@ -2,6 +2,7 @@ import { Menu } from "@base-ui/react/menu";
 import { clsx } from "clsx";
 import { Ellipsis } from "lucide-react";
 import type { ReactNode } from "react";
+import { usePopupCollisionPadding } from "../lib/safe-area.ts";
 
 export interface MoreMenuItem {
   label: string;
@@ -12,6 +13,7 @@ export interface MoreMenuItem {
 
 /** A "⋯" button in a header that opens the screen's less frequent actions. */
 export function MoreMenu(props: { label: string; items: MoreMenuItem[] }) {
+  const collisionPadding = usePopupCollisionPadding();
   return (
     <Menu.Root>
       <Menu.Trigger
@@ -27,6 +29,7 @@ export function MoreMenu(props: { label: string; items: MoreMenuItem[] }) {
           className="z-50 outline-none"
           sideOffset={4}
           align="end"
+          collisionPadding={collisionPadding}
         >
           <Menu.Popup className="min-w-48 origin-[var(--transform-origin)] rounded-2xl bg-raised p-1 text-ink shadow-lg ring-1 ring-rule transition-[scale,opacity] duration-100 ease-out outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             {props.items.map((item) => (
