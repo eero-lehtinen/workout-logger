@@ -29,6 +29,10 @@ const iconVariants: Record<ButtonVariant, string> = {
  */
 export const dangerAlignClass = "-ml-3.5";
 
+/** A muted text button for secondary toggles, such as "Add note". */
+export const quietButtonClass =
+  "flex h-10 items-center gap-1.5 text-[0.9375rem] font-medium text-ink-muted hover:text-ink";
+
 const sizes = {
   sm: "h-8 gap-1.5 px-2.5 text-sm",
   md: "h-10 gap-2 px-3.5 text-[0.9375rem]",

@@ -43,6 +43,7 @@ export const session = {
     moveExercise: "Move {{name}}",
     addExercise: "Add exercise to session",
     notes: "Session notes",
+    addNote: "Add session note",
     notesPlaceholder: "Notes on this session",
     deleteSession: "Delete session",
     deleteTitle: "Delete this session?",

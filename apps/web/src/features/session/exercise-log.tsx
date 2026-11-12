@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../components/button.tsx";
+import { Button, quietButtonClass } from "../../components/button.tsx";
 import { MoreMenu } from "../../components/more-menu.tsx";
 import { NotesField } from "../../components/notes-field.tsx";
 import { Empty, PageHeader, Screen } from "../../components/page.tsx";
@@ -423,7 +423,7 @@ function Logger({ log }: { log: ExerciseLog }) {
               type="button"
               onClick={() => setShowEarlier(!showEarlier)}
               aria-expanded={showEarlier}
-              className={toggleClass}
+              className={quietButtonClass}
             >
               <ChevronDown
                 size={18}
@@ -439,7 +439,7 @@ function Logger({ log }: { log: ExerciseLog }) {
             <button
               type="button"
               onClick={() => setAddingNote(true)}
-              className={toggleClass}
+              className={quietButtonClass}
             >
               <NotebookPen size={17} />
               {t("session.log.addNote")}
@@ -529,10 +529,6 @@ function Logger({ log }: { log: ExerciseLog }) {
     </Screen>
   );
 }
-
-const toggleClass =
-  "flex h-10 items-center gap-1.5 text-[0.9375rem] font-medium text-ink-muted hover:text-ink";
-
 /**
  * Today's sets next to last time's, row by row. Set n is judged against set
  * n of the previous performance, so the pairing is the comparison.

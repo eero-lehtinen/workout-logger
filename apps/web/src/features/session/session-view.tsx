@@ -12,13 +12,14 @@ import {
   type WeightUnit,
 } from "@workout-logger/core";
 import { clsx } from "clsx";
-import { Check, ListOrdered, Pencil, Plus } from "lucide-react";
+import { Check, ListOrdered, NotebookPen, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
   buttonClass,
   dangerAlignClass,
+  quietButtonClass,
 } from "../../components/button.tsx";
 import { listClass, rowClass } from "../../components/list.ts";
 import { NotesField } from "../../components/notes-field.tsx";
@@ -150,6 +151,7 @@ function SessionPanel(props: {
   const goBack = useGoBack();
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addingNote, setAddingNote] = useState(false);
   const unit = settings.weight_unit as WeightUnit;
 
   /** Opens the exercise to continue with; its next set resumes the session. */
@@ -307,15 +309,29 @@ function SessionPanel(props: {
           </p>
         )
       ) : (
-        <div className="px-4 pt-6 lg:px-0">
-          <NotesField
-            label={t("session.view.notes")}
-            value={session.notes}
-            placeholder={t("session.view.notesPlaceholder")}
-            onSave={(notes) =>
-              command("updateSessionNotes", { sessionId: session.id, notes })
-            }
-          />
+        <div className="px-4 pt-2 lg:px-0">
+          {addingNote || session.notes !== "" ? (
+            <NotesField
+              label={t("session.view.notes")}
+              value={session.notes}
+              placeholder={t("session.view.notesPlaceholder")}
+              focusOnMount={addingNote && session.notes === ""}
+              onSave={(notes) =>
+                command("updateSessionNotes", { sessionId: session.id, notes })
+              }
+              onBlur={(text) => text === "" && setAddingNote(false)}
+              className="mt-2"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingNote(true)}
+              className={quietButtonClass}
+            >
+              <NotebookPen size={17} />
+              {t("session.view.addNote")}
+            </button>
+          )}
         </div>
       )}
 

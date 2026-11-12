@@ -46,6 +46,7 @@ export const session = {
     moveExercise: "Siirrä {{name}}",
     addExercise: "Lisää liike treeniin",
     notes: "Treenin muistiinpanot",
+    addNote: "Lisää muistiinpano treeniin",
     notesPlaceholder: "Muistiinpanoja tästä treenistä",
     deleteSession: "Poista treeni",
     deleteTitle: "Poistetaanko tämä treeni?",

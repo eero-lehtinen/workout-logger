@@ -483,8 +483,15 @@ export const EditNotes = pageStory({
     await canvas.findByRole("heading", { name: "Upper" });
     await expect(await canvas.findByText("Elbow ok")).toBeVisible();
 
+    await expect(
+      canvas.queryByRole("textbox", { name: "Session notes" }),
+    ).toBeNull();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Add session note" }),
+    );
     const notes = canvas.getByRole("textbox", { name: "Session notes" });
-    await userEvent.type(notes, "Gym was busy");
+    await expect(notes).toHaveFocus();
+    await userEvent.keyboard("Gym was busy");
     await userEvent.tab();
     // The field shows the stored value again once its edit is saved.
     await waitFor(() => expect(notes).toHaveValue("Gym was busy"));
