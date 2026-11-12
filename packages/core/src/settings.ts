@@ -46,7 +46,7 @@ export const SETTINGS = {
         v.transform((level) => LEGACY_ALERT_VOLUMES[level]),
       ),
     ]),
-    default: 80,
+    default: 70,
   },
   /** Display only: sessions keep their start and end times either way. */
   session_timer_shown: { schema: v.boolean(), default: true },

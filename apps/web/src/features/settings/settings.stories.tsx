@@ -126,12 +126,12 @@ export const AlertVolume = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const slider = await canvas.findByRole("slider", { name: "Alert volume" });
-    await expect(slider).toHaveAttribute("aria-valuenow", "80");
-    await expect(slider).toHaveAttribute("aria-valuetext", "80%");
+    await expect(slider).toHaveAttribute("aria-valuenow", "70");
+    await expect(slider).toHaveAttribute("aria-valuetext", "70%");
     slider.focus();
     await userEvent.keyboard("{ArrowLeft}");
-    await waitFor(() => expect(slider).toHaveAttribute("aria-valuenow", "75"));
-    await expect(canvas.getByText("75%")).toBeInTheDocument();
+    await waitFor(() => expect(slider).toHaveAttribute("aria-valuenow", "65"));
+    await expect(canvas.getByText("65%")).toBeInTheDocument();
   },
 });
 
