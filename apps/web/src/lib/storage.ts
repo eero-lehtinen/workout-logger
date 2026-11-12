@@ -34,6 +34,7 @@ export async function requestPersistence(): Promise<boolean> {
  * (docs/architecture.md#storage-durability). Firefox prompts, so ask once
  * automatically per context; Settings can ask again. The installed app asks
  * again because installing is what Chrome's grant mostly depends on.
+ * Runs at startup, so it also loads the state Settings shows.
  */
 export async function requestPersistenceOnce(
   context: "browser" | "installed",
@@ -42,10 +43,11 @@ export async function requestPersistenceOnce(
     context === "browser"
       ? "storage-persist-asked"
       : "storage-persist-asked-installed";
+  await refreshPersistence();
   try {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");
-    if (!(await navigator.storage?.persisted?.())) await requestPersistence();
+    if (persisted !== true) await requestPersistence();
   } catch {
     // Not supported or storage blocked; Settings shows the state.
   }

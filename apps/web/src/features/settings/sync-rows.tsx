@@ -27,7 +27,7 @@ export function SyncRows(props: { sync: SyncState }) {
           {sync.running ? "Syncing…" : "Sync now"}
         </Button>
       </Row>
-      {usage && <UsageRow usage={usage} />}
+      <UsageRow usage={usage} />
     </>
   );
 }
@@ -59,20 +59,31 @@ function problem(sync: SyncState, usage: Usage | null): string | null {
   return null;
 }
 
-function UsageRow(props: { usage: Usage }) {
+/**
+ * Shown with placeholders until the usage loads, one line per fact, so the
+ * row's height doesn't change when it arrives.
+ */
+function UsageRow(props: { usage: Usage | null }) {
   const { usage } = props;
   const of = (used: number, limit: number | null) =>
     limit === null
       ? formatBytes(used)
       : `${formatBytes(used)} of ${formatBytes(limit)}`;
-  const today =
-    usage.exemptUntil !== null
-      ? `${formatBytes(usage.bytesWritten)}, no limit for now`
-      : of(usage.bytesWritten, usage.bytesPerDay);
+  const stored = usage ? `${of(usage.storedBytes, usage.maxBytes)}.` : "…";
+  const today = !usage
+    ? "…"
+    : usage.exemptUntil !== null
+      ? `${formatBytes(usage.bytesWritten)}, no limit for now.`
+      : `${of(usage.bytesWritten, usage.bytesPerDay)}.`;
   return (
     <Row
       label="Server storage"
-      hint={`${of(usage.storedBytes, usage.maxBytes)} stored. Uploaded today: ${today}.`}
+      hint={
+        <>
+          <span className="block">Stored: {stored}</span>
+          <span className="block">Uploaded today: {today}</span>
+        </>
+      }
     />
   );
 }

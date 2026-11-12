@@ -28,7 +28,10 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** The signed-in user's usage, fetched on mount and after each sync run. */
+/**
+ * The signed-in user's usage, refreshed after each sync run while mounted.
+ * The sync runner fetches it at startup so Settings doesn't open without it.
+ */
 export function useUsage(syncing: boolean): Usage | null {
   useEffect(() => {
     if (!syncing) void refreshUsage();
@@ -44,8 +47,12 @@ export function setUsageForStory(next: Usage | null) {
 
 let fixedForStory = false;
 
-async function refreshUsage(): Promise<void> {
-  if (fixedForStory || getAccount().status !== "signed-in") return;
+export async function refreshUsage(): Promise<void> {
+  if (fixedForStory) return;
+  if (getAccount().status !== "signed-in") {
+    set(null);
+    return;
+  }
   try {
     const res = await fetch(`${SERVER_URL}/api/me/usage`, {
       headers: await apiHeaders(),

@@ -145,7 +145,7 @@ Enforcement:
   - until `quota.exempt_until`, which the owner sets for 24 h from the admin page, e.g. before a user imports a snapshot of years of history.
 - A snapshot over the daily limit gets 429 `quota`, and Settings says sync resumes tomorrow. The exemptions don't apply to it.
 - The request limit is counted in memory only.
-- `GET /api/me/usage` returns `{ day, bytesWritten, bytesPerDay, exemptUntil, storedBytes, maxBytes, snapshots, snapshotsPerDay }`, limits null when unlimited. Settings shows the stored and uploaded bytes under Sync ("Server storage"), refreshed after each sync run, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner). The server doesn't say which limit refused a change, so the app names the one with less room left.
+- `GET /api/me/usage` returns `{ day, bytesWritten, bytesPerDay, exemptUntil, storedBytes, maxBytes, snapshots, snapshotsPerDay }`, limits null when unlimited. Settings shows the stored and uploaded bytes under Sync ("Server storage"), fetched at startup and on account changes and refreshed after each sync run while Settings is open, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner). The server doesn't say which limit refused a change, so the app names the one with less room left.
 - `usage` rows older than 90 days are pruned daily.
 
 Quotas exist to protect the shared VPS and the backup buckets from a runaway

@@ -294,10 +294,9 @@ export const ServerUsage = {
     url: () => "/settings",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
+      await expect(canvas.getByText("Stored: 2.4 MB of 10 MB.")).toBeVisible();
       await expect(
-        canvas.getByText(
-          "2.4 MB of 10 MB stored. Uploaded today: 180 kB of 5 MB.",
-        ),
+        canvas.getByText("Uploaded today: 180 kB of 5 MB."),
       ).toBeVisible();
     },
   }),
@@ -306,6 +305,20 @@ export const ServerUsage = {
     setUsageForStory(usage);
     return cleanup;
   },
+};
+
+/** Before the usage loads, the row holds its place with placeholders. */
+export const ServerUsageLoading = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(canvas.getByText("Stored: …")).toBeVisible();
+      await expect(canvas.getByText("Uploaded today: …")).toBeVisible();
+    },
+  }),
+  beforeEach: signedIn(alice),
 };
 
 /** The daily upload limit refused changes; sync resumes tomorrow. */
