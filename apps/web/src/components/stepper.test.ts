@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { replaceOnInsert } from "./stepper.tsx";
+import { isRepeatStep, replaceOnInsert } from "./stepper.tsx";
+
+describe("isRepeatStep", () => {
+  const stepsIn = (from: number, to: number) =>
+    Array.from({ length: to - from }, (_, i) => from + i).filter(isRepeatStep)
+      .length;
+
+  it("steps on the press and on the first repeat", () => {
+    expect(isRepeatStep(0)).toBe(true);
+    expect(isRepeatStep(1)).toBe(true);
+  });
+
+  it("speeds up the longer the hold lasts", () => {
+    expect(stepsIn(1, 21)).toBe(7);
+    expect(stepsIn(21, 41)).toBe(10);
+    expect(stepsIn(41, 61)).toBe(20);
+  });
+});
 
 describe("replaceOnInsert", () => {
   it.each([

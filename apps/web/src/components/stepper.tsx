@@ -1,6 +1,7 @@
+import { usePressAndHold } from "@base-ui/react/internals/usePressAndHold";
 import { clsx } from "clsx";
 import { Minus, Plus } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface StepperProps {
@@ -38,9 +39,19 @@ export function Stepper(props: StepperProps) {
     ? "numerals text-[1.75rem]"
     : "tabular text-lg font-semibold";
 
+  // A held button steps from timers set up at pointer down, so it reads the
+  // props of the latest render rather than the ones it was created with.
+  const latest = useRef(props);
+  useLayoutEffect(() => {
+    latest.current = props;
+  });
+
   const press = (direction: 1 | -1) => {
+    const { value, step, onChange } = latest.current;
+    const next = step(value ?? 0, direction);
     setDraft(null);
-    props.onChange(props.step(props.value ?? 0, direction));
+    onChange(next);
+    return next !== value;
   };
 
   return (
@@ -48,7 +59,7 @@ export function Stepper(props: StepperProps) {
       <StepButton
         label={t("ui.stepper.less", { label: props.label.toLowerCase() })}
         large={large}
-        onClick={() => press(-1)}
+        onStep={() => press(-1)}
       >
         <Minus size={large ? 22 : 18} />
       </StepButton>
@@ -126,7 +137,7 @@ export function Stepper(props: StepperProps) {
       <StepButton
         label={t("ui.stepper.more", { label: props.label.toLowerCase() })}
         large={large}
-        onClick={() => press(1)}
+        onStep={() => press(1)}
       >
         <Plus size={large ? 22 : 18} />
       </StepButton>
@@ -134,25 +145,78 @@ export function Stepper(props: StepperProps) {
   );
 }
 
+const REPEAT_TICK_MS = 50;
+
+/**
+ * Steps once on press and repeats while held. Base UI's hook steps on pointer
+ * down instead of click, ignores touches that turn into a scroll, and blocks
+ * the long-press context menu; keyboard clicks still step once.
+ * `onStep` returns false when the value can't move further, which ends the hold.
+ */
 function StepButton(props: {
   label: string;
   large: boolean;
-  onClick: () => void;
+  onStep: () => boolean;
   children: React.ReactNode;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const ticks = useRef(0);
+  // The hook ends a hold only on pointerup or movement, but the browser
+  // sends pointercancel instead when it takes over the touch.
+  const cancelled = useRef(false);
+  const { pointerHandlers, shouldSkipClick } = usePressAndHold({
+    disabled: false,
+    elementRef: ref,
+    tickDelay: REPEAT_TICK_MS,
+    tick: () => {
+      if (cancelled.current) return false;
+      return isRepeatStep(ticks.current++) ? props.onStep() : true;
+    },
+  });
+
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={props.label}
-      onClick={props.onClick}
+      {...pointerHandlers}
+      onPointerDown={(e) => {
+        ticks.current = 0;
+        cancelled.current = false;
+        pointerHandlers.onPointerDown(e);
+      }}
+      onPointerCancel={() => {
+        cancelled.current = true;
+      }}
+      onMouseEnter={(e) => {
+        ticks.current = 0;
+        pointerHandlers.onMouseEnter(e);
+      }}
+      onClick={(e) => {
+        if (!shouldSkipClick(e)) props.onStep();
+      }}
       className={clsx(
-        "flex shrink-0 items-center justify-center rounded-xl bg-surface text-ink transition-colors hover:bg-rule active:bg-rule",
+        "flex shrink-0 items-center justify-center rounded-xl bg-surface text-ink transition-colors select-none hover:bg-rule active:bg-rule",
         props.large ? "size-14" : "size-11",
       )}
     >
       {props.children}
     </button>
   );
+}
+
+/**
+ * Whether the hold's `tick`th tick steps. Tick 0 is the press; the hook
+ * waits 400 ms and then ticks every `REPEAT_TICK_MS`, so tick 1 comes
+ * 450 ms after the press. Repeats start slow enough to stop on a value
+ * and speed up the longer the button is held: every 150 ms for the first
+ * second, every 100 ms for the next, then every tick.
+ */
+export function isRepeatStep(tick: number): boolean {
+  if (tick === 0) return true;
+  const repeat = tick - 1;
+  const every = repeat < 20 ? 3 : repeat < 40 ? 2 : 1;
+  return repeat % every === 0;
 }
 
 /**

@@ -91,7 +91,7 @@ The app is shared with a few other users, each with their own private data. See
 
 | Feature | Priority | Notes |
 | --- | --- | --- |
-| Fast weight and reps entry | P0 | Steppers plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). Duration and distance follow the reps rule. |
+| Fast weight and reps entry | P0 | Steppers that repeat, speeding up, while held, plus a numeric keypad; one tap to log. Prefill: set 1 copies set 1 of the previous performance. Set n copies the weight of this session's set n-1, and the reps of the previous performance's set n (or this session's set n-1 if there is none). Duration and distance follow the reps rule. |
 | Tap a previous-performance row to copy it into the input | P0 | |
 | Previous performance shown alongside | P0 | The last session of the selected exercise only. Other exercises that filled the same slot are not shown; they are irrelevant for progressive overload. Expandable to the last N sessions. |
 | Progress markers on sets: PR, set record, weight increase | P0 | Shown on logged sets and in history. Tapping a marker shows this set's value next to what it beat. Rules in [progress markers](#progress-markers). |
