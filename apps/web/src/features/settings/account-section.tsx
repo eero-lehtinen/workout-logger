@@ -27,6 +27,7 @@ export function AccountSection() {
     return (
       <Section title={t("settings.account.title")}>
         <Row
+          stacked
           label={
             account.status === "signed-out" && account.expired
               ? t("settings.account.signedOut")
