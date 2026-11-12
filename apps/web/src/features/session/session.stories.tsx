@@ -13,6 +13,7 @@ import {
   withHistory,
 } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
+import { expectStepperCentered } from "../../stories/stepper.ts";
 
 export default {
   title: "Screens/Session",
@@ -275,6 +276,8 @@ export const LoggingPc = pageStory({
     // The link is an icon, so the only text is the tooltip's.
     const tip = await body.findByText("Edit exercise");
     await waitFor(() => expect(tip).toBeVisible());
+    await expectStepperCentered(canvas.getByLabelText("Reps"));
+    await expectStepperCentered(canvas.getByLabelText("Weight in kg"));
   },
 });
 
@@ -351,6 +354,8 @@ export const LoggingFinnish = pageStory({
       await canvas.findByRole("button", { name: "Kirjaa sarja 3" }),
     ).toBeVisible();
     await expect(canvas.getByLabelText("Toistot")).toBeVisible();
+    await expectStepperCentered(canvas.getByLabelText("Toistot"));
+    await expectStepperCentered(canvas.getByLabelText("Paino yksikkö kg"));
     await expect(
       canvas.getByRole("button", { name: "Aiemmat treenit" }),
     ).toBeVisible();

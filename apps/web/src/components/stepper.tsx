@@ -19,7 +19,13 @@ export interface StepperProps {
 /**
  * A number with −/+ buttons and a text field that opens the numeric keypad.
  * The label and unit sit inside the field, beside the number, so the number
- * gets the width a label column would take.
+ * gets the width a label column would take. The number's column is as wide
+ * as its text, set by an invisible copy, between two equal flexible columns,
+ * so it is centered in the field whatever the label's and unit's widths. When
+ * a long label leaves no room for that, the number moves off center instead
+ * of being cut off. The unit is a second label so that tapping either side
+ * of the number focuses the field; `aria-labelledby` keeps it out of the
+ * field's name.
  * While the field has focus it shows the typed text; otherwise `format`.
  * The first character typed after focusing replaces the value, like a
  * select-all, without selecting: on phones a selection brings up handles and
@@ -29,6 +35,7 @@ export interface StepperProps {
 export function Stepper(props: StepperProps) {
   const { t } = useTranslation();
   const id = useId();
+  const labelId = `${id}-label`;
   const format = props.format ?? String;
   const parse = props.parse ?? parseNumber;
   const [draft, setDraft] = useState<string | null>(null);
@@ -65,11 +72,15 @@ export function Stepper(props: StepperProps) {
       </StepButton>
       <div
         className={clsx(
-          "flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-raised px-3 text-ink-muted ring-1 ring-rule focus-within:ring-2 focus-within:ring-ink",
+          "grid min-w-0 flex-1 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 rounded-xl bg-raised px-3 text-ink-muted ring-1 ring-rule focus-within:ring-2 focus-within:ring-ink",
           large ? "h-14 text-sm" : "h-11 text-xs",
         )}
       >
-        <label htmlFor={id} className="flex h-full shrink-0 items-center">
+        <label
+          id={labelId}
+          htmlFor={id}
+          className="flex h-full items-center whitespace-nowrap"
+        >
           {props.label}
           {props.unit && (
             <span className="sr-only">
@@ -78,7 +89,10 @@ export function Stepper(props: StepperProps) {
             </span>
           )}
         </label>
-        <div className="relative h-full min-w-0 flex-1">
+        <span className={clsx("relative h-full px-0.5", font)}>
+          <span aria-hidden className="invisible whitespace-pre">
+            {text || " "}
+          </span>
           {fresh && text !== "" && (
             <span
               aria-hidden
@@ -86,10 +100,7 @@ export function Stepper(props: StepperProps) {
             >
               <span
                 data-testid="stepper-replace-hint"
-                className={clsx(
-                  "rounded-md bg-rule px-1.5 text-transparent",
-                  font,
-                )}
+                className="shrink-0 rounded-md bg-rule px-1.5 text-transparent"
               >
                 {text}
               </span>
@@ -97,6 +108,7 @@ export function Stepper(props: StepperProps) {
           )}
           <input
             id={id}
+            aria-labelledby={labelId}
             type="text"
             inputMode={props.inputMode ?? "decimal"}
             autoComplete="off"
@@ -122,17 +134,16 @@ export function Stepper(props: StepperProps) {
               setDraft(null);
               setFresh(false);
             }}
-            className={clsx(
-              "relative h-full w-full min-w-0 bg-transparent text-center text-ink outline-none",
-              font,
-            )}
+            className="absolute inset-0 size-full bg-transparent text-center text-ink outline-none"
           />
-        </div>
-        {props.unit && (
-          <span aria-hidden className="shrink-0">
-            {props.unit}
-          </span>
-        )}
+        </span>
+        <label
+          htmlFor={id}
+          aria-hidden
+          className="flex h-full items-center justify-end whitespace-nowrap"
+        >
+          {props.unit}
+        </label>
       </div>
       <StepButton
         label={t("ui.stepper.more", { label: props.label.toLowerCase() })}
