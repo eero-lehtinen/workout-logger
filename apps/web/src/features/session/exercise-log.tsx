@@ -386,7 +386,7 @@ function Logger({ log }: { log: ExerciseLog }) {
         </div>
       }
     >
-      <div className="px-4 pt-2 pb-4 lg:px-0">
+      <div className="px-4 lg:px-0">
         {log.substitutesName && (
           <button
             type="button"

@@ -81,7 +81,7 @@ function RoutineDescription({ routine }: { routine: RoutineDetail }) {
     setDraft(null);
   };
   return (
-    <label className="flex max-w-3xl flex-col gap-1.5 px-4 pt-2 pb-2 lg:px-0">
+    <label className="flex max-w-3xl flex-col gap-1.5 px-4 pb-2 lg:px-0">
       <span className={fieldLabelClass}>Description</span>
       <textarea
         value={draft ?? routine.description}

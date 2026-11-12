@@ -3,7 +3,7 @@ import { SectionHeading } from "../../components/headings.tsx";
 
 export function Section(props: { title: string; children: React.ReactNode }) {
   return (
-    <section className="pt-4">
+    <section className="pt-4 first:pt-0">
       <SectionHeading className="pb-1">{props.title}</SectionHeading>
       <div className="mx-2 flex flex-col rounded-2xl bg-raised py-1 lg:mx-0">
         {props.children}

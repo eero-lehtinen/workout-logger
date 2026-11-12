@@ -252,7 +252,7 @@ function ProgressChart(props: {
       />
     );
   return (
-    <section className="px-4 pt-2 lg:px-0">
+    <section className="px-4 lg:px-0">
       <h2 className="sr-only">Progress</h2>
       <div className={controlsClass}>
         {controls}
@@ -401,7 +401,7 @@ function PastSessions(props: { history: ExerciseHistory; unit: WeightUnit }) {
   const [shown, setShown] = useState(PAGE);
   const newestFirst = [...history.performances].reverse();
   return (
-    <section className="pt-8 lg:pt-2">
+    <section className="pt-8 lg:pt-0">
       <SectionHeading>Sessions</SectionHeading>
       <ul className={listClass}>
         {newestFirst.slice(0, shown).map((p) => (

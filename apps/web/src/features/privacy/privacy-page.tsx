@@ -8,7 +8,7 @@ import { PageHeader, Screen } from "../../components/page.tsx";
 
 function Part(props: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-2 px-4 pt-5 lg:px-0">
+    <section className="flex flex-col gap-2 px-4 pt-5 first:pt-0 lg:px-0">
       <SectionHeading inset={false} className="pb-0">
         {props.title}
       </SectionHeading>
@@ -37,7 +37,7 @@ export function PrivacyPage() {
       scrollId="privacy"
       width="narrow"
     >
-      <div className="flex flex-col pb-6 text-[0.9375rem] leading-relaxed">
+      <div className="flex flex-col text-[0.9375rem] leading-relaxed">
         <Part title="Without an account">
           <p>Your data stays on this device. Nothing is sent to the server.</p>
         </Part>

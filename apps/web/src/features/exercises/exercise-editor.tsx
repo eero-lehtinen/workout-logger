@@ -231,7 +231,7 @@ function ExerciseForm({
         </div>
       }
     >
-      <form id={FORM_ID} onSubmit={save} noValidate className="pb-8">
+      <form id={FORM_ID} onSubmit={save} noValidate>
         <div className="flex flex-col gap-5 px-4 lg:px-0">
           {exercise?.builtin && (
             <p className="-mb-2 text-sm text-ink-muted">
