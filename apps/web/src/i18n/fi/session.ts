@@ -106,7 +106,7 @@ export const session = {
     lastTime: "Viimeksi",
     editSet: "Muokkaa sarjaa {{number}}: {{set}}",
     next: "seuraava",
-    stopEditing: "Lopeta muokkaus, takaisin seuraavaan sarjaan",
+    stopEditing: "Seuraava sarja, lopeta muokkaus",
     useForNext: "Käytä arvoja {{set}} seuraavassa sarjassa",
     useSetFrom: "Käytä sarjaa {{number}} {{set}} ({{date}})",
   },
