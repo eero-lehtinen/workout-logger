@@ -147,7 +147,11 @@ object RestAlert {
         val channel = NotificationChannel(
             CHANNEL_ID,
             ctx.getString(R.string.rest_channel_alert),
-            NotificationManager.IMPORTANCE_HIGH,
+            // High importance would show a heads-up banner over the app. The
+            // sound and vibration already announce the end of rest. Lowering
+            // an existing channel's importance takes effect unless the user
+            // has changed the channel's settings.
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             // The alert plays its own sound and vibration; the channel's
             // would double them and obey the ringer mode and DND.
@@ -160,7 +164,6 @@ object RestAlert {
             .setContentTitle(ctx.getString(R.string.rest_over_title))
             .setContentText(ctx.getString(R.string.rest_over_text))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(RestTimerService.openAppIntent(ctx))
             .setAutoCancel(true)
             .setTimeoutAfter(NOTIFICATION_TIMEOUT_MS)
