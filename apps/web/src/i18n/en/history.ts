@@ -111,8 +111,8 @@ export const history = {
   },
   records: {
     tableLabel: "Records table",
-    bestWeightForReps: "Best weight for reps",
-    mostRepsAtWeight: "Most reps at weight",
+    bestWeightForReps: "Best weight",
+    mostRepsAtWeight: "Most reps",
     reps: "Reps",
     weight: "Weight",
     date: "Date",

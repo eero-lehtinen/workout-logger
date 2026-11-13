@@ -114,8 +114,8 @@ export const history = {
   },
   records: {
     tableLabel: "Ennätystaulukko",
-    bestWeightForReps: "Paras paino toistomäärällä",
-    mostRepsAtWeight: "Eniten toistoja painolla",
+    bestWeightForReps: "Paras paino",
+    mostRepsAtWeight: "Eniten toistoja",
     reps: "Toistot",
     weight: "Paino",
     date: "Pvm",

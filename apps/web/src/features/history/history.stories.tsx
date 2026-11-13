@@ -98,9 +98,7 @@ export const ExerciseHistoryMetrics = pageStory({
     await expect(
       await canvas.findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Most reps at weight" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Most reps" }));
     await expect(
       canvas.getByRole("columnheader", { name: "Reps" }),
     ).toBeVisible();
