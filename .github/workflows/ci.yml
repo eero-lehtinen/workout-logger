@@ -17,9 +17,8 @@ concurrency:
 env:
   IMAGE: ghcr.io/${{ github.repository }}
 
-# The checks are split into parallel jobs because the private repo's runners
-# have 2 vCPUs, on which Vitest and Playwright run one test file at a time.
-# Each job pays ~20 s of setup and is billed in whole minutes.
+# The checks are split into parallel jobs to finish sooner. Each job pays
+# ~20 s of setup.
 jobs:
   unit:
     name: lint, typecheck, unit tests
@@ -198,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      DOKPLOY_URL: https://dokploy.eerolehtinen.fi
+      DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
       DOKPLOY_COMPOSE_ID: hTEouGN6Ll3gpBPG7v99Q
       DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
       APP_URL: https://lift.eerolehtinen.fi

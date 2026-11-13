@@ -271,7 +271,9 @@ fixed development secret otherwise. Outside production, a listed provider
 without its client is left out with a warning, so the server starts with
 sign-in off when none is set, which is enough for local runs without sign-in.
 
-The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`.
+The Dokploy API key of the CI user is the GitHub secret `DOKPLOY_API_KEY`,
+and Dokploy's URL is the secret `DOKPLOY_URL`, so it stays out of the
+workflow file and is masked in Actions logs.
 The GHCR pull token lives only in Dokploy's registry entry. CI pushes images
 with the workflow's own `GITHUB_TOKEN`. The other GitHub secrets are the
 Android keystore's ([Android releases](#android-releases)) and
