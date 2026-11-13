@@ -55,11 +55,12 @@ export async function openTestApp(
   } = {},
 ) {
   const { signIn: clients, maxAccounts, ...appOverrides } = overrides;
+  const publicUrl = appOverrides.publicUrl ?? TEST_URL;
   const database = openDatabase(":memory:");
   let cache: LimitCache | null = null;
   const settings: AuthSettings = {
     db: database.db as never,
-    publicUrl: TEST_URL,
+    publicUrl,
     secret: SECRET,
     signIn: clients ?? { google: CLIENT, github: CLIENT },
     maxAccounts: () => cache?.maxAccounts() ?? 0,
@@ -82,7 +83,7 @@ export async function openTestApp(
     bundleRoot: "unused",
     databasePath: ":memory:",
     ...appOverrides,
-    publicUrl: TEST_URL,
+    publicUrl,
     db: database.db,
     auth,
     limitCache,

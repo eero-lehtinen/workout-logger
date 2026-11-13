@@ -134,6 +134,35 @@ describe("deleting a user", () => {
   });
 });
 
+describe("cookies over https", () => {
+  /** What a sibling subdomain can't set: `__Host-`, Secure, Path=/, no Domain. */
+  const hostOnly = (cookie: string) =>
+    cookie.startsWith("__Host-") &&
+    /; Secure/i.test(cookie) &&
+    /; Path=\/(;|$)/i.test(cookie) &&
+    !/; Domain=/i.test(cookie);
+
+  it("names Better Auth's cookies __Host-", async () => {
+    const { auth } = await openTestApp({ publicUrl: "https://lift.example" });
+    const { sessionToken } = (await auth.$context).authCookies;
+    expect(sessionToken.name).toBe("__Host-better-auth.session_token");
+    expect(sessionToken.attributes).toMatchObject({ secure: true, path: "/" });
+    expect(sessionToken.attributes.domain).toBeUndefined();
+  });
+
+  it("sets only __Host- cookies when the app starts a sign-in", async () => {
+    const { app } = await openTestApp({ publicUrl: "https://lift.example" });
+    const res = await app.request(
+      `/api/native-auth/start?app=${APP}&challenge=${challenge}`,
+    );
+    const cookies = res.headers.getSetCookie();
+    expect(cookies.some((c) => c.startsWith("__Host-wl_native_auth="))).toBe(
+      true,
+    );
+    expect(cookies.filter((c) => !hostOnly(c))).toEqual([]);
+  });
+});
+
 describe("pruneVerifications", () => {
   it("deletes only expired verification rows", async () => {
     const { auth, db } = await openTestApp();
@@ -211,8 +240,9 @@ describe("Android sign-in", () => {
     started = true,
     oldSession = false,
     welcome = false,
+    publicUrl = undefined as string | undefined,
   } = {}) {
-    const test = await openTestApp();
+    const test = await openTestApp(publicUrl ? { publicUrl } : {});
     const early = oldSession ? await test.signIn("alice@example.com") : null;
     if (oldSession) await new Promise((r) => setTimeout(r, 1100));
     const start = started
@@ -234,6 +264,11 @@ describe("Android sign-in", () => {
     const code = new URL(link ?? "x:").searchParams.get("code");
     return { ...test, browser, link, code };
   }
+
+  it("reads its __Host- flow cookie over https", async () => {
+    const { code } = await finish({ publicUrl: "https://lift.example" });
+    expect(code).toBeTruthy();
+  });
 
   it("hands the app a code through its deep link", async () => {
     const { link, code } = await finish();

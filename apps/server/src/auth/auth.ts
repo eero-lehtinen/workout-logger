@@ -47,6 +47,11 @@ export interface AuthSettings {
 
 const DAY_S = 24 * 60 * 60;
 
+/** Cookies are `Secure` and `__Host-` only when users reach the server over https. */
+export function isHttps(publicUrl: string): boolean {
+  return new URL(publicUrl).protocol === "https:";
+}
+
 /** Better Auth's configuration. See docs/accounts.md#login. */
 export function authOptions(settings: AuthSettings) {
   const { google, github } = settings.signIn;
@@ -161,6 +166,15 @@ export function authOptions(settings: AuthSettings) {
       // Every request comes through the Cloudflare Tunnel, which sets this
       // header at the edge (docs/deployment.md#topology).
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
+      // A page on a sibling subdomain can set a cookie for the whole domain,
+      // e.g. a session of its own account, unless its name starts with
+      // `__Host-`. Better Auth would add `__Secure-` in front of any prefix,
+      // so its own prefixing is off and `secure` is set here.
+      ...(isHttps(settings.publicUrl) && {
+        useSecureCookies: false,
+        cookiePrefix: "__Host-better-auth",
+        defaultCookieAttributes: { secure: true },
+      }),
     },
     plugins: [bearer()],
     telemetry: { enabled: false },

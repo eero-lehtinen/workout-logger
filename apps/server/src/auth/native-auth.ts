@@ -2,7 +2,13 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { html, raw } from "hono/html";
-import { type Auth, type SignInProvider, signInProviders } from "./auth.ts";
+import type { CookieOptions } from "hono/utils/cookie";
+import {
+  type Auth,
+  isHttps,
+  type SignInProvider,
+  signInProviders,
+} from "./auth.ts";
 
 /**
  * Sign-in for the Android app (docs/accounts.md#login, Android sessions).
@@ -45,6 +51,14 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
   // In memory: there is one server instance, and a code lives two minutes.
   const codes = new Map<string, PendingCode>();
   const app = new Hono();
+  // `__Host-`, like Better Auth's cookies: a sibling subdomain could
+  // otherwise set the flow cookie and pass a session from before the flow
+  // as a fresh one.
+  const secure = isHttps(String(auth.options.baseURL));
+  const prefix = secure ? ("host" as const) : undefined;
+  const flowCookie: CookieOptions = secure
+    ? { path: "/", httpOnly: true, secure: true, prefix: "host" }
+    : { path: "/", httpOnly: true };
 
   app.get("/start", async (c) => {
     const params = flowParams(c);
@@ -65,9 +79,7 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
     });
     if (!response.url) return c.text("Sign-in is not available", 503);
     setCookie(c, FLOW_COOKIE, `${params.challenge}.${now()}`, {
-      path: "/api/native-auth",
-      httpOnly: true,
-      secure: new URL(c.req.url).protocol === "https:",
+      ...flowCookie,
       sameSite: "Lax",
       maxAge: FLOW_TTL_S,
     });
@@ -82,8 +94,10 @@ export function nativeAuthRoutes(auth: Auth, now: () => number = Date.now) {
     const params = flowParams(c);
     if (!params) return c.text("Bad request", 400);
     const back = new URL(`${params.app}://auth`);
-    const [challenge, startedAt] = (getCookie(c, FLOW_COOKIE) ?? "").split(".");
-    deleteCookie(c, FLOW_COOKIE, { path: "/api/native-auth" });
+    const [challenge, startedAt] = (
+      getCookie(c, FLOW_COOKIE, prefix) ?? ""
+    ).split(".");
+    deleteCookie(c, FLOW_COOKIE, flowCookie);
     const error = c.req.query("error");
     const session = error
       ? null
