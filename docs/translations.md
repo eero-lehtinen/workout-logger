@@ -81,6 +81,16 @@ key fails `pnpm typecheck`.
   each feature has at least one Finnish story, which catches text that
   doesn't fit. Storybook's toolbar switches the language for browsing.
 
+## Wording
+
+UI text is written for someone who has not read the docs. A setting or
+action is labeled by what it does, and its hint says when it happens and
+what changes as a result: "Auto-end after (min)", with "If no set is logged
+for this long, the session ends. Its end time is the last set." Glossary
+terms name the things the user works with (session, slot, set, PR). Terms
+that name a mechanism, such as "idle end", stay in code and docs; the
+glossary entry records the UI label used instead.
+
 ## Finnish
 
 Informal, as Finnish apps are: second person singular, short imperatives
