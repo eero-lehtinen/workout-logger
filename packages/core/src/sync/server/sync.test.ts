@@ -12,7 +12,6 @@ import {
   push,
   ROW_OVERHEAD_BYTES,
   readEpoch,
-  readEpochStartedAt,
   rowBytes,
   snapshot,
 } from "./sync.ts";
@@ -320,18 +319,6 @@ describe("push", () => {
   it("counts UTF-8 bytes", () => {
     expect(dataBytes('{"n":"ä"}')).toBe(10);
   });
-});
-
-describe("newEpoch", () => {
-  it("records when the epoch started", async () => {
-    const { db } = await openTestServer();
-    expect(await readEpochStartedAt(db)).toBeNull();
-    const epoch = await newEpoch(db, NOW);
-    expect(await readEpoch(db)).toBe(epoch);
-    expect(await readEpochStartedAt(db)).toBe(NOW);
-    await newEpoch(db, NOW + 1);
-    expect(await readEpochStartedAt(db)).toBe(NOW + 1);
-  });
 
   it("counts a row's key and fixed overhead, not only its data", async () => {
     const { db } = await openTestServer();
@@ -352,6 +339,16 @@ describe("newEpoch", () => {
       { status: "ok" },
       { status: "rejected", reason: "quota" },
     ]);
+  });
+});
+
+describe("newEpoch", () => {
+  it("replaces the epoch", async () => {
+    const { db } = await openTestServer();
+    const before = await readEpoch(db);
+    const epoch = await newEpoch(db);
+    expect(epoch).not.toBe(before);
+    expect(await readEpoch(db)).toBe(epoch);
   });
 });
 

@@ -358,35 +358,12 @@ async function readMeta(
  * Ends a whole-database restore. Clients that see the new epoch re-upload
  * everything and pull from the start. See docs/sync.md#server-restore-and-epoch.
  */
-export async function newEpoch(
-  db: ServerDb,
-  now: number = Date.now(),
-): Promise<string> {
+export async function newEpoch(db: ServerDb): Promise<string> {
   const value = crypto.randomUUID();
-  await db.transaction().execute(async (trx) => {
-    await trx
-      .updateTable("server_meta")
-      .set({ value })
-      .where("key", "=", "epoch")
-      .execute();
-    // The re-upload that follows is exempt from the daily write quota.
-    await trx
-      .insertInto("server_meta")
-      .values({ key: "epoch_started_at", value: String(now) })
-      .onConflict((oc) => oc.column("key").doUpdateSet({ value: String(now) }))
-      .execute();
-  });
+  await db
+    .updateTable("server_meta")
+    .set({ value })
+    .where("key", "=", "epoch")
+    .execute();
   return value;
-}
-
-/** When the current epoch began, if it began with `newEpoch`. */
-export async function readEpochStartedAt(
-  db: ServerDb | ServerTrx,
-): Promise<number | null> {
-  const row = await db
-    .selectFrom("server_meta")
-    .select("value")
-    .where("key", "=", "epoch_started_at")
-    .executeTakeFirst();
-  return row ? Number(row.value) : null;
 }

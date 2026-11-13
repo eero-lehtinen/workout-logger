@@ -34,8 +34,6 @@ export interface QuotaTable {
   max_bytes: number | null;
   requests_per_minute: number | null;
   snapshots_per_day: number | null;
-  /** Epoch ms until which the daily write limit is lifted. */
-  exempt_until: number | null;
 }
 
 /** Server-wide limits the owner sets; one row, id 1. NULL is the built-in value. */

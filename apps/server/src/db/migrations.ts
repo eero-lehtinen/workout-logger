@@ -71,6 +71,14 @@ const STEPS: Record<string, Migration> = {
       ) WITHOUT ROWID`.execute(db);
     },
   },
+  "0006_no_quota_exemptions": {
+    async up(db: Kysely<unknown>) {
+      await db.schema.alterTable("quota").dropColumn("exempt_until").execute();
+      await sql`DELETE FROM server_meta WHERE key = 'epoch_started_at'`.execute(
+        db,
+      );
+    },
+  },
 };
 
 // Kysely runs SQLite migrations without a transaction (its SQLite adapter

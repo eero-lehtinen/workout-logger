@@ -7,8 +7,6 @@ export interface Usage {
   day: string;
   bytesWritten: number;
   bytesPerDay: number | null;
-  /** The daily limit doesn't apply until then. */
-  exemptUntil: number | null;
   storedBytes: number;
   maxBytes: number | null;
   snapshots: number;
@@ -69,7 +67,7 @@ export async function refreshUsage(): Promise<void> {
  */
 export function pausedBy(value: Usage): "daily" | "storage" {
   const daily =
-    value.bytesPerDay === null || value.exemptUntil !== null
+    value.bytesPerDay === null
       ? Number.POSITIVE_INFINITY
       : value.bytesPerDay - value.bytesWritten;
   const storage =

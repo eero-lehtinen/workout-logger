@@ -7,7 +7,7 @@ import { DEFAULT_QUOTA, pruneUsage, type UsageReport } from "./quota.ts";
 import { openTestApp } from "./testing.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
-/** Past the 24 h after sign-up in which the daily limit doesn't apply. */
+/** Two days after the test accounts are created. */
 const LATER = Date.now() + 2 * DAY;
 
 // Not ahead of any test's server clock, which would be `future_clock`.
@@ -70,7 +70,6 @@ async function setup(now = LATER) {
       max_bytes?: number;
       snapshots_per_day?: number;
       requests_per_minute?: number;
-      exempt_until?: number;
     },
   ) =>
     test.db
@@ -114,7 +113,7 @@ describe("daily bytes written", () => {
   it("doesn't limit the owner", async () => {
     const { signIn, pushAs, usage } = await setup();
     const owner = await signIn("owner@example.com", "owner");
-    const big = Array.from({ length: 6 }, (_, i) =>
+    const big = Array.from({ length: 22 }, (_, i) =>
       // Under the 1 MB push body each, over the default daily limit together.
       change(`o${i}`, 1000 * 1000),
     );
@@ -127,47 +126,20 @@ describe("daily bytes written", () => {
   });
 });
 
-describe("exemptions", () => {
-  async function overDaily(now = LATER) {
-    const test = await setup(now);
-    await test.setQuota(test.alice.userId, {
-      bytes_per_day: cost(100),
-      max_bytes: 2 * cost(150),
-    });
-    return test;
-  }
-
-  it("lifts the daily limit in the first 24 h of an account, not the storage one", async () => {
-    const { alice, pushAs, usage } = await overDaily(Date.now());
-    expect(
-      await pushAs(alice, [
-        change("a", 150),
-        change("b", 150),
-        change("c", 17),
-      ]),
-    ).toEqual(["ok", "ok", "quota"]);
-    expect((await usage()).exemptUntil).toBeGreaterThan(Date.now());
+describe("no exemptions", () => {
+  it("limits a new account and the re-upload after a new epoch", async () => {
+    const { alice, db, pushAs, setQuota } = await setup(Date.now());
+    await setQuota(alice.userId, { bytes_per_day: cost(100) });
+    expect(await pushAs(alice, [change("a", 100), change("b", 100)])).toEqual([
+      "ok",
+      "quota",
+    ]);
+    await newEpoch(syncDb(db));
+    expect(await pushAs(alice, [change("b", 100)])).toEqual(["quota"]);
   });
 
-  it("lifts it for 24 h after a new epoch", async () => {
-    const test = await overDaily();
-    await newEpoch(syncDb(test.db), LATER - DAY + 1000);
-    expect(
-      await test.pushAs(test.alice, [change("a", 150), change("b", 150)]),
-    ).toEqual(["ok", "ok"]);
-    test.clock.now += 2000;
-    expect(await test.pushAs(test.alice, [change("c", 50)])).toEqual(["quota"]);
-  });
-
-  it("lifts it until the owner's exempt_until", async () => {
-    const test = await overDaily();
-    await test.setQuota(test.alice.userId, { exempt_until: LATER + 1000 });
-    expect(
-      await test.pushAs(test.alice, [change("a", 150), change("b", 150)]),
-    ).toEqual(["ok", "ok"]);
-    expect(await test.pushAs(test.alice, [change("c", 17)])).toEqual(["quota"]);
-    test.clock.now += 1000;
-    expect((await test.usage()).exemptUntil).toBeNull();
+  it("allows a whole account's storage in one day by default", () => {
+    expect(DEFAULT_QUOTA.bytesPerDay).toBe(DEFAULT_QUOTA.maxBytes);
   });
 });
 
@@ -219,7 +191,6 @@ describe("usage", () => {
       day: new Date(LATER).toISOString().slice(0, 10),
       bytesWritten: cost(100),
       bytesPerDay: DEFAULT_QUOTA.bytesPerDay,
-      exemptUntil: null,
       storedBytes: cost(100),
       maxBytes: DEFAULT_QUOTA.maxBytes,
       snapshots: 0,

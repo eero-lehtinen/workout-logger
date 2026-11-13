@@ -9,7 +9,6 @@ import {
   type AdminUsers,
   banUser,
   deleteUser,
-  exemptUser,
   type QuotaOverrides,
   saveOverrides,
   setDisabled,
@@ -29,7 +28,7 @@ const FIELDS: { key: Field; bytes: boolean }[] = [
   { key: "snapshotsPerDay", bytes: false },
 ];
 
-/** One account's quotas, exemption, disable switch, deletion, and ban. */
+/** One account's quotas, disable switch, deletion, and ban. */
 export function UserSheet(props: {
   user: AdminUser;
   defaults: AdminUsers["defaults"];
@@ -132,24 +131,6 @@ export function UserSheet(props: {
             {t("admin.user.saveQuotas")}
           </Button>
         </div>
-        <Row
-          stacked
-          label={t("admin.user.unlimited")}
-          hint={
-            user.exemptUntil === null
-              ? t("admin.user.unlimitedHint")
-              : t("admin.user.unlimitedActive", {
-                  until: formatDateTime(user.exemptUntil),
-                })
-          }
-        >
-          <Button
-            disabled={action.isPending}
-            onClick={() => action.mutate(() => exemptUser(user.id))}
-          >
-            {t("admin.user.allow24h")}
-          </Button>
-        </Row>
         <Row
           stacked
           label={

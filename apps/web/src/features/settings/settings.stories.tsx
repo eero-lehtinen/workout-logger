@@ -346,10 +346,9 @@ export const ClockAhead = {
 const usage: Usage = {
   day: "2026-11-11",
   bytesWritten: 180 * 1024,
-  bytesPerDay: 5 * 1024 * 1024,
-  exemptUntil: null,
+  bytesPerDay: 20 * 1024 * 1024,
   storedBytes: 2.4 * 1024 * 1024,
-  maxBytes: 10 * 1024 * 1024,
+  maxBytes: 20 * 1024 * 1024,
   snapshots: 1,
   snapshotsPerDay: 10,
 };
@@ -361,9 +360,9 @@ export const ServerUsage = {
     url: () => "/settings",
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
-      await expect(canvas.getByText("Stored: 2.4 MB of 10 MB.")).toBeVisible();
+      await expect(canvas.getByText("Stored: 2.4 MB of 20 MB.")).toBeVisible();
       await expect(
-        canvas.getByText("Uploaded today: 180 kB of 5 MB."),
+        canvas.getByText("Uploaded today: 180 kB of 20 MB."),
       ).toBeVisible();
     },
   }),

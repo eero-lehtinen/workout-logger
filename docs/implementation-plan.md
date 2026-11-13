@@ -235,7 +235,7 @@ check and rollback handling. `v0.5.0` is the first APK with the plugin.
 - Google sign-in instead of GitHub, which stays behind a flag.
 - Open sign-up up to an account cap sized from the R2 free tier, with a privacy notice. No invites.
 - Rate limits (per-IP before auth, per user after), body limits, trusted proxy configuration.
-- Quotas and their exemptions, the usage table and pruning, usage shown to the user, the owner admin page (users, usage, quotas, disable).
+- Quotas, the usage table and pruning, usage shown to the user, the owner admin page (users, usage, quotas, disable).
 - Account deletion with stated retention. Data export already exists (Settings → Export snapshot).
 
 **Exit:** **M2.** Google sign-in works on the live server, on the web and in the Android app.

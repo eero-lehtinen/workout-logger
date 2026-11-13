@@ -78,11 +78,7 @@ function UsageRow(props: { usage: Usage | null }) {
           limit: formatBytes(limit),
         });
   const stored = usage ? `${of(usage.storedBytes, usage.maxBytes)}.` : "…";
-  const today = !usage
-    ? "…"
-    : usage.exemptUntil !== null
-      ? `${t("settings.sync.usage.noLimit", { used: formatBytes(usage.bytesWritten) })}.`
-      : `${of(usage.bytesWritten, usage.bytesPerDay)}.`;
+  const today = usage ? `${of(usage.bytesWritten, usage.bytesPerDay)}.` : "…";
   return (
     <Row
       label={t("settings.sync.usage.label")}

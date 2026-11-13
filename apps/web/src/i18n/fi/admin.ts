@@ -84,11 +84,6 @@ export const admin = {
     invalidQuotas:
       "Anna lukuja, jotka ovat vähintään 0, tai jätä kenttä tyhjäksi",
     saveQuotas: "Tallenna kiintiöt",
-    unlimited: "Rajoittamaton lähetys",
-    unlimitedHint:
-      "Poistaa päivittäisen lähetysrajan 24 tunniksi, esim. ennen tuontia. Tallennustilan raja pysyy.",
-    unlimitedActive: "Päivittäistä lähetysrajaa ei ole {{until}} asti.",
-    allow24h: "Poista raja 24 tunniksi",
     disabledLabel: "Poistettu käytöstä",
     disable: "Poista käytöstä",
     disabledHint:

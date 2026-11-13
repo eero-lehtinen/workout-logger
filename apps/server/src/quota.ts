@@ -1,8 +1,6 @@
 import {
   type PushQuota,
   ROW_OVERHEAD_BYTES,
-  readEpochStartedAt,
-  type ServerDb,
 } from "@workout-logger/core/sync-server";
 import { sql, type Transaction } from "kysely";
 import type { ServerKysely, ServerTables } from "./db/database.ts";
@@ -18,14 +16,14 @@ export const rowBytesSql = sql<number>`length(CAST(data AS BLOB)) + length(table
 const MAX_BYTES = 20 * MB;
 
 export const DEFAULT_QUOTA = {
-  bytesPerDay: 5 * MB,
+  // A whole account fits in a day: the first upload after sign-up, the
+  // re-upload after a server restore, or a snapshot import.
+  bytesPerDay: MAX_BYTES,
   maxBytes: MAX_BYTES,
   requestsPerMinute: 60,
   snapshotsPerDay: 10,
 };
 
-/** How long account creation, a new epoch, or the owner's grant lift the daily limit. */
-export const EXEMPTION_MS = DAY;
 export const USAGE_RETENTION_DAYS = 90;
 
 type Db = ServerKysely | Transaction<ServerTables>;
@@ -35,15 +33,12 @@ export interface Limits {
   bytesPerDay: number | null;
   maxBytes: number | null;
   snapshotsPerDay: number | null;
-  /** The end of the exemption from the daily write limit in force, if any. */
-  exemptUntil: number | null;
 }
 
 const UNLIMITED: Limits = {
   bytesPerDay: null,
   maxBytes: null,
   snapshotsPerDay: null,
-  exemptUntil: null,
 };
 
 /** The UTC day `usage` rows are kept by. */
@@ -60,11 +55,10 @@ export function toMillis(value: string | number): number {
 export async function readLimits(
   db: Db,
   userId: string,
-  now: number,
 ): Promise<Limits | null> {
   const user = await db
     .selectFrom("user")
-    .select(["role", "createdAt"])
+    .select("role")
     .where("id", "=", userId)
     .executeTakeFirst();
   if (!user) return null;
@@ -74,18 +68,11 @@ export async function readLimits(
     .selectAll()
     .where("user_id", "=", userId)
     .executeTakeFirst();
-  const epochStartedAt = await readEpochStartedAt(db as unknown as ServerDb);
-  const exemptUntil = Math.max(
-    toMillis(user.createdAt) + EXEMPTION_MS,
-    epochStartedAt === null ? 0 : epochStartedAt + EXEMPTION_MS,
-    override?.exempt_until ?? 0,
-  );
   return {
     bytesPerDay: override?.bytes_per_day ?? DEFAULT_QUOTA.bytesPerDay,
     maxBytes: override?.max_bytes ?? DEFAULT_QUOTA.maxBytes,
     snapshotsPerDay:
       override?.snapshots_per_day ?? DEFAULT_QUOTA.snapshotsPerDay,
-    exemptUntil: exemptUntil > now ? exemptUntil : null,
   };
 }
 
@@ -141,10 +128,10 @@ export function pushQuota(userId: string, now: number): PushQuota {
   return {
     async allowance(trx) {
       const db = trx as unknown as Transaction<ServerTables>;
-      const limits = await readLimits(db, userId, now);
+      const limits = await readLimits(db, userId);
       if (!limits) return { written: 0, stored: 0 };
       const written =
-        limits.bytesPerDay === null || limits.exemptUntil !== null
+        limits.bytesPerDay === null
           ? Number.POSITIVE_INFINITY
           : limits.bytesPerDay - (await usageOn(db, userId, day)).bytesWritten;
       const stored =
@@ -169,7 +156,7 @@ export function takeSnapshot(
 ): Promise<boolean> {
   const day = utcDay(now);
   return db.transaction().execute(async (trx) => {
-    const limits = await readLimits(trx, userId, now);
+    const limits = await readLimits(trx, userId);
     if (!limits) return false;
     const { snapshots } = await usageOn(trx, userId, day);
     if (
@@ -188,8 +175,6 @@ export interface UsageReport {
   day: string;
   bytesWritten: number;
   bytesPerDay: number | null;
-  /** The daily limit doesn't apply until then. */
-  exemptUntil: number | null;
   storedBytes: number;
   maxBytes: number | null;
   snapshots: number;
@@ -202,14 +187,13 @@ export async function usageReport(
   now: number,
 ): Promise<UsageReport | null> {
   const day = utcDay(now);
-  const limits = await readLimits(db, userId, now);
+  const limits = await readLimits(db, userId);
   if (!limits) return null;
   const usage = await usageOn(db, userId, day);
   return {
     day,
     bytesWritten: usage.bytesWritten,
     bytesPerDay: limits.bytesPerDay,
-    exemptUntil: limits.exemptUntil,
     storedBytes: await storedBytes(db, userId),
     maxBytes: limits.maxBytes,
     snapshots: usage.snapshots,

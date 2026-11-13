@@ -7,14 +7,7 @@ import { summarizeStorage } from "./backup/storage.ts";
 import { type Ban, banAccount, listBans, unban } from "./ban.ts";
 import type { ServerKysely } from "./db/database.ts";
 import { DEFAULT_MAX_ACCOUNTS, type LimitCache } from "./limit-cache.ts";
-import {
-  DEFAULT_QUOTA,
-  EXEMPTION_MS,
-  readLimits,
-  rowBytesSql,
-  toMillis,
-  utcDay,
-} from "./quota.ts";
+import { DEFAULT_QUOTA, rowBytesSql, toMillis, utcDay } from "./quota.ts";
 
 // The one module that reads across users, for the owner's admin page
 // (docs/accounts.md#admin-page). Only `/api/admin/*` uses it, behind
@@ -40,8 +33,6 @@ export interface AdminUser {
   bytesWrittenToday: number;
   storedBytes: number;
   overrides: QuotaOverrides;
-  /** The end of the exemption from the daily write limit in force, if any. */
-  exemptUntil: number | null;
 }
 
 export interface AdminUsers {
@@ -92,7 +83,6 @@ export async function listUsers(
   const result: AdminUser[] = [];
   for (const user of users) {
     const quota = quotaBy.get(user.id);
-    const limits = await readLimits(db, user.id, now);
     result.push({
       id: user.id,
       name: user.name,
@@ -109,7 +99,6 @@ export async function listUsers(
         requestsPerMinute: quota?.requests_per_minute ?? null,
         snapshotsPerDay: quota?.snapshots_per_day ?? null,
       },
-      exemptUntil: limits?.exemptUntil ?? null,
     });
   }
   return result;
@@ -226,19 +215,6 @@ export function adminRoutes(
       .execute();
     await limitCache.refresh();
     return c.body(null, 204);
-  });
-
-  /** Lifts the daily write limit for the next 24 h, e.g. for an import. */
-  app.post("/users/:id/exempt", async (c) => {
-    const exemptUntil = now() + EXEMPTION_MS;
-    await db
-      .insertInto("quota")
-      .values({ user_id: c.req.param("id"), exempt_until: exemptUntil })
-      .onConflict((oc) =>
-        oc.column("user_id").doUpdateSet({ exempt_until: exemptUntil }),
-      )
-      .execute();
-    return c.json({ exemptUntil });
   });
 
   app.post("/users/:id/disable", async (c) => {

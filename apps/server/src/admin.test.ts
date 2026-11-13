@@ -4,7 +4,7 @@ import { ROW_OVERHEAD_BYTES } from "@workout-logger/core/sync-server";
 import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import type { AdminUsers } from "./admin.ts";
-import { DEFAULT_QUOTA, EXEMPTION_MS } from "./quota.ts";
+import { DEFAULT_QUOTA } from "./quota.ts";
 import { openTestApp } from "./testing.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -62,7 +62,7 @@ describe("/api/admin", () => {
     const { app, alice, call } = await setup();
     expect((await app.request("/api/admin/users")).status).toBe(401);
     expect((await call(alice, "/api/admin/users")).status).toBe(403);
-    const res = await call(alice, `/api/admin/users/${alice.userId}/exempt`, {
+    const res = await call(alice, `/api/admin/users/${alice.userId}/enable`, {
       method: "POST",
     });
     expect(res.status).toBe(403);
@@ -89,7 +89,6 @@ describe("/api/admin", () => {
       bytesWrittenToday: ROW,
       storedBytes: ROW,
       lastSyncAt: LATER,
-      exemptUntil: null,
       overrides: {
         bytesPerDay: null,
         maxBytes: null,
@@ -160,25 +159,6 @@ describe("/api/admin", () => {
     for (const bad of [0, -1, 2.5, "5"]) {
       expect((await put(bad)).status).toBe(400);
     }
-  });
-
-  it("lifts the daily limit for 24 h", async () => {
-    const { owner, alice, call, push } = await setup();
-    await call(owner, `/api/admin/users/${alice.userId}/quota`, {
-      method: "PUT",
-      body: JSON.stringify({
-        bytesPerDay: 0,
-        maxBytes: null,
-        requestsPerMinute: null,
-        snapshotsPerDay: null,
-      }),
-    });
-    expect((await push(alice, 100))?.status).toBe("rejected");
-    const res = await call(owner, `/api/admin/users/${alice.userId}/exempt`, {
-      method: "POST",
-    });
-    expect(await res.json()).toEqual({ exemptUntil: LATER + EXEMPTION_MS });
-    expect(await push(alice, 100)).toEqual({ status: "ok" });
   });
 
   it("doesn't act on the owner's own account or a missing one", async () => {

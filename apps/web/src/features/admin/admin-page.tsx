@@ -168,10 +168,9 @@ function usageLine(
 ): string {
   const owner = user.role === "owner";
   const max = owner ? null : (user.overrides.maxBytes ?? defaults.maxBytes);
-  const perDay =
-    owner || user.exemptUntil !== null
-      ? null
-      : (user.overrides.bytesPerDay ?? defaults.bytesPerDay);
+  const perDay = owner
+    ? null
+    : (user.overrides.bytesPerDay ?? defaults.bytesPerDay);
   const of = (used: number, limit: number | null) =>
     limit === null
       ? formatBytes(used)

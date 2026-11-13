@@ -58,7 +58,7 @@ times into R2.
 - `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"; a 403 from id-token sign-in, `?error=signup_closed` on the OAuth redirect). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place. That needs `transaction: true` in its database options: without it Better Auth runs the two inserts without a transaction.
 - The hook counts through Better Auth's adapter, which joins the transaction, and reads the cap from the server's in-memory copy of `limits`: a query on the server's own Kysely instance would wait for the connection the transaction holds.
 - The sign-in row says that signing in creates an account, that synced data is not encrypted, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
-- Sign-up lands on Settings with a welcome toast: Better Auth sends a new user to `newUserCallbackURL` (`/settings?welcome=1`; for Android, `/finish` passes `welcome=1` on to the deep link). Data logged on the device before sign-up uploads in the first sync, within the [24-hour exemption](#quotas).
+- Sign-up lands on Settings with a welcome toast: Better Auth sends a new user to `newUserCallbackURL` (`/settings?welcome=1`; for Android, `/finish` passes `welcome=1` on to the deep link). Data logged on the device before sign-up uploads in the first sync, within the [daily limit](#quotas), which fits a whole account.
 
 **Why 100.** The binding limit is R2's free tier, 10 GB of storage, which
 other projects on the account share; about 8 GB is left for this server.
@@ -131,7 +131,7 @@ the server code, unless the owner sets an override for it on the
 
 | Quota | Default | Reason |
 | --- | --- | --- |
-| Bytes written per day | 5 MB | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 500 KB. |
+| Bytes written per day | 20 MB, the stored data size | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. It equals the storage limit, so a whole account fits in one day: the first upload after sign-up, the re-upload after a server restore, or a snapshot import. There are no exemptions. A heavy session plus routine editing writes well under 500 KB. |
 | Stored data size | 20 MB | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). |
 | Requests per minute | 60 | Normal sync runs once a minute plus on writes. Stops runaway clients. |
 | Snapshot downloads per day | 10 | Snapshots are the most expensive reads. |
@@ -142,13 +142,9 @@ Enforcement:
 - Only versions the server **stores** count toward bytes written: ones newer than the stored row. Duplicates from retries and versions that already lost are free.
 - The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are the sum of the user's `head` rows' bytes, read at the start of the push; a replaced row counts its new size, not both. Once a change doesn't fit either limit, it and the rest of the push's new versions are rejected as `quota`. Only growth counts against storage, so a user over a lowered limit can still sync changes that shrink their data. Local logging keeps working.
 - Days are UTC: the daily limits reset at 00:00 UTC (`usage.day`).
-- **Exempt from the daily limit**, never from the storage limit:
-  - the first 24 h after the account is created, for the upload of data logged before sign-up;
-  - the first 24 h after a server epoch change, for the re-upload;
-  - until `quota.exempt_until`, which the owner sets for 24 h from the admin page, e.g. before a user imports a snapshot of years of history.
-- A snapshot over the daily limit gets 429 `quota`, and Settings says sync resumes tomorrow. The exemptions don't apply to it.
+- A snapshot over the daily limit gets 429 `quota`, and Settings says sync resumes tomorrow.
 - The request limit is counted in memory only.
-- `GET /api/me/usage` returns `{ day, bytesWritten, bytesPerDay, exemptUntil, storedBytes, maxBytes, snapshots, snapshotsPerDay }`, limits null when unlimited. Settings shows the stored and uploaded bytes under Sync ("Server storage"), fetched at startup and on account changes and refreshed after each sync run while Settings is open, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner). The server doesn't say which limit refused a change, so the app names the one with less room left.
+- `GET /api/me/usage` returns `{ day, bytesWritten, bytesPerDay, storedBytes, maxBytes, snapshots, snapshotsPerDay }`, limits null when unlimited. Settings shows the stored and uploaded bytes under Sync ("Server storage"), fetched at startup and on account changes and refreshed after each sync run while Settings is open, and names the limit that paused sync: the daily limit (resumes tomorrow) or storage (ask the owner). The server doesn't say which limit refused a change, so the app names the one with less room left.
 - `usage` rows older than 90 days are pruned daily.
 
 Quotas exist to protect the shared VPS and the backup buckets from a runaway
@@ -162,9 +158,9 @@ backup or a database over 700 MB instead of its description.
 
 - **Server:** the database size (with a warning over 700 MB), free disk, and each [backup layer](backups.md#visibility): when it last succeeded, whether it is stale, and the last errors of the daily copy, the two restore rehearsals, and the token check, from the owner's `/api/status`. A failed rehearsal or token check shows as "Failed". Below them, the size of the DB copies in `wl-backups`, per key prefix, from `GET /api/admin/backup-storage`.
 - **Account cap:** edited next to the number of accounts. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete, ban. None of these apply to the owner's own account.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), disable or enable, delete, ban. None of these apply to the owner's own account.
 - **Banned accounts:** below the users, when there are any: name, email, and when banned, each with an Unban button.
-- `GET /api/admin/users` (with the cap, the account count, and the bans); `GET /api/admin/backup-storage`, `{ bytes, objects, groups }` or null without a backup bucket; `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`, `/ban`; `DELETE /api/admin/users/:id`; `DELETE /api/admin/bans/:id` (the banned account's id).
+- `GET /api/admin/users` (with the cap, the account count, and the bans); `GET /api/admin/backup-storage`, `{ bytes, objects, groups }` or null without a backup bucket; `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/disable`, `/enable`, `/ban`; `DELETE /api/admin/users/:id`; `DELETE /api/admin/bans/:id` (the banned account's id).
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
 - **Delete** is the same as the user's own [account deletion](#privacy).
 - **Ban** is a delete that also keeps the person from signing up again ([Bans](#bans)).
@@ -208,7 +204,7 @@ job_run (name PK, last_run_at, last_ok_at?, last_error?)   -- scheduled jobs, se
 usage   (user_id, day, bytes_written, snapshots,
          PRIMARY KEY (user_id, day)) WITHOUT ROWID          -- day: YYYY-MM-DD, UTC
 quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
-         snapshots_per_day?, exempt_until?)                 -- NULL = the default
+         snapshots_per_day?)                                -- NULL = the default
 limits  (id PK CHECK (id = 1), max_accounts?)              -- one row; NULL = 100
 ban     (user_id PK, name, email, created_at)              -- the deleted account's id
 ban_key (user_id, key, PRIMARY KEY (user_id, key))

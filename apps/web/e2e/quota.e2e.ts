@@ -1,26 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { createSession, device, withServerDb } from "./server.ts";
 
-const DAY = 24 * 60 * 60 * 1000;
-
-test("sync pauses at the daily limit and resumes after an exemption", async ({
+test("sync pauses at the daily limit and resumes when it is raised", async ({
   browser,
 }) => {
   const { token, userId } = await createSession(
     `quota-${Date.now()}@example.com`,
   );
-  // Past the 24 h after sign-up, with no upload allowed today.
-  await withServerDb(async (db) => {
-    await db
-      .updateTable("user")
-      .set({ createdAt: new Date(Date.now() - 2 * DAY).toISOString() })
-      .where("id", "=", userId)
-      .execute();
-    await db
+  await withServerDb((db) =>
+    db
       .insertInto("quota")
       .values({ user_id: userId, bytes_per_day: 0 })
-      .execute();
-  });
+      .execute(),
+  );
 
   const phone = await device(browser, token, true);
   await phone.goto("/settings");
@@ -31,7 +23,7 @@ test("sync pauses at the daily limit and resumes after an exemption", async ({
   await withServerDb((db) =>
     db
       .updateTable("quota")
-      .set({ exempt_until: Date.now() + DAY })
+      .set({ bytes_per_day: null })
       .where("user_id", "=", userId)
       .execute(),
   );
@@ -39,5 +31,7 @@ test("sync pauses at the daily limit and resumes after an exemption", async ({
   await expect(phone.getByText(/^Synced just now\.$/)).toBeVisible({
     timeout: 15_000,
   });
-  await expect(phone.getByText(/no limit for now/)).toBeVisible();
+  await expect(
+    phone.getByText(/^Uploaded today: .+ of 20 MB\.$/),
+  ).toBeVisible();
 });

@@ -45,7 +45,6 @@ function user(overrides: Partial<AdminUser>): AdminUser {
       requestsPerMinute: null,
       snapshotsPerDay: null,
     },
-    exemptUntil: null,
     ...overrides,
   };
 }
@@ -329,17 +328,6 @@ export const EditAccount = {
           }),
         ),
       );
-      await userEvent.click(
-        sheet.getByRole("button", { name: "Lift limit for 24 h" }),
-      );
-      await waitFor(() =>
-        expect(requests).toHaveBeenCalledWith(
-          "POST",
-          "/api/admin/users/u1/exempt",
-          null,
-        ),
-      );
-
       await userEvent.click(sheet.getByRole("button", { name: "Disable" }));
       const confirm = await page.findByRole("alertdialog", {
         name: "Disable Alice Example?",

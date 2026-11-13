@@ -21,7 +21,6 @@ export interface AdminUser {
   storedBytes: number;
   /** Null is the default. */
   overrides: QuotaOverrides;
-  exemptUntil: number | null;
 }
 
 export interface AdminUsers {
@@ -90,11 +89,6 @@ export async function saveOverrides(
     method: "PUT",
     body: JSON.stringify(overrides),
   });
-}
-
-/** Lifts the user's daily upload limit for 24 h. */
-export async function exemptUser(userId: string): Promise<void> {
-  await call(`/users/${encodeURIComponent(userId)}/exempt`, { method: "POST" });
 }
 
 /** The same as the user's own account deletion. */

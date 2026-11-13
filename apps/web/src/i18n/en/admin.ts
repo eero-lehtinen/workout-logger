@@ -78,11 +78,6 @@ export const admin = {
     default: "Default {{value}}",
     invalidQuotas: "Enter numbers of 0 or more, or leave empty",
     saveQuotas: "Save quotas",
-    unlimited: "Unlimited uploads",
-    unlimitedHint:
-      "Lifts the daily upload limit for 24 hours, e.g. before an import. Storage stays limited.",
-    unlimitedActive: "The daily upload limit is lifted until {{until}}.",
-    allow24h: "Lift limit for 24 h",
     disabledLabel: "Disabled",
     disable: "Disable",
     disabledHint: "Can't sign in or sync. The data stays on the server.",

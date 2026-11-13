@@ -21,11 +21,8 @@ export interface HeadTable {
 }
 
 export interface ServerMetaTable {
-  /**
-   * `seq`: the last sequence number handed out, as decimal text.
-   * `epoch_started_at`: epoch ms of the last `newEpoch`; absent before one.
-   */
-  key: "epoch" | "seq" | "epoch_started_at";
+  /** `seq`: the last sequence number handed out, as decimal text. */
+  key: "epoch" | "seq";
   value: string;
 }
 

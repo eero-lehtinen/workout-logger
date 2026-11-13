@@ -113,7 +113,6 @@ export const settings = {
       stored: "Stored: {{value}}",
       uploadedToday: "Uploaded today: {{value}}",
       of: "{{used}} of {{limit}}",
-      noLimit: "{{used}}, no limit for now",
     },
   },
   data: {

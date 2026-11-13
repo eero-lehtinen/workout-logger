@@ -123,7 +123,6 @@ export const settings = {
       stored: "Tallennettu: {{value}}",
       uploadedToday: "Lähetetty tänään: {{value}}",
       of: "{{used}} / {{limit}}",
-      noLimit: "{{used}}, toistaiseksi ei rajaa",
     },
   },
   data: {

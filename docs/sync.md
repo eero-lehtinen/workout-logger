@@ -249,8 +249,7 @@ head (
 ) WITHOUT ROWID
 INDEX head (user_id, seq)
 
-server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out;
-                                       -- epoch_started_at
+server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out
 user_sync (user_id PRIMARY KEY, max_v)
 ```
 
@@ -307,7 +306,7 @@ handles this.
    - set the cursor to 0;
    - store the new epoch;
    - sync.
-3. The server acknowledges every version it still has, or has a newer one of, without storing it. Re-uploads within 24 h of an epoch change are exempt from the daily write quota; `newEpoch` records when the epoch started as `epoch_started_at` in `server_meta`.
+3. The server acknowledges every version it still has, or has a newer one of, without storing it. Re-uploads count against the daily write quota like any push; it allows a whole account's storage in a day ([accounts.md](accounts.md#quotas)).
 
 A whole-database restore is for disasters only, such as VPS loss or
 corruption. It is not for undoing bad data: the re-upload would bring the bad
