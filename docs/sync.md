@@ -242,15 +242,19 @@ head (
   deleted     INTEGER NOT NULL,
   v           INTEGER NOT NULL,      -- schema version of data
   data        TEXT NOT NULL,         -- canonical JSON object of columns
-  seq         INTEGER NOT NULL,      -- when this version arrived
+  seq         INTEGER NOT NULL,      -- when this version arrived, per user
   device_id   TEXT NOT NULL,         -- who sent this version, and when
   received_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, table_name, id)
 ) WITHOUT ROWID
 INDEX head (user_id, seq)
 
-server_meta (key PRIMARY KEY, value)   -- epoch; seq, the last number handed out
-user_sync (user_id PRIMARY KEY, max_v)
+server_meta (key PRIMARY KEY, value)   -- epoch
+user_sync (
+  user_id PRIMARY KEY,
+  max_v,                              -- newest schema version seen from the user
+  seq INTEGER NOT NULL DEFAULT 0      -- the last seq handed out to the user's rows
+)
 ```
 
 `head` is a `WITHOUT ROWID` table, so its rows live in the primary-key index
@@ -266,23 +270,33 @@ All endpoints act only on the authenticated `user_id`.
      - an older HLC: `ok`, and nothing is stored. The version has already lost: every device that pulls gets the newer one. Retries of a superseded push land here.
   3. If `v < user_sync.max_v`, reject it as `schema_outdated`: an older app would reset columns it doesn't know.
   4. If it doesn't fit the quota, reject it and every newer version after it in the push as `quota`. Duplicates and older versions don't count, so they are still `ok`. The server passes a quota hook (`PushQuota`) that reads the user's allowance in bytes before the first change and records the bytes written after the last, inside the push transaction; without one, as in the fuzz test, there is no limit. A version costs the UTF-8 size of its `data` toward the daily allowance, and its size less the replaced version's toward the storage one. The limits are in [accounts.md](accounts.md#quotas).
-  5. Store it in `head`, replacing the older version, with the next `seq` from the counter in `server_meta`, and raise `max_v` if needed.
+  5. Store it in `head`, replacing the older version, with the next `seq` from the user's counter, and raise `max_v` if needed. The counter is taken with `INSERT INTO user_sync ... ON CONFLICT DO UPDATE SET seq = seq + 1 RETURNING seq`, which creates the row on a user's first stored version.
 
   The response carries the current `epoch`.
 - **`GET /pull?after=&limit=`**: `SELECT ... FROM head WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT ?`, plus `epoch`. A row replaced several times since the cursor arrives once, in its newest version.
 - **`GET /snapshot`**: `head` rows (including tombstones) plus their `max(seq)`, both read in one transaction, plus `epoch`.
 
-`seq` is global, so one user's cursor skips over other users' numbers. That is
-harmless, because a cursor only needs to increase.
+`seq` is per user: each user's rows are numbered by their own counter in
+`user_sync`, and pull and snapshot compare a cursor only with that user's
+numbers. A user's numbers can have gaps, which is harmless: a cursor only
+needs to increase.
 
 **Why a pull misses nothing.** A replaced row takes a `seq` above every number
-handed out before, so any device whose cursor is below it receives it.
-Deletes are rows with `deleted = 1`, which stay in `head`, so they arrive like
-any other version. This requires that versions become visible in `seq` order,
-which SQLite's single writer guarantees. If the server ever moves to Postgres
-or multiple instances, this breaks. Pull would then need a per-user counter
-allocated under a row lock in the push transaction, or must serve only up to a
-commit-safe watermark.
+handed out to its user before, so any device whose cursor is below it receives
+it. Deletes are rows with `deleted = 1`, which stay in `head`, so they arrive
+like any other version. This requires that each user's versions become visible
+in `seq` order. Taking the number updates the user's `user_sync` row, which
+locks it until the push commits, so a concurrent push of the same user waits,
+takes higher numbers, and commits later. That holds in SQLite and in a
+row-locking database such as Postgres, and needs no ordering between users.
+
+Other parts rely on SQLite running one write transaction at a time. The
+quota allowance, `max_v`, and each row's stored HLC are read before the row
+lock is taken, and the `head` upsert doesn't compare HLCs again: on Postgres,
+two pushes of one user could both pass the same check, or store an older
+version over a newer one. Push would take the lock first (`SELECT ... FOR
+UPDATE` on `user_sync`). Server restores, `server_meta`, and the epoch assume
+one database.
 
 ### Why only the newest version
 
@@ -296,7 +310,7 @@ realistic case: a bad edit noticed within days.
 ### Server restore and epoch
 
 A whole-database restore (Litestream, see [deployment.md](deployment.md#recovery-procedures))
-rolls back `seq`. It also loses changes that clients pushed after the restore
+rolls back the `seq` counters. It also loses changes that clients pushed after the restore
 point, which those clients already removed from their outboxes. The epoch
 handles this.
 

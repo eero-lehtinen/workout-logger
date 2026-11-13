@@ -50,7 +50,7 @@ Cloudflare R2
 
 - **TLS ends at Cloudflare.** The VPS takes no inbound HTTP: a Cloudflare Tunnel, run by the `cloudflared` app in Dokploy, carries every `*.eerolehtinen.fi` request to Traefik over plain HTTP. A wildcard DNS record and a wildcard tunnel route already exist, so a new hostname needs only a Dokploy domain, with HTTPS and certificates off. Traefik sees cloudflared as the client; the visitor's IP is in `CF-Connecting-IP`.
 - **One container serves both the API and the web app**, so they share an origin. The web uses httpOnly cookie sessions. Android uses bearer tokens (see [accounts.md](accounts.md#login)).
-- **Single instance by design.** SQLite has one writer, and the sync protocol relies on it ([sync.md](sync.md#server-side)).
+- **Single instance by design.** SQLite has one writer, and push's HLC comparison against `head`, its quota checks, and the epoch rely on it ([sync.md](sync.md#server-side)). Pull order doesn't: `seq` is per user.
 - **Containers** run as the same non-root UID, 1000 (`node` in the app image). Both the app and Litestream must be able to write `app.db`, `-wal`, `-shm`, and Litestream's metadata. `litestream-init` runs as root once, and hands both volumes to uid 1000 after its restore.
 - **Server SQLite driver:** better-sqlite3, used through Kysely, which Better Auth also uses. Every query runs on one connection, one at a time.
 - **Startup order:** `litestream-init` → `litestream` → `app`.

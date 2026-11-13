@@ -1,9 +1,10 @@
-import { sql } from "kysely";
+import { type Generated, sql } from "kysely";
 import type { UntypedKysely } from "../../migrations/types.ts";
 
 /**
  * The newest version by HLC of every row. Pulls read it by `seq`, which a
- * row takes from the `seq` counter whenever a newer version replaces it.
+ * row takes from its user's counter in `user_sync` whenever a newer version
+ * replaces it.
  */
 export interface HeadTable {
   user_id: string;
@@ -21,8 +22,7 @@ export interface HeadTable {
 }
 
 export interface ServerMetaTable {
-  /** `seq`: the last sequence number handed out, as decimal text. */
-  key: "epoch" | "seq";
+  key: "epoch";
   value: string;
 }
 
@@ -30,6 +30,8 @@ export interface UserSyncTable {
   user_id: string;
   /** Newest schema version seen from this user. */
   max_v: number;
+  /** The last `seq` handed out to this user's rows. */
+  seq: Generated<number>;
 }
 
 export interface ServerSyncTables {
@@ -151,4 +153,32 @@ async function headOnly(db: UntypedKysely): Promise<void> {
     .on("head")
     .columns(["user_id", "seq"])
     .execute();
+}
+
+/**
+ * Replaces the global `seq` counter in `server_meta` with one per user in
+ * `user_sync` (docs/sync.md#server-side). Each counter starts at the global
+ * value, not at the user's `max(head.seq)`: a device can hold a cursor above
+ * that, from a version only the change log kept before
+ * `serverHeadOnlyMigration`, and would never pull a new row numbered at or
+ * below its cursor. Every user with head rows gets a counter; `max_v` 0 is
+ * what a missing row meant. Users without head rows get theirs, from 1, with
+ * their first stored version; their devices can only hold cursor 0.
+ */
+export const serverPerUserSeqMigration = {
+  up: perUserSeq,
+};
+
+async function perUserSeq(db: UntypedKysely): Promise<void> {
+  await sql`ALTER TABLE user_sync ADD COLUMN seq INTEGER NOT NULL DEFAULT 0`.execute(
+    db,
+  );
+  await sql`INSERT INTO user_sync (user_id, max_v)
+      SELECT DISTINCT user_id, 0 FROM head WHERE true
+      ON CONFLICT (user_id) DO NOTHING`.execute(db);
+  await sql`UPDATE user_sync SET seq =
+      (SELECT CAST(value AS INTEGER) FROM server_meta WHERE key = 'seq')`.execute(
+    db,
+  );
+  await sql`DELETE FROM server_meta WHERE key = 'seq'`.execute(db);
 }

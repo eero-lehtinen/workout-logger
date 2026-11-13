@@ -11,6 +11,7 @@ import { openStore, type Store, type StoreOptions } from "./store/store.ts";
 import {
   type ServerSyncTables,
   serverHeadOnlyMigration,
+  serverPerUserSeqMigration,
   serverSyncMigration,
 } from "./sync/server/schema.ts";
 import type { ServerDb } from "./sync/server/sync.ts";
@@ -29,6 +30,7 @@ export async function openTestServer(bytes?: Uint8Array): Promise<{
   if (!bytes) {
     await serverSyncMigration.up(db as unknown as UntypedKysely);
     await serverHeadOnlyMigration.up(db as unknown as UntypedKysely);
+    await serverPerUserSeqMigration.up(db as unknown as UntypedKysely);
   }
   return { db, serialize: () => sqlite.serialize(), close: () => db.destroy() };
 }

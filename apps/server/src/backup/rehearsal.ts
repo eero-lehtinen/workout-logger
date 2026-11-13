@@ -54,8 +54,9 @@ export async function rehearseCopyRestore(
 /**
  * Restores the Litestream replica with `restore` into a temp file and checks
  * it against the live database. The replica must hold every push committed
- * before a wait of `settleMs`: the restored `seq` can't be lower than the
- * live one before the wait, and the epoch must be the same.
+ * before a wait of `settleMs`: no account's restored `seq` can be lower than
+ * the live one before the wait, unless the account was deleted since, and the
+ * epoch must be the same.
  */
 export async function rehearseReplicaRestore(
   db: ServerKysely,
@@ -76,9 +77,14 @@ export async function rehearseReplicaRestore(
         `epoch ${replica.epoch} in the replica; the live database has ${live.epoch}`,
       );
     }
-    if (replica.seq < live.seq) {
+    const current = (await liveMeta(db)).seqs;
+    const behind = [...live.seqs].find(
+      ([user, seq]) => current.has(user) && (replica.seqs.get(user) ?? 0) < seq,
+    );
+    if (behind) {
+      const [user, seq] = behind;
       throw new Error(
-        `the replica is at seq ${replica.seq}, but the live database was at ${live.seq} ${settleMs / 1000} s before the restore`,
+        `the replica is at seq ${replica.seqs.get(user) ?? 0} for account ${user}, but the live database was at ${seq} ${settleMs / 1000} s before the restore`,
       );
     }
   });
@@ -142,30 +148,44 @@ async function countRows(db: ServerKysely, table: string): Promise<number> {
 
 interface Meta {
   epoch: string;
-  seq: number;
+  /** Each account's `seq`, which only grows until the account is deleted. */
+  seqs: Map<string, number>;
 }
 
-/** `seq` only grows, also when an account's rows are deleted. */
+type SeqRow = { user_id: string; seq: number };
+
 async function liveMeta(db: ServerKysely): Promise<Meta> {
-  const rows = await db.selectFrom("server_meta").selectAll().execute();
-  return toMeta(rows);
+  const epoch = await db
+    .selectFrom("server_meta")
+    .select("value")
+    .where("key", "=", "epoch")
+    .executeTakeFirst();
+  const seqs = await db
+    .selectFrom("user_sync")
+    .select(["user_id", "seq"])
+    .execute();
+  return toMeta(epoch?.value, seqs);
 }
 
 function restoredMeta(path: string): Meta {
   const copy = new Database(path, { readonly: true });
   try {
-    return toMeta(
-      copy.prepare("SELECT key, value FROM server_meta").all() as {
-        key: string;
-        value: string;
-      }[],
-    );
+    const epoch = copy
+      .prepare("SELECT value FROM server_meta WHERE key = 'epoch'")
+      .pluck()
+      .get() as string | undefined;
+    const seqs = copy
+      .prepare("SELECT user_id, seq FROM user_sync")
+      .all() as SeqRow[];
+    return toMeta(epoch, seqs);
   } finally {
     copy.close();
   }
 }
 
-function toMeta(rows: { key: string; value: string }[]): Meta {
-  const value = (key: string) => rows.find((row) => row.key === key)?.value;
-  return { epoch: value("epoch") ?? "", seq: Number(value("seq") ?? 0) };
+function toMeta(epoch: string | undefined, seqs: SeqRow[]): Meta {
+  return {
+    epoch: epoch ?? "",
+    seqs: new Map(seqs.map((row) => [row.user_id, row.seq])),
+  };
 }

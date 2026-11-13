@@ -140,10 +140,10 @@ Exact counts can't be compared: the live database changes after the backup.
   1. List `wl-backups` and take the newest `daily/` copy. It fails if there is none or the newest is over 2 days old: copies are uploaded but don't arrive, or the lifecycle rules deleted them.
   2. Download it and restore it the way `server unpack-copy` does, including `PRAGMA integrity_check`.
 - **Litestream replica** (`replica-rehearsal`, 04:30 UTC):
-  1. Read the live `epoch` and `seq` from `server_meta`. `seq` only grows, also when an account is deleted.
+  1. Read the live `epoch` from `server_meta` and each account's `seq` from `user_sync`. An account's `seq` only grows until the account is deleted.
   2. Wait 30 s, three times Litestream's `sync-interval`, so everything committed before is in the replica.
   3. `litestream restore` the replica's newest state, the way the "Server DB corrupted" procedure does ([deployment.md](deployment.md#recovery-procedures)), and run `PRAGMA integrity_check`.
-  4. The restored epoch must be the live one, and its `seq` at least the one read in step 1. A lower `seq` means the replica misses pushes the server acknowledged over 30 s ago.
+  4. The restored epoch must be the live one, and each account's `seq` at least the one read in step 1, unless the account has been deleted since. A lower `seq` means the replica misses pushes the server acknowledged over 30 s ago.
 
   It runs in the app container, with the `litestream` binary the image copies from the Litestream image and a read-only token for `wl-litestream` (`LITESTREAM_R2_READ_*`), which the compose file requires. Without the token, e.g. in local runs, it is off.
 - **CI:** `snapshot.test.ts` in `core` exports a database with rows and tombstones as a snapshot file, imports it into an empty one, and compares.

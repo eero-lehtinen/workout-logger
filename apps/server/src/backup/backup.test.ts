@@ -210,11 +210,18 @@ describe("replica restore rehearsal", () => {
     return async (out: string) => copyFileSync(file, out);
   }
 
-  async function bumpSeq(db: Awaited<ReturnType<typeof openTestApp>>["db"]) {
+  async function bumpSeq(
+    db: Awaited<ReturnType<typeof openTestApp>>["db"],
+    user = "u1",
+  ) {
     await db
-      .updateTable("server_meta")
-      .set({ value: sql`value + 1` })
-      .where("key", "=", "seq")
+      .insertInto("user_sync")
+      .values({ user_id: user, max_v: 1, seq: 1 })
+      .onConflict((oc) =>
+        oc
+          .column("user_id")
+          .doUpdateSet((eb) => ({ seq: eb("user_sync.seq", "+", 1) })),
+      )
       .execute();
   }
 
@@ -231,15 +238,46 @@ describe("replica restore rehearsal", () => {
 
   it("fails when the replica lacks a push from before the wait", async () => {
     const { db } = await openTestApp();
+    await bumpSeq(db, "u1");
+    await bumpSeq(db, "u2");
+    const restore = await frozen(db);
+    await bumpSeq(db, "u2");
+    await expect(rehearseReplicaRestore(db, restore, 0)).rejects.toThrow(
+      /^replica: the replica is at seq 1 for account u2, but the live database was at 2 0 s before the restore$/,
+    );
+  });
+
+  it("fails when the replica lacks an account's first push", async () => {
+    const { db } = await openTestApp();
     const restore = await frozen(db);
     await bumpSeq(db);
     await expect(rehearseReplicaRestore(db, restore, 0)).rejects.toThrow(
-      /^replica: the replica is at seq \d+, but the live database was at \d+ 0 s before the restore$/,
+      /^replica: the replica is at seq 0 for account u1, but the live database was at 1 /,
     );
+  });
+
+  it("passes when an account was deleted during the wait", async () => {
+    const { db } = await openTestApp();
+    const restore = await frozen(db);
+    await bumpSeq(db);
+    await expect(
+      rehearseReplicaRestore(
+        db,
+        async (out) => {
+          await db
+            .deleteFrom("user_sync")
+            .where("user_id", "=", "u1")
+            .execute();
+          await restore(out);
+        },
+        0,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it("passes when only pushes during the wait are missing", async () => {
     const { db } = await openTestApp();
+    await bumpSeq(db);
     const restore = await frozen(db);
     await expect(
       rehearseReplicaRestore(

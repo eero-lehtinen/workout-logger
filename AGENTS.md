@@ -54,7 +54,7 @@ Breaking these causes data loss or leaks. Don't take shortcuts here.
    - Migrations never stamp HLCs or write outbox entries.
    - Released migrations are never edited.
    - Cross-row changes are data fixes, not migrations.
-10. **The server is a single instance with one SQLite writer.** Pull correctness depends on it ([docs/sync.md](docs/sync.md#server-side)). Don't scale out or switch databases without redesigning `seq`.
+10. **The server is a single instance with one SQLite writer.** Push's HLC comparison against `head`, its quota and `max_v` checks, and the epoch depend on it ([docs/sync.md](docs/sync.md#server-side)). Pull order doesn't: `seq` is per user, taken under a lock on the user's `user_sync` row. Don't scale out or switch databases without the changes listed there.
 11. **The Capacitor scheme (`https`) and hostname (`localhost`), the app id, the SAH-pool VFS directory, and the database file name never change.** Changing any of them orphans every user's local database ([docs/architecture.md](docs/architecture.md#client-runtime)).
 12. **Auth tokens on Android live only in secure storage**, never in `localStorage` or WebView storage. Android Auto Backup stays disabled.
 

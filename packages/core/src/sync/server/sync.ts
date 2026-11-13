@@ -69,8 +69,6 @@ interface PushState {
   grown: number;
   /** Once a version doesn't fit, the rest of the push is refused too. */
   quotaReached: boolean;
-  /** The last `seq` handed out, read from `server_meta`. */
-  seq: number;
 }
 
 const UNLIMITED: QuotaAllowance = {
@@ -113,7 +111,6 @@ export async function push(
       .select("max_v")
       .where("user_id", "=", userId)
       .executeTakeFirst();
-    const lastSeq = await readMeta(trx, "seq");
     const state: PushState = {
       maxV: userSync?.max_v ?? 0,
       inserted: 0,
@@ -121,7 +118,6 @@ export async function push(
       written: 0,
       grown: 0,
       quotaReached: false,
-      seq: Number(lastSeq),
     };
     const results: PushResult[] = [];
     for (const change of request.changes) {
@@ -136,20 +132,13 @@ export async function push(
         ),
       );
     }
+    // `max_v` only grows when a version is stored, and `nextSeq` has created
+    // the row by then.
     if (state.maxV > (userSync?.max_v ?? 0)) {
       await trx
-        .insertInto("user_sync")
-        .values({ user_id: userId, max_v: state.maxV })
-        .onConflict((oc) =>
-          oc.column("user_id").doUpdateSet({ max_v: state.maxV }),
-        )
-        .execute();
-    }
-    if (state.seq !== Number(lastSeq)) {
-      await trx
-        .updateTable("server_meta")
-        .set({ value: String(state.seq) })
-        .where("key", "=", "seq")
+        .updateTable("user_sync")
+        .set({ max_v: state.maxV })
+        .where("user_id", "=", userId)
         .execute();
     }
     if (state.written > 0) await options.quota?.record(trx, state.written);
@@ -211,7 +200,7 @@ async function pushOne(
     deleted,
     v: change.v,
     data,
-    seq: ++state.seq,
+    seq: await nextSeq(trx, userId),
     device_id: deviceId,
     received_at: now,
   };
@@ -230,6 +219,26 @@ async function pushOne(
   state.inserted++;
   state.maxV = Math.max(state.maxV, change.v);
   return { status: "ok" };
+}
+
+/**
+ * Takes the user's next `seq`. The update locks the user's row until the push
+ * commits, so a concurrent push of the same user gets higher numbers and
+ * commits after this one: pulls see each user's rows appear in `seq` order
+ * without relying on a single writer (docs/sync.md#why-a-pull-misses-nothing).
+ */
+async function nextSeq(trx: ServerTrx, userId: string): Promise<number> {
+  const row = await trx
+    .insertInto("user_sync")
+    .values({ user_id: userId, max_v: 0, seq: 1 })
+    .onConflict((oc) =>
+      oc
+        .column("user_id")
+        .doUpdateSet((eb) => ({ seq: eb("user_sync.seq", "+", 1) })),
+    )
+    .returning("seq")
+    .executeTakeFirstOrThrow();
+  return row.seq;
 }
 
 function reject(reason: Extract<PushResult, { status: "rejected" }>["reason"]) {
@@ -366,18 +375,11 @@ function toChange(row: ChangeRow): Change {
   };
 }
 
-export function readEpoch(db: ServerDb | ServerTrx): Promise<string> {
-  return readMeta(db, "epoch");
-}
-
-async function readMeta(
-  db: ServerDb | ServerTrx,
-  key: "epoch" | "seq",
-): Promise<string> {
+export async function readEpoch(db: ServerDb | ServerTrx): Promise<string> {
   const row = await db
     .selectFrom("server_meta")
     .select("value")
-    .where("key", "=", key)
+    .where("key", "=", "epoch")
     .executeTakeFirstOrThrow();
   return row.value;
 }

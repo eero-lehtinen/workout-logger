@@ -1,6 +1,7 @@
 import type { UntypedKysely } from "@workout-logger/core";
 import {
   serverHeadOnlyMigration,
+  serverPerUserSeqMigration,
   serverSyncMigration,
 } from "@workout-logger/core/sync-server";
 import { getMigrations } from "better-auth/db/migration";
@@ -78,6 +79,10 @@ const STEPS: Record<string, Migration> = {
         db,
       );
     },
+  },
+  "0007_per_user_seq": {
+    up: (db: Kysely<unknown>) =>
+      serverPerUserSeqMigration.up(db as unknown as UntypedKysely),
   },
 };
 

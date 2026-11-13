@@ -392,13 +392,13 @@ class World {
 
   async fingerprint() {
     const parts = [
-      (
+      JSON.stringify(
         await this.server.db
-          .selectFrom("server_meta")
-          .select("value")
-          .where("key", "=", "seq")
-          .executeTakeFirstOrThrow()
-      ).value,
+          .selectFrom("user_sync")
+          .select(["user_id", "seq"])
+          .orderBy("user_id")
+          .execute(),
+      ),
     ];
     for (const d of this.devices)
       parts.push(

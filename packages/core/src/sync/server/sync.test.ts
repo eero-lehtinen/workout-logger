@@ -66,13 +66,16 @@ const size = (overrides: Partial<Change> = {}) => {
   return rowBytes(table, id, canonicalJson(data));
 };
 
-async function lastSeq(db: Awaited<ReturnType<typeof openTestServer>>["db"]) {
+async function lastSeq(
+  db: Awaited<ReturnType<typeof openTestServer>>["db"],
+  user = "u1",
+) {
   const row = await db
-    .selectFrom("server_meta")
-    .select("value")
-    .where("key", "=", "seq")
-    .executeTakeFirstOrThrow();
-  return Number(row.value);
+    .selectFrom("user_sync")
+    .select("seq")
+    .where("user_id", "=", user)
+    .executeTakeFirst();
+  return row?.seq ?? 0;
 }
 
 describe("push", () => {
@@ -418,17 +421,17 @@ describe("pull and snapshot", () => {
     const first = await pull(db, "u1", 0, 2);
     expect(first.changes.map((c) => [c.seq, c.id])).toEqual([
       [1, "a"],
-      [3, "b"],
+      [2, "b"],
     ]);
     expect(first).toMatchObject({
-      cursor: 3,
+      cursor: 2,
       more: true,
       epoch: await readEpoch(db),
     });
     const second = await pull(db, "u1", first.cursor, 2);
     expect(second.changes).toEqual([
       {
-        seq: 4,
+        seq: 3,
         table: "setting",
         id: "c",
         hlc: hlc(NOW),
@@ -437,12 +440,44 @@ describe("pull and snapshot", () => {
         data: { value_json: '"kg"' },
       },
     ]);
-    expect(second).toMatchObject({ cursor: 4, more: false });
-    expect(await pull(db, "u1", 4)).toMatchObject({
+    expect(second).toMatchObject({ cursor: 3, more: false });
+    expect(await pull(db, "u1", 3)).toMatchObject({
       changes: [],
-      cursor: 4,
+      cursor: 3,
       more: false,
     });
+  });
+
+  it("numbers each user's rows from their own counter", async () => {
+    const { db } = await openTestServer();
+    const ids = (from: number, n: number) =>
+      Array.from({ length: n }, (_, i) => change({ id: `r${from + i}` }));
+    await pushAs(db, "u1", ids(0, 3));
+    await pushAs(db, "u2", ids(0, 2));
+    await pushAs(db, "u1", ids(3, 2));
+    await pushAs(db, "u2", [
+      ...ids(2, 1),
+      change({ id: "r0", hlc: hlc(NOW + 1) }),
+    ]);
+    // Refused and acknowledged-only changes take no number.
+    await pushAs(db, "u1", [change({ id: "r0" }), change({ hlc: "nope" })]);
+
+    const seqs = async (user: string) =>
+      (await pull(db, user, 0)).changes.map((c) => [c.seq, c.id]);
+    expect(await seqs("u1")).toEqual([
+      [1, "r0"],
+      [2, "r1"],
+      [3, "r2"],
+      [4, "r3"],
+      [5, "r4"],
+    ]);
+    expect(await seqs("u2")).toEqual([
+      [2, "r1"],
+      [3, "r2"],
+      [4, "r0"],
+    ]);
+    expect([await lastSeq(db, "u1"), await lastSeq(db, "u2")]).toEqual([5, 4]);
+    expect((await snapshot(db, "u2")).cursor).toBe(4);
   });
 
   it("never shows one user's rows to another, even with the same ids", async () => {
