@@ -24,7 +24,7 @@ outside this repo ([docs/fitnotes-import.md](docs/fitnotes-import.md)).
 
 ## Read first
 
-- [docs/glossary.md](docs/glossary.md). Use these terms in code identifiers, UI text, and docs. Don't invent synonyms: a *slot* is not an "item", a *session* is not a "workout log". UI labels for settings and actions describe what happens instead of naming a mechanism ([docs/translations.md](docs/translations.md#wording)).
+- [docs/glossary.md](docs/glossary.md). Use these terms in code identifiers and docs. Don't invent synonyms: a *slot* is not an "item", a *session* is not a "workout log". UI text uses the words in the [UI terms](docs/translations.md#ui-terms) table instead, so UI wording can change without renaming code.
 - [docs/architecture.md](docs/architecture.md) for where code goes.
 - [docs/sync.md](docs/sync.md) before touching anything that writes synced data.
 - [docs/accounts.md](docs/accounts.md) before touching server endpoints.

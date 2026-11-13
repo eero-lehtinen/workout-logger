@@ -1,8 +1,10 @@
 # Glossary
 
-These terms are used consistently in the UI, code, and docs. Planned things
-(templates) and performed things (logs) have separate names so they don't get
-mixed up.
+These terms are used consistently in code and docs. The UI's wording is kept
+in the term table in [translations.md](translations.md#ui-terms), which
+usually matches but can be reworded without renaming anything in code.
+Planned things (templates) and performed things (logs) have separate names
+so they don't get mixed up.
 
 ## Exercise catalog
 
@@ -70,7 +72,7 @@ previous performance, not by prescribing.
 | --- | --- |
 | **Rest timer** | A countdown that starts when a set is logged. When it ends, the phone vibrates and plays a sound, even when the app is in the background or music is playing. Can be turned off in settings. |
 | **Session timer** | Elapsed time of the current session. It starts on the first logged set or a manual start, and ends on a manual stop or idle end. Its display can be hidden in settings. |
-| **Idle end** | If no set has been logged for the idle end time (default 30 min, configurable; `idle_threshold_s` in code), the session counts as ended at the timestamp of its last set, or at its start if it has no sets. The setting is labeled "Auto-end after" / "Automaattinen lopetus" in the UI. |
+| **Idle end** | If no set has been logged for the idle end time (default 30 min, configurable; `idle_threshold_s` in code), the session counts as ended at the timestamp of its last set, or at its start if it has no sets. |
 
 ## Data, sync, and backups
 

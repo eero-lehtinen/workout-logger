@@ -86,10 +86,13 @@ key fails `pnpm typecheck`.
 UI text is written for someone who has not read the docs. A setting or
 action is labeled by what it does, and its hint says when it happens and
 what changes as a result: "Auto-end after (min)", with "If no set is logged
-for this long, the session ends. Its end time is the last set." Glossary
-terms name the things the user works with (session, slot, set, PR). Terms
-that name a mechanism, such as "idle end", stay in code and docs; the
-glossary entry records the UI label used instead.
+for this long, the session ends. Its end time is the last set."
+
+UI wording is independent of code. Each glossary term has a UI word in each
+language, listed under [UI terms](#ui-terms); usually it is the glossary
+term itself. To reword, change the messages and the table, not the code or
+the glossary. Every message uses the table's word for a concept, so the UI
+stays consistent with itself.
 
 ## Finnish
 
@@ -105,56 +108,58 @@ verb. If the English itself is unclear, fix it instead of translating it.
 Read the result in context, in a Finnish story, to check that it fits and
 sounds natural.
 
-Terms, matching [glossary.md](glossary.md):
+## UI terms
 
-| English | Finnish |
-| --- | --- |
-| session | treeni |
-| start / end a session | aloita / lopeta treeni |
-| exercise | liike |
-| exercise type | liiketyyppi |
-| routine | ohjelma |
-| built-in routine | valmisohjelma |
-| workout day, day | treenipäivä, päivä |
-| cycle | kierto |
-| slot | liikepaikka |
-| alternative | vaihtoehto |
-| substitution, substitute | korvaava liike, vaihda liike |
-| set | sarja |
-| rep | toisto |
-| weight | paino |
-| previous performance | edellinen kerta |
-| reference set | vertailusarja |
-| PR | ennätys |
-| set record | sarjaennätys |
-| weight increase | painonnousu |
-| e1RM | e1RM |
-| weight unit | painoyksikkö |
-| weight step | painoaskel |
-| weighted sets | painotetut sarjat |
-| muscle, muscle group | lihas, lihasryhmä |
-| primary muscle | päälihas |
-| muscle target | kohdelihas |
-| metric | mittari |
-| measurement | mittaus |
-| body weight | kehonpaino |
-| rest, rest time | tauko, tauon pituus |
-| rest timer | taukoajastin |
-| session timer | treeniajastin |
-| idle end | automaattinen lopetus |
-| history | historia |
-| records | ennätykset |
-| notes | muistiinpanot |
-| snapshot | tilannevedos |
-| backup | varmuuskopio |
-| sync | synkronointi, synkronoida |
-| server | palvelin |
-| device | laite |
-| account | tili |
-| owner | omistaja |
-| account cap | tilien enimmäismäärä |
-| quota | kiintiö |
-| disabled account | käytöstä poistettu tili |
-| sign in / out | kirjaudu sisään / ulos |
-| archive | arkistoi |
-| undo | kumoa |
+The words the UI uses for each [glossary](glossary.md) term:
+
+| Glossary term | English UI | Finnish UI |
+| --- | --- | --- |
+| session | session | treeni |
+| start / end a session | start / end a session | aloita / lopeta treeni |
+| exercise | exercise | liike |
+| exercise type | exercise type | liiketyyppi |
+| routine | routine | ohjelma |
+| built-in routine | built-in routine | valmisohjelma |
+| workout day, day | workout day, day | treenipäivä, päivä |
+| cycle | cycle | kierto |
+| slot | slot | liikepaikka |
+| alternative | alternative | vaihtoehto |
+| substitution, substitute | substitution, substitute | korvaava liike, vaihda liike |
+| set | set | sarja |
+| rep | rep | toisto |
+| weight | weight | paino |
+| previous performance | previous performance | edellinen kerta |
+| reference set | reference set | vertailusarja |
+| PR | PR | ennätys |
+| set record | set record | sarjaennätys |
+| weight increase | weight increase | painonnousu |
+| e1RM | e1RM | e1RM |
+| weight unit | weight unit | painoyksikkö |
+| weight step | weight step | painoaskel |
+| weighted sets | weighted sets | painotetut sarjat |
+| muscle, muscle group | muscle, muscle group | lihas, lihasryhmä |
+| primary muscle | primary muscle | päälihas |
+| muscle target | muscle target | kohdelihas |
+| metric | metric | mittari |
+| measurement | measurement | mittaus |
+| body weight | body weight | kehonpaino |
+| rest, rest time | rest, rest time | tauko, tauon pituus |
+| rest timer | rest timer | taukoajastin |
+| session timer | session timer | treeniajastin |
+| idle end | auto-end | automaattinen lopetus |
+| history | history | historia |
+| records | records | ennätykset |
+| notes | notes | muistiinpanot |
+| snapshot | snapshot | tilannevedos |
+| backup | backup | varmuuskopio |
+| sync | sync | synkronointi, synkronoida |
+| server | server | palvelin |
+| device | device | laite |
+| account | account | tili |
+| owner | owner | omistaja |
+| account cap | account cap | tilien enimmäismäärä |
+| quota | quota | kiintiö |
+| disabled account | disabled account | käytöstä poistettu tili |
+| sign in / out | sign in / out | kirjaudu sisään / ulos |
+| archive | archive | arkistoi |
+| undo | undo | kumoa |
