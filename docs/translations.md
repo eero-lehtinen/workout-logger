@@ -47,6 +47,10 @@ key fails `pnpm typecheck`.
   database gate), `ui` (shared components and messages raised in `lib/`),
   `format` (`lib/format.ts`), `muscles`, and `common` (actions used on many
   screens: Save, Cancel, Delete, Undo).
+- Every message change edits both languages in the same change, so that
+  they mean the same thing. The type check only catches missing keys, not a
+  Finnish text left describing the old wording. When a label is reworded,
+  its hint, `aria-label` variant, and related messages are checked too.
 - Keys are camelCase and nested by screen or component, e.g.
   `session.log.addSet`. A key names what the text is for, not its wording.
 - In components and hooks, `const { t } = useTranslation()`. Outside React
@@ -82,6 +86,14 @@ key fails `pnpm typecheck`.
 Informal, as Finnish apps are: second person singular, short imperatives
 ("Aloita treeni", "Tallenna"). Sentence case. Weekday abbreviations are
 lowercase (`ma`, `su`).
+
+Write each message as a Finnish app would phrase it, not as a word-for-word
+rendering of the English. Keep the meaning and the information, and change
+the structure freely: Finnish often fits a case ending where English needs a
+preposition, and an English noun phrase often reads better as a Finnish
+verb. If the English itself is unclear, fix it instead of translating it.
+Read the result in context, in a Finnish story, to check that it fits and
+sounds natural.
 
 Terms, matching [glossary.md](glossary.md):
 

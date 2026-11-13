@@ -28,7 +28,7 @@ outside this repo ([docs/fitnotes-import.md](docs/fitnotes-import.md)).
 - [docs/architecture.md](docs/architecture.md) for where code goes.
 - [docs/sync.md](docs/sync.md) before touching anything that writes synced data.
 - [docs/accounts.md](docs/accounts.md) before touching server endpoints.
-- [docs/translations.md](docs/translations.md) before adding UI text. Every string is in English and Finnish, in `apps/web/src/i18n`.
+- [docs/translations.md](docs/translations.md) before adding or changing UI text. Every string is in English and Finnish, in `apps/web/src/i18n`, and a change to one language's text changes the other to match.
 
 ## Docs are part of the change
 
