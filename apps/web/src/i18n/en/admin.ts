@@ -42,6 +42,9 @@ export const admin = {
     replicaRehearsal: "Replica restore test",
     replicaRehearsalHint:
       "Every day, the replica is restored and checked against the database. It must have every change from 30 seconds before. Stale after 2 days.",
+    tokenCheck: "Backup token check",
+    tokenCheckHint:
+      "Every day, checks that the server's R2 tokens can't change the replica or open each other's bucket. Stale after 2 days.",
     backupStorage: "Backup storage",
     storageHint: "The DB copies in R2. The Litestream replica isn't counted.",
     storageHintGroups:

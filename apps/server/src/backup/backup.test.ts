@@ -16,6 +16,7 @@ import {
   prepareDatabase,
   replicaRehearsalJob,
   restoredMarker,
+  tokenCheckJob,
 } from "../startup.ts";
 import {
   COPY_REHEARSAL_JOB,
@@ -469,11 +470,12 @@ describe("/api/status", () => {
           failed: false,
         },
         replicaRehearsal: { configured: false, stale: false, failed: false },
+        tokenCheck: { configured: false, stale: false, failed: false },
       },
     });
   });
 
-  it("is not ok when the last restore rehearsal failed", async () => {
+  it("is not ok when the last check failed", async () => {
     const { store } = memoryStore();
     const { app, db, signIn } = await openTestApp({
       backups: store,
@@ -489,6 +491,16 @@ describe("/api/status", () => {
       await sql`VACUUM INTO ${out}`.execute(db);
     };
     await runJob(db, replicaRehearsalJob(db, replicaUp, 0));
+    const tokens = {
+      endpoint: "",
+      bucket: "",
+      accessKeyId: "",
+      secretAccessKey: "",
+    };
+    await runJob(
+      db,
+      tokenCheckJob(tokens, tokens, async () => 403),
+    );
     const status = async () => {
       const res = await app.request("/api/status", {
         headers: { authorization: `Bearer ${token}` },
@@ -516,6 +528,19 @@ describe("/api/status", () => {
           failed: true,
           lastError: "replica: litestream restore failed: no backups",
         },
+      },
+    });
+
+    await runJob(db, replicaRehearsalJob(db, replicaUp, 0));
+    await runJob(
+      db,
+      tokenCheckJob(tokens, tokens, async () => 200),
+    );
+    expect(await status()).toMatchObject({
+      backupsOk: false,
+      backups: {
+        replicaRehearsal: { failed: false },
+        tokenCheck: { stale: false, failed: true },
       },
     });
   });

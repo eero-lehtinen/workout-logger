@@ -118,6 +118,13 @@ const healthy: OwnerStatus = {
       lastError: null,
       failed: false,
     },
+    tokenCheck: {
+      configured: true,
+      lastOkAt: NOW - 2 * 60 * 60 * 1000,
+      stale: false,
+      lastError: null,
+      failed: false,
+    },
   },
 };
 
@@ -186,6 +193,7 @@ export const Overview = {
       await expect(canvas.getByText("5 hours ago")).toBeVisible();
       await expect(canvas.getByText("4 hours ago")).toBeVisible();
       await expect(canvas.getByText("3 hours ago")).toBeVisible();
+      await expect(canvas.getByText("2 hours ago")).toBeVisible();
       await expect(await canvas.findByText("330 MB")).toBeVisible();
       await expect(
         canvas.getByText(

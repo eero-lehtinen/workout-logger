@@ -21,8 +21,8 @@ These are human estimates. AI agents can do large phases very quickly.
 | **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records. Workouts are logged only here from now on. |
 | **M2: other users** | 11 | Google sign-in, sign-up up to an account cap, quotas, admin, account deletion. |
 
-Both milestones are reached. Phase 11b is the only open phase; the rest is
-in [future work](#future-work).
+Both milestones are reached and every phase is done. What's left is in
+[future work](#future-work).
 
 ## Phase 0: Scaffolding (S) [done]
 
@@ -248,12 +248,22 @@ limited, pushes and snapshots count against per-user quotas, the owner's
 admin page shows the server and every account, and users can delete their
 accounts. No one else has been invited.
 
-## Phase 11b: Backup checks (S)
+## Phase 11b: Backup checks (S) [done]
 
 Moved out of phase 11: they protect the owner's backups, not other users.
 
-- Daily restore rehearsals of the newest daily copy and of the Litestream replica, with their warning dot [done] ([backups.md](backups.md#restore-rehearsal)).
-- Checks that the R2 buckets and tokens are separate.
+- Daily restore rehearsals of the newest daily copy and of the Litestream replica.
+- A daily check that the R2 buckets and tokens are separate.
+
+Result ([backups.md](backups.md#restore-rehearsal),
+[storage isolation](backups.md#storage-isolation)): three daily server jobs,
+each with a row on the admin page; a failed run makes `backupsOk` false at
+once and shows the warning dot. The rehearsals run monthly in the design
+were made daily, since they cost a few R2 requests. The replica's rehearsal
+runs `litestream restore` in the app container with a read-only token. The
+planned warning for an on-device snapshot older than 7 days was dropped:
+snapshots are written only when a session ends, so their age alone says
+nothing.
 
 ## Future work
 

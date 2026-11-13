@@ -353,6 +353,7 @@ rehearsal restores the copy caught up before it.
 | Daily DB copy (`daily-db-copy`) | 03:00 | Runs when `BACKUP_R2_*` is set |
 | Restore rehearsal of the daily copy (`copy-rehearsal`) | 04:00 | Runs when `BACKUP_R2_*` is set ([backups.md](backups.md#restore-rehearsal)) |
 | Restore rehearsal of the Litestream replica (`replica-rehearsal`) | 04:30 | Runs when `LITESTREAM_R2_READ_*` is set |
+| R2 token separation check (`token-check`) | 04:45 | Runs when `BACKUP_R2_*` and `LITESTREAM_R2_READ_*` are set ([backups.md](backups.md#storage-isolation)) |
 | Prune `usage` rows older than 90 days (`prune-usage`) | 03:30 | Always |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code
@@ -361,7 +362,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
-- `GET /api/status`: `{ version, commit, backupsOk, signIn }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy or run of either restore rehearsal is over 2 days old. It is also false right after a failed restore rehearsal. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the last errors of the daily copy and the rehearsals ([backups.md](backups.md#visibility)).
+- `GET /api/status`: `{ version, commit, backupsOk, signIn }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy, run of either restore rehearsal, or token check is over 2 days old. It is also false right after a failed restore rehearsal or token check. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the last errors of the daily copy, the rehearsals, and the token check ([backups.md](backups.md#visibility)).
 - An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or doesn't contain `"backupsOk":true`.
 - If Litestream can't upload, the WAL keeps growing. Free disk and the replica's age on `/api/status` catch this early.
 

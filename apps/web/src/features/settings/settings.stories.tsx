@@ -537,6 +537,13 @@ export const OwnerBackupsStale = {
           lastError: null,
           failed: false,
         },
+        tokenCheck: {
+          configured: false,
+          lastOkAt: null,
+          stale: false,
+          lastError: null,
+          failed: false,
+        },
       },
     });
     return cleanup;

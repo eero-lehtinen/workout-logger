@@ -10,6 +10,7 @@ import {
   openServer,
   pruneUsageJob,
   replicaRehearsalJob,
+  tokenCheckJob,
 } from "./startup.ts";
 
 const config = readConfig();
@@ -25,6 +26,9 @@ const jobs = await startJobs(database.db, [
     : []),
   ...(replica
     ? [replicaRehearsalJob(database.db, (out) => restoreReplica(replica, out))]
+    : []),
+  ...(config.backups && replica
+    ? [tokenCheckJob(config.backups, replica)]
     : []),
 ]);
 

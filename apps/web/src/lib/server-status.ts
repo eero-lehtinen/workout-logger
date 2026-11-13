@@ -25,6 +25,7 @@ export interface OwnerStatus {
     dailyCopy: BackupLayer;
     copyRehearsal: BackupLayer;
     replicaRehearsal: BackupLayer;
+    tokenCheck: BackupLayer;
   };
 }
 
@@ -100,9 +101,11 @@ export function useBackupWarning(): string | null {
 
 /** What on the server needs the owner's attention, or null. */
 export function ownerWarning(owner: OwnerStatus, t: TFunction): string | null {
-  if (Object.values(owner.backups).some((layer) => layer.failed)) {
+  const { copyRehearsal, replicaRehearsal, tokenCheck } = owner.backups;
+  if (copyRehearsal.failed || replicaRehearsal.failed) {
     return t("ui.backupWarning.restoreFailed");
   }
+  if (tokenCheck.failed) return t("ui.backupWarning.tokenCheckFailed");
   if (!owner.backupsOk) return t("ui.backupWarning.backupStale");
   if (owner.databaseBytes > DATABASE_WARNING_BYTES) {
     return t("ui.backupWarning.databaseLarge");

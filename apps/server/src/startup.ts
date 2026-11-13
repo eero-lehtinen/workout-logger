@@ -2,12 +2,19 @@ import { existsSync, rmSync } from "node:fs";
 import { newEpoch } from "@workout-logger/core/sync-server";
 import { createAuth, authOptions as toAuthOptions } from "./auth/auth.ts";
 import { dailyKeys, preMigrationKey, uploadDbCopy } from "./backup/db-copy.ts";
-import { type BackupStore, r2Store } from "./backup/r2.ts";
+import {
+  type BackupStore,
+  type R2Config,
+  type R2Request,
+  r2Status,
+  r2Store,
+} from "./backup/r2.ts";
 import {
   REPLICA_SETTLE_MS,
   rehearseCopyRestore,
   rehearseReplicaRestore,
 } from "./backup/rehearsal.ts";
+import { checkTokenSeparation } from "./backup/token-check.ts";
 import type { ServerConfig } from "./config.ts";
 import { openDatabase, type ServerKysely, syncDb } from "./db/database.ts";
 import { migrateServer, pendingMigrations } from "./db/migrations.ts";
@@ -18,6 +25,7 @@ import {
   COPY_REHEARSAL_JOB,
   DAILY_COPY_JOB,
   REPLICA_REHEARSAL_JOB,
+  TOKEN_CHECK_JOB,
 } from "./status.ts";
 
 /** The database, auth, and backup store, migrated and ready to serve. */
@@ -134,5 +142,18 @@ export function replicaRehearsalJob(
     schedule: "30 4 * * *",
     maxAgeMs: 24 * 60 * 60 * 1000,
     run: () => rehearseReplicaRestore(db, restore, settleMs),
+  };
+}
+
+export function tokenCheckJob(
+  backups: R2Config,
+  replica: R2Config,
+  status: (config: R2Config, request: R2Request) => Promise<number> = r2Status,
+): Job {
+  return {
+    name: TOKEN_CHECK_JOB,
+    schedule: "45 4 * * *",
+    maxAgeMs: 24 * 60 * 60 * 1000,
+    run: () => checkTokenSeparation(backups, replica, status),
   };
 }

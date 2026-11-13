@@ -46,6 +46,9 @@ export const admin = {
     replicaRehearsal: "Replikan palautustesti",
     replicaRehearsalHint:
       "Replika palautetaan ja verrataan tietokantaan joka päivä. Siinä pitää olla kaikki muutokset 30 sekunnin takaa. Vanhentunut, jos yli 2 päivää vanha.",
+    tokenCheck: "Varmuuskopiotunnusten tarkistus",
+    tokenCheckHint:
+      "Tarkistaa joka päivä, etteivät palvelimen R2-tunnukset voi muuttaa replikaa eivätkä avata toistensa säilöjä. Vanhentunut, jos yli 2 päivää vanha.",
     backupStorage: "Varmuuskopioiden tallennustila",
     storageHint:
       "Tietokannan kopiot R2:ssa. Litestream-replikaa ei lasketa mukaan.",

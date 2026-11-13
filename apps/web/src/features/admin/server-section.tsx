@@ -66,6 +66,12 @@ export function ServerSection(props: {
         layer={status.backups.replicaRehearsal}
         now={now}
       />
+      <BackupRow
+        label={t("admin.server.tokenCheck")}
+        hint={t("admin.server.tokenCheckHint")}
+        layer={status.backups.tokenCheck}
+        now={now}
+      />
       <StorageRow storage={props.storage} />
     </Section>
   );

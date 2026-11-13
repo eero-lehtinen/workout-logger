@@ -9,12 +9,13 @@ import { readJob } from "./jobs.ts";
 export const DAILY_COPY_JOB = "daily-db-copy";
 export const COPY_REHEARSAL_JOB = "copy-rehearsal";
 export const REPLICA_REHEARSAL_JOB = "replica-rehearsal";
+export const TOKEN_CHECK_JOB = "token-check";
 
 const HOUR = 60 * 60 * 1000;
 /** Thresholds from docs/backups.md#visibility. */
 const LITESTREAM_MAX_AGE = HOUR;
 const DAILY_COPY_MAX_AGE = 48 * HOUR;
-const REHEARSAL_MAX_AGE = 48 * HOUR;
+const CHECK_MAX_AGE = 48 * HOUR;
 
 export interface BackupLayer {
   /** False when the layer isn't configured on this server. */
@@ -24,9 +25,9 @@ export interface BackupLayer {
   lastError?: string | null;
   /**
    * The last run failed and that needs attention now, before the layer is
-   * stale. Only the restore rehearsals set it: a failed rehearsal means a
-   * backup that doesn't restore, while a failed daily copy is retried the
-   * next day.
+   * stale. Only the checks set it: a failed restore rehearsal means a backup
+   * that doesn't restore, and a failed token check a token that can do too
+   * much, while a failed daily copy is retried the next day.
    */
   failed?: boolean;
 }
@@ -51,6 +52,7 @@ export interface OwnerStatus extends PublicStatus {
     dailyCopy: BackupLayer;
     copyRehearsal: BackupLayer;
     replicaRehearsal: BackupLayer;
+    tokenCheck: BackupLayer;
   };
 }
 
@@ -83,13 +85,13 @@ export async function backupLayers(
     lastOkAt,
     stale: configured && (lastOkAt === null || now - lastOkAt > maxAge),
   });
-  const rehearsal = async (
+  const check = async (
     job: string,
     configured: boolean,
   ): Promise<BackupLayer> => {
     const state = await readJob(source.db, job);
     return {
-      ...layer(configured, state?.lastOkAt ?? null, REHEARSAL_MAX_AGE),
+      ...layer(configured, state?.lastOkAt ?? null, CHECK_MAX_AGE),
       lastError: state?.lastError ?? null,
       failed: configured && Boolean(state?.lastError),
     };
@@ -108,13 +110,14 @@ export async function backupLayers(
       ),
       lastError: copy?.lastError ?? null,
     },
-    copyRehearsal: await rehearsal(
-      COPY_REHEARSAL_JOB,
-      source.backupsConfigured,
-    ),
-    replicaRehearsal: await rehearsal(
+    copyRehearsal: await check(COPY_REHEARSAL_JOB, source.backupsConfigured),
+    replicaRehearsal: await check(
       REPLICA_REHEARSAL_JOB,
       source.replicaRehearsalConfigured,
+    ),
+    tokenCheck: await check(
+      TOKEN_CHECK_JOB,
+      source.backupsConfigured && source.replicaRehearsalConfigured,
     ),
   };
 }

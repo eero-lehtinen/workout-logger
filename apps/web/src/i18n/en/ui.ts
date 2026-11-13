@@ -46,6 +46,7 @@ export const ui = {
     unsynced: "Changes haven't synced for days",
     backupStale: "A server backup is out of date",
     restoreFailed: "A server backup didn't pass its restore test",
+    tokenCheckFailed: "A server backup token has more access than it should",
     databaseLarge: "The server database is over 700 MB",
   },
   restTimer: {

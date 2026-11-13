@@ -21,7 +21,32 @@ export interface BackupStore {
   list(): Promise<StoredObject[]>;
 }
 
-export function r2Store(config: R2Config): BackupStore {
+/** A request whose answer, not its result, is what matters. */
+export type R2Request =
+  | { action: "list" }
+  | { action: "put" | "delete"; key: string };
+
+/**
+ * The HTTP status R2 answers `request` with, using `config`'s token on its
+ * bucket. Throws only when there is no answer.
+ */
+export async function r2Status(
+  config: R2Config,
+  request: R2Request,
+): Promise<number> {
+  const { client, base } = connect(config);
+  const res =
+    request.action === "list"
+      ? await client.fetch(`${base}?list-type=2&max-keys=1`)
+      : await client.fetch(`${base}/${request.key}`, {
+          method: request.action === "put" ? "PUT" : "DELETE",
+          ...(request.action === "put" ? { body: new Uint8Array(0) } : {}),
+        });
+  await res.arrayBuffer();
+  return res.status;
+}
+
+function connect(config: R2Config) {
   const client = new AwsClient({
     accessKeyId: config.accessKeyId,
     secretAccessKey: config.secretAccessKey,
@@ -29,6 +54,11 @@ export function r2Store(config: R2Config): BackupStore {
     region: "auto",
   });
   const base = `${config.endpoint.replace(/\/+$/, "")}/${config.bucket}`;
+  return { client, base };
+}
+
+export function r2Store(config: R2Config): BackupStore {
+  const { client, base } = connect(config);
   return {
     async put(key, body) {
       const res = await client.fetch(`${base}/${key}`, {

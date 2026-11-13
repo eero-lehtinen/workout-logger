@@ -50,6 +50,20 @@ Each writer has its own bucket and its own R2 token:
 
 A leaked app token then can't delete the Litestream replica, and vice versa.
 The app's token for `wl-litestream` can only read it.
+
+The `token-check` job (04:45 UTC daily) checks this for the two tokens the
+app holds, since a token pasted into the wrong variable or given more
+permissions later would break it silently. Each probe must be refused with
+403; any other answer fails the check, including an R2 error, which proves
+nothing:
+
+1. the read token uploads an empty `token-check` object to `wl-litestream` (if that succeeds, the check deletes it again and fails);
+2. the read token lists `wl-backups`;
+3. the backups token lists `wl-litestream`.
+
+The app never holds Litestream's token, so its scope is checked by hand when
+it is created: Object Read & Write on `wl-litestream` only.
+
 R2 bucket locks (retention locks) may prevent deletion even with a write
 token. Their availability still needs checking.
 
@@ -84,6 +98,7 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 - the time of the last good daily DB copy, and the last error
 - free disk space and the database size
 - the time of the last good restore rehearsal of each, and their last errors
+- the time of the last good token check, and its last error
 
 Settings shows the user's own last sync time and unsynced changes, and on
 Android, the time of the last snapshot file. The owner's
@@ -98,8 +113,8 @@ The Settings tab shows a warning dot when (the owner's two also show on the
 Admin row in Settings):
 
 - signed in, with unsynced local changes, and no sync in the last 3 days (or ever)
-- for the owner: the last run of a restore rehearsal failed
-- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days, each restore rehearsal > 2 days)
+- for the owner: the last run of a restore rehearsal or of the token check failed
+- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days, each restore rehearsal and the token check > 2 days)
 - for the owner: the server database is over 700 MB, at most about 4 GB of R2 once retention fills ([accounts.md](accounts.md#account-cap)); also on the admin page
 
 The on-device snapshots have no dot: they are written only when a session
