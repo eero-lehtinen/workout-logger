@@ -1,4 +1,4 @@
-import type { Kysely, Selectable, Transaction } from "kysely";
+import { type Kysely, type Selectable, sql, type Transaction } from "kysely";
 import { FUTURE_CLOCK_LIMIT_MS, isValidHlc, parseHlc } from "../hlc.ts";
 import type {
   Change,
@@ -20,6 +20,14 @@ export type ServerTrx = Transaction<ServerSyncTables>;
 
 export { FUTURE_CLOCK_LIMIT_MS };
 export const MAX_PULL_LIMIT = 1000;
+/**
+ * A pull page ends before its `data` passes this, after at least one row.
+ * Without it, every pull from 0 would be a whole account: a snapshot, which
+ * is counted, for free.
+ */
+export const MAX_PULL_PAGE_BYTES = 1024 * 1024;
+/** A change with larger `data` is `invalid`. The app's longest notes are far below it. */
+export const MAX_ROW_DATA_BYTES = 64 * 1024;
 
 const TABLE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 const ID_PATTERN = /^[0-9A-Za-z_.:-]{1,128}$/;
@@ -162,6 +170,7 @@ async function pushOne(
     return reject("future_clock");
   }
   const data = canonicalJson(change.data);
+  if (dataBytes(data) > MAX_ROW_DATA_BYTES) return reject("invalid");
   const deleted = change.deleted ? 1 : 0;
   const head = await trx
     .selectFrom("head")
@@ -278,22 +287,41 @@ export async function pull(
 ): Promise<PullResponse> {
   const pageSize = Math.min(Math.max(Math.trunc(limit), 1), MAX_PULL_LIMIT);
   return db.transaction().execute(async (trx) => {
-    const rows = await trx
+    // Sizes first, so only the rows that fit the page are read into memory.
+    const sizes = await trx
       .selectFrom("head")
-      .select(["seq", "table_name", "id", "hlc", "deleted", "v", "data"])
+      .select(["seq", sql<number>`length(CAST(data AS BLOB))`.as("bytes")])
       .where("user_id", "=", userId)
       .where("seq", ">", after)
       .orderBy("seq")
       .limit(pageSize + 1)
       .execute();
-    const page = rows.slice(0, pageSize);
+    let end = 0;
+    let bytes = 0;
+    for (const row of sizes.slice(0, pageSize)) {
+      if (end > 0 && bytes + row.bytes > MAX_PULL_PAGE_BYTES) break;
+      bytes += row.bytes;
+      end++;
+    }
+    const last = sizes[end - 1]?.seq;
+    const rows =
+      last === undefined
+        ? []
+        : await trx
+            .selectFrom("head")
+            .select(["seq", "table_name", "id", "hlc", "deleted", "v", "data"])
+            .where("user_id", "=", userId)
+            .where("seq", ">", after)
+            .where("seq", "<=", last)
+            .orderBy("seq")
+            .execute();
     return {
       epoch: await readEpoch(trx),
-      changes: page.map(
+      changes: rows.map(
         (row): PulledChange => ({ ...toChange(row), seq: row.seq }),
       ),
-      cursor: page.at(-1)?.seq ?? after,
-      more: rows.length > pageSize,
+      cursor: last ?? after,
+      more: sizes.length > end,
     };
   });
 }

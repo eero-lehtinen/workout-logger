@@ -1,6 +1,10 @@
 import type { Change, PushResponse } from "@workout-logger/core";
 import { formatHlc, SCHEMA_VERSION } from "@workout-logger/core";
-import { newEpoch, ROW_OVERHEAD_BYTES } from "@workout-logger/core/sync-server";
+import {
+  MAX_ROW_DATA_BYTES,
+  newEpoch,
+  ROW_OVERHEAD_BYTES,
+} from "@workout-logger/core/sync-server";
 import { describe, expect, it } from "vitest";
 import { syncDb } from "./db/database.ts";
 import { DEFAULT_QUOTA, pruneUsage, type UsageReport } from "./quota.ts";
@@ -113,11 +117,20 @@ describe("daily bytes written", () => {
   it("doesn't limit the owner", async () => {
     const { signIn, pushAs, usage } = await setup();
     const owner = await signIn("owner@example.com", "owner");
-    const big = Array.from({ length: 22 }, (_, i) =>
-      // Under the 1 MB push body each, over the default daily limit together.
-      change(`o${i}`, 1000 * 1000),
+    // Rows under the row limit, pushes under the 1 MB body limit, and over
+    // the default daily limit together.
+    const rowBytes = MAX_ROW_DATA_BYTES - 100;
+    const perPush = 15;
+    const pushes = Math.ceil(DEFAULT_QUOTA.bytesPerDay / (perPush * rowBytes));
+    for (let p = 0; p <= pushes; p++) {
+      const batch = Array.from({ length: perPush }, (_, i) =>
+        change(`o${p}_${i}`, rowBytes),
+      );
+      expect(await pushAs(owner, batch)).toEqual(Array(perPush).fill("ok"));
+    }
+    expect((await usage(owner)).bytesWritten).toBeGreaterThan(
+      DEFAULT_QUOTA.bytesPerDay,
     );
-    for (const c of big) expect(await pushAs(owner, [c])).toEqual(["ok"]);
     expect(await usage(owner)).toMatchObject({
       bytesPerDay: null,
       maxBytes: null,

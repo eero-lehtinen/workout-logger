@@ -128,7 +128,7 @@ lost the changes it just removed from its outbox.
 
 ### Pull
 
-1. Send `GET /api/sync/v1/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`; each change also carries its `seq`.
+1. Send `GET /api/sync/v1/pull?after=<cursor>&limit=1000`. The response is `{ epoch, changes, cursor, more }`; each change also carries its `seq`. A page also ends before its `data` passes 1 MB, after at least one row, so a pull is never the whole account the way an (uncounted) snapshot would be.
 2. If `epoch` differs from the stored `server_epoch`, the server was restored. Run [epoch reset](#server-restore-and-epoch) and stop this pull.
 3. Apply the page in one transaction:
    - Call `clock.receive` with the page's max HLC.
@@ -259,7 +259,7 @@ instead of being stored a second time.
 All endpoints act only on the authenticated `user_id`.
 
 - **`POST /push`** runs in one transaction. For each change, in order:
-  1. Validate the shape (table name, id, `v`, `data` a flat object of scalars) and reject anything else as `invalid`. Validate the HLC format and the future-clock bound.
+  1. Validate the shape (table name, id, `v`, `data` a flat object of scalars of at most 64 KB) and reject anything else as `invalid`. Validate the HLC format and the future-clock bound.
   2. Compare with the stored version of the row, if any:
      - the same HLC, with the same `deleted` and identical `data` or a different `v`: `ok` (duplicate). `data` is stored as canonical JSON (sorted keys), so equal objects compare equal. A different `v` is the same row version rewritten by a client migration, which keeps HLCs; this happens on re-uploads after an epoch reset or a lost push response;
      - the same HLC otherwise: `conflict`, which means a node-id or determinism bug;

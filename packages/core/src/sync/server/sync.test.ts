@@ -6,6 +6,8 @@ import {
   canonicalJson,
   dataBytes,
   FUTURE_CLOCK_LIMIT_MS,
+  MAX_PULL_PAGE_BYTES,
+  MAX_ROW_DATA_BYTES,
   newEpoch,
   type PushQuota,
   pull,
@@ -316,6 +318,21 @@ describe("push", () => {
     ]);
   });
 
+  it("refuses data over MAX_ROW_DATA_BYTES as invalid", async () => {
+    const { db } = await openTestServer();
+    const sized = (id: string, bytes: number) =>
+      // `{"value_json":""}` is 17 bytes.
+      change({ id, data: { value_json: "x".repeat(bytes - 17) } });
+    const result = await pushAs(db, "u1", [
+      sized("fits", MAX_ROW_DATA_BYTES),
+      sized("over", MAX_ROW_DATA_BYTES + 1),
+    ]);
+    expect(result.results).toEqual([
+      { status: "ok" },
+      { status: "rejected", reason: "invalid" },
+    ]);
+  });
+
   it("counts UTF-8 bytes", () => {
     expect(dataBytes('{"n":"ä"}')).toBe(10);
   });
@@ -365,6 +382,28 @@ describe("pull and snapshot", () => {
     expect(next.changes.map((c) => [c.seq, c.id, c.hlc, c.deleted])).toEqual([
       [4, "a", hlc(NOW + 2), true],
     ]);
+  });
+
+  it("ends a page before its data passes MAX_PULL_PAGE_BYTES", async () => {
+    const { db } = await openTestServer();
+    const big = (id: string) =>
+      change({
+        id,
+        data: { value_json: "x".repeat(MAX_ROW_DATA_BYTES - 100) },
+      });
+    const ids = Array.from({ length: 20 }, (_, i) => `r${i}`);
+    await pushAs(db, "u1", ids.map(big));
+
+    const first = await pull(db, "u1", 0);
+    const firstBytes = first.changes
+      .map((c) => dataBytes(canonicalJson(c.data)))
+      .reduce((a, b) => a + b, 0);
+    expect(first.more).toBe(true);
+    expect(first.changes.length).toBeGreaterThan(1);
+    expect(firstBytes).toBeLessThanOrEqual(MAX_PULL_PAGE_BYTES);
+    const second = await pull(db, "u1", first.cursor);
+    expect(second.more).toBe(false);
+    expect([...first.changes, ...second.changes].map((c) => c.id)).toEqual(ids);
   });
 
   it("pages through one user's rows in seq order", async () => {
