@@ -6,21 +6,23 @@ export interface AndroidRelease {
   version: string;
   /** GitHub API URL of the release's APK asset. */
   assetUrl: string;
+  /** The APK's download URL on github.com. */
+  browserUrl: string;
 }
 
 /** Where the Android app's updates come from. */
 export interface ReleaseSource {
   /** The newest release with an APK, or null if there is none. */
   latest(): Promise<AndroidRelease | null>;
-  /** A short-lived URL anyone can download the APK from. */
+  /** A URL anyone can download the APK from. */
   downloadUrl(release: AndroidRelease): Promise<string>;
 }
 
 export interface GithubReleasesOptions {
   /** `owner/name`. */
   repository: string;
-  /** Needs read access to the repository's contents; the repository is private. */
-  token: string;
+  /** Read access to the repository's contents, needed only if it is private. */
+  token?: string | undefined;
   fetch?: typeof fetch;
   now?: () => number;
 }
@@ -29,24 +31,21 @@ const CACHE_MS = 5 * 60 * 1000;
 
 interface GithubRelease {
   tag_name: string;
-  assets: { name: string; url: string }[];
+  assets: { name: string; url: string; browser_download_url: string }[];
 }
 
-/**
- * Reads releases from the GitHub repository. The app can't ask GitHub
- * itself: the repository is private and the app has no token.
- */
+/** Reads releases from the GitHub repository. */
 export function githubReleases(options: GithubReleasesOptions): ReleaseSource {
   const { repository, token } = options;
   const request = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
   const headers = {
-    Authorization: `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "workout-logger-server",
   };
   // The endpoints are public, so without a cache anyone could spend the
-  // token's rate limit.
+  // rate limit: the token's, or 60 an hour for the server's IP without one.
   let cached: { at: number; release: AndroidRelease | null } | undefined;
 
   return {
@@ -66,6 +65,7 @@ export function githubReleases(options: GithubReleasesOptions): ReleaseSource {
           release = {
             version: body.tag_name.replace(/^v/, ""),
             assetUrl: apk.url,
+            browserUrl: apk.browser_download_url,
           };
         }
       }
@@ -74,8 +74,10 @@ export function githubReleases(options: GithubReleasesOptions): ReleaseSource {
     },
 
     async downloadUrl(release) {
-      // GitHub answers an asset request with a redirect to a signed URL
-      // that needs no token. Passing that on keeps the download off the VPS.
+      if (!token) return release.browserUrl;
+      // A private repository's download URL needs the token, but GitHub
+      // answers an asset request with a redirect to a signed URL that needs
+      // none. Passing that on keeps the download off the VPS.
       const res = await request(release.assetUrl, {
         headers: { ...headers, Accept: "application/octet-stream" },
         redirect: "manual",

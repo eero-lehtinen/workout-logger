@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { githubReleases, type ReleaseSource } from "./android-release.ts";
+import {
+  type AndroidRelease,
+  githubReleases,
+  type ReleaseSource,
+} from "./android-release.ts";
 import { openTestApp } from "./testing.ts";
 
 const ASSET_URL = "https://api.github.com/repos/someone/app/releases/assets/42";
+const BROWSER_URL =
+  "https://github.com/someone/app/releases/download/v1.4.0/workout-logger-1.4.0.apk";
 const SIGNED_URL = "https://objects.example/app-release.apk?sig=abc";
 
-function fakeGithub(release: object | null) {
+function fakeGithub(release: object | null, token: string | null = "secret") {
   return vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
-    expect(headers.get("authorization")).toBe("Bearer secret");
+    expect(headers.get("authorization")).toBe(token && `Bearer ${token}`);
     if (String(url).endsWith("/releases/latest")) {
       return release
         ? Response.json(release)
@@ -27,8 +33,16 @@ function fakeGithub(release: object | null) {
 const RELEASE = {
   tag_name: "v1.4.0",
   assets: [
-    { name: "notes.txt", url: "https://api.github.com/other" },
-    { name: "workout-logger-1.4.0.apk", url: ASSET_URL },
+    {
+      name: "notes.txt",
+      url: "https://api.github.com/other",
+      browser_download_url: "https://github.com/other",
+    },
+    {
+      name: "workout-logger-1.4.0.apk",
+      url: ASSET_URL,
+      browser_download_url: BROWSER_URL,
+    },
   ],
 };
 
@@ -47,7 +61,19 @@ describe("githubReleases", () => {
     expect(await releases.latest()).toEqual({
       version: "1.4.0",
       assetUrl: ASSET_URL,
+      browserUrl: BROWSER_URL,
     });
+  });
+
+  it("without a token, asks GitHub anonymously and gives the public URL", async () => {
+    const fetch = fakeGithub(RELEASE, null);
+    const releases = githubReleases({ repository: "someone/app", fetch });
+    const release = await releases.latest();
+    expect(release).not.toBeNull();
+    expect(await releases.downloadUrl(release as AndroidRelease)).toBe(
+      BROWSER_URL,
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("has no release when the repository has none", async () => {
@@ -120,7 +146,7 @@ describe("/api/android", () => {
     },
   );
 
-  it("answers 503 when no token is configured", async () => {
+  it("answers 503 without a release source", async () => {
     const res = await (await app()).request("/api/android/latest");
     expect(res.status).toBe(503);
   });

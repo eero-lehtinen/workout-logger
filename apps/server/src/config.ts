@@ -30,7 +30,7 @@ export interface ServerConfig {
    * restore rehearsal; unset turns the rehearsal off.
    */
   litestreamReplica: R2Config | undefined;
-  releases: { repository: string; token: string } | undefined;
+  releases: { repository: string; token: string | undefined };
 }
 
 const DEV_SECRET = "development-only-secret-not-for-production";
@@ -105,13 +105,11 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     backups,
     litestreamSocket: env.LITESTREAM_SOCKET || undefined,
     litestreamReplica,
-    releases: env.GITHUB_RELEASES_TOKEN
-      ? {
-          repository:
-            env.GITHUB_RELEASES_REPOSITORY ?? "eero-lehtinen/workout-logger",
-          token: env.GITHUB_RELEASES_TOKEN,
-        }
-      : undefined,
+    releases: {
+      repository:
+        env.GITHUB_RELEASES_REPOSITORY ?? "eero-lehtinen/workout-logger",
+      token: env.GITHUB_RELEASES_TOKEN || undefined,
+    },
   };
 }
 

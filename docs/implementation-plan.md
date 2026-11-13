@@ -139,8 +139,8 @@ Result: served at <https://lift.eerolehtinen.fi>, deployed on every push to
 
 Result: released as `v0.1.0` to `v0.1.2`, installed on the owner's phone
 from the release APK, and updated in place through the app's update prompt.
-The repository is private, so the update check goes through the server
-instead of GitHub directly ([deployment.md](deployment.md#android-releases)).
+The update check goes through the server instead of GitHub directly
+([deployment.md](deployment.md#android-releases)).
 `minSdk` is 30, the keep-screen-on setting also works in browsers, and an
 alert volume setting was added ([architecture.md](architecture.md#app-shell)).
 

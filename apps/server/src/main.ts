@@ -36,7 +36,7 @@ const app = createApp({
   webRoot: config.webRoot,
   bundleRoot: config.bundleRoot,
   commit: config.commit,
-  releases: config.releases ? githubReleases(config.releases) : undefined,
+  releases: githubReleases(config.releases),
   db: database.db,
   auth,
   limitCache,

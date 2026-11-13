@@ -173,18 +173,18 @@ A new version must be higher than the installed one: Android refuses to install 
 - CI reads them from GitHub Actions secrets: `ANDROID_KEYSTORE_BASE64` (the keystore file, base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 - Certificate SHA-256: `E4:BC:25:34:43:BB:5A:F4:7C:02:9D:F2:AD:C6:45:4E:5F:03:B3:33:84:CF:4B:4D:EB:78:6A:0F:AC:60:57:E1`. `apksigner verify --print-certs <apk>` shows it for a correctly signed APK.
 
-**Updates.** The repository is private, so the app can't read its releases. The server reads them with a token and hands them out:
+**Updates.** The app asks the server, which reads the repository's releases and hands them out:
 
 | Endpoint | Answer |
 | --- | --- |
 | `GET /api/android/latest` | `{ "version": "1.2.3" }`: GitHub's latest release, if it has an APK. 404 when it has none; older releases aren't searched. |
-| `GET /api/android/download` | `{ "version": "1.2.3", "url": "…" }`: GitHub's short-lived signed URL of that APK. The app opens it in the phone's browser. |
+| `GET /api/android/download` | `{ "version": "1.2.3", "url": "…" }`: the APK's download URL on github.com, or with a token GitHub's short-lived signed URL of it. The app opens it in the phone's browser. |
 | `GET /api/android/apk` | A redirect to the same URL, for a first install from a browser. The download doesn't pass through the VPS either way. |
 
 - All are public, like the web app, and allow CORS from `https://localhost`, the app's WebView origin.
 - The app never sends the browser to this site for the download. The browser may have the web app installed, and its service worker answers navigations on this origin with the app shell. The service worker also leaves `/api/*` navigations alone, so the `/apk` link works in such a browser once its service worker has updated.
-- The server caches the latest release for 5 minutes, so the public endpoints can't spend the token's rate limit.
-- `GITHUB_RELEASES_TOKEN` is a fine-grained GitHub token with read access to the repository's contents only (releases of a private repository need it). Without it the three endpoints answer 503, and the app shows no update prompt. They answer 502 when GitHub can't be reached. `GITHUB_RELEASES_REPOSITORY` overrides the repository (default `eero-lehtinen/workout-logger`).
+- The server caches the latest release for 5 minutes, so the public endpoints can't spend GitHub's rate limit (60 requests an hour per IP without a token). Without a token, a download costs no GitHub request.
+- `GITHUB_RELEASES_TOKEN` is optional: a fine-grained GitHub token with read access to the repository's contents only, needed only while the repository is private. A private repository's releases look like none without it, so the endpoints answer 404 and the app shows no update prompt. They answer 502 when GitHub can't be reached. `GITHUB_RELEASES_REPOSITORY` overrides the repository (default `eero-lehtinen/workout-logger`).
 - The first install is the same download: in a browser on Android, the web app's Settings show an "Android app" row with a link to `/api/android/apk` when the server has a release. The browser must be allowed to install apps.
 
 **Building locally.** Needs JDK 21 and the Android SDK (`platforms;android-36`, `build-tools;35.0.0`), with `ANDROID_HOME` set or `sdk.dir` in `apps/android/local.properties`.
@@ -260,7 +260,7 @@ backups or sign-in.
 | `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token. The token goes to `litestream` and `litestream-init` only; the app gets the endpoint and bucket. |
 | `LITESTREAM_R2_READ_ACCESS_KEY_ID`, `LITESTREAM_R2_READ_SECRET_ACCESS_KEY` | A read-only token for `wl-litestream`, for the app's restore rehearsal of the replica ([backups.md](backups.md#restore-rehearsal)). Outside the compose file, unset turns that rehearsal off. |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
-| `GITHUB_RELEASES_TOKEN` | Optional. Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
+| `GITHUB_RELEASES_TOKEN` | Optional, needed only while the repository is private. Reads its releases for the Android update endpoints ([Android releases](#android-releases)) |
 
 Set by the compose file: `PUBLIC_URL` (`https://lift.eerolehtinen.fi`, for
 auth callbacks) and `LITESTREAM_SOCKET`. The image sets `DATABASE_PATH`
