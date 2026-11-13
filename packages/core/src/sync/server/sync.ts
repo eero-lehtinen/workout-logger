@@ -24,7 +24,7 @@ export const MAX_PULL_LIMIT = 1000;
 const TABLE_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 const ID_PATTERN = /^[0-9A-Za-z_.:-]{1,128}$/;
 
-/** Room left for one push, in UTF-8 bytes of `data`. */
+/** Room left for one push, in `rowBytes`. */
 export interface QuotaAllowance {
   /** Size of the versions it may store; infinite without a daily limit. */
   written: number;
@@ -72,9 +72,24 @@ const UNLIMITED: QuotaAllowance = {
 
 const utf8 = new TextEncoder();
 
-/** What a quota counts: the UTF-8 size of a stored `data` string. */
+/** The UTF-8 size of a stored `data` string. */
 export function dataBytes(data: string): number {
   return utf8.encode(data).length;
+}
+
+/**
+ * The fixed part of a row's cost: the HLC, device id, `seq`, and the
+ * `head_user_seq` index entry. Without it a row with empty `data` and a long
+ * key would cost almost nothing, and a user could fill the disk with them.
+ */
+export const ROW_OVERHEAD_BYTES = 200;
+
+/**
+ * What a quota counts for a stored row: about its size in the database.
+ * `table` and `id` are ASCII (`TABLE_PATTERN`, `ID_PATTERN`).
+ */
+export function rowBytes(table: string, id: string, data: string): number {
+  return dataBytes(data) + table.length + id.length + ROW_OVERHEAD_BYTES;
 }
 
 /** Stores a batch of changes in one transaction. Results are in request order. */
@@ -167,8 +182,9 @@ async function pushOne(
   if (head && change.hlc < head.hlc) return { status: "ok" };
   // An older app would reset columns it doesn't know about.
   if (change.v < state.maxV) return reject("schema_outdated");
-  const size = dataBytes(data);
-  const growth = size - (head ? dataBytes(head.data) : 0);
+  const size = rowBytes(change.table, change.id, data);
+  const growth =
+    size - (head ? rowBytes(change.table, change.id, head.data) : 0);
   if (
     state.quotaReached ||
     state.written + size > state.allowance.written ||

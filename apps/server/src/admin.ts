@@ -11,6 +11,7 @@ import {
   DEFAULT_QUOTA,
   EXEMPTION_MS,
   readLimits,
+  rowBytesSql,
   toMillis,
   utcDay,
 } from "./quota.ts";
@@ -72,7 +73,7 @@ export async function listUsers(
     .selectFrom("head")
     .select([
       "user_id",
-      sql<number>`sum(length(CAST(data AS BLOB)))`.as("bytes"),
+      sql<number>`sum(${rowBytesSql})`.as("bytes"),
       sql<number>`max(received_at)`.as("last"),
     ])
     .groupBy("user_id")

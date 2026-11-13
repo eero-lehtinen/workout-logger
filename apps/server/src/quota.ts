@@ -1,20 +1,25 @@
 import {
   type PushQuota,
+  ROW_OVERHEAD_BYTES,
   readEpochStartedAt,
   type ServerDb,
 } from "@workout-logger/core/sync-server";
 import { sql, type Transaction } from "kysely";
 import type { ServerKysely, ServerTables } from "./db/database.ts";
 
-// docs/accounts.md#quotas. Byte counts are UTF-8 bytes of `data`, the same
-// measure as core's `dataBytes`.
+// docs/accounts.md#quotas. Byte counts are core's `rowBytes`.
 
 const MB = 1024 * 1024;
 const DAY = 24 * 60 * 60 * 1000;
 
+/** Core's `rowBytes` of a `head` row. */
+export const rowBytesSql = sql<number>`length(CAST(data AS BLOB)) + length(table_name) + length(id) + ${sql.lit(ROW_OVERHEAD_BYTES)}`;
+
+const MAX_BYTES = 20 * MB;
+
 export const DEFAULT_QUOTA = {
   bytesPerDay: 5 * MB,
-  maxBytes: 10 * MB,
+  maxBytes: MAX_BYTES,
   requestsPerMinute: 60,
   snapshotsPerDay: 10,
 };
@@ -87,9 +92,7 @@ export async function readLimits(
 export async function storedBytes(db: Db, userId: string): Promise<number> {
   const row = await db
     .selectFrom("head")
-    .select(
-      sql<number>`coalesce(sum(length(CAST(data AS BLOB))), 0)`.as("bytes"),
-    )
+    .select(sql<number>`coalesce(sum(${rowBytesSql}), 0)`.as("bytes"))
     .where("user_id", "=", userId)
     .executeTakeFirstOrThrow();
   return row.bytes;

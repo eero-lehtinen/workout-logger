@@ -1,6 +1,6 @@
 import type { Change, PushResponse } from "@workout-logger/core";
 import { formatHlc, SCHEMA_VERSION } from "@workout-logger/core";
-import { newEpoch } from "@workout-logger/core/sync-server";
+import { newEpoch, ROW_OVERHEAD_BYTES } from "@workout-logger/core/sync-server";
 import { describe, expect, it } from "vitest";
 import { syncDb } from "./db/database.ts";
 import { DEFAULT_QUOTA, pruneUsage, type UsageReport } from "./quota.ts";
@@ -23,6 +23,10 @@ function change(id: string, bytes: number): Change {
     data: { value_json: "x".repeat(bytes - 17) },
   };
 }
+
+/** What `change(id, bytes)` with a one-letter id counts against a quota. */
+const cost = (bytes: number) =>
+  bytes + "setting".length + 1 + ROW_OVERHEAD_BYTES;
 
 async function setup(now = LATER) {
   const clock = { now };
@@ -80,12 +84,12 @@ async function setup(now = LATER) {
 describe("daily bytes written", () => {
   it("rejects what doesn't fit as quota, and counts only stored versions", async () => {
     const { alice, pushAs, usage, setQuota } = await setup();
-    await setQuota(alice.userId, { bytes_per_day: 250 });
+    await setQuota(alice.userId, { bytes_per_day: 2 * cost(100) + cost(50) });
     const a = change("a", 100);
     expect(
       await pushAs(alice, [a, change("b", 100), change("c", 100)]),
     ).toEqual(["ok", "ok", "quota"]);
-    expect((await usage()).bytesWritten).toBe(200);
+    expect((await usage()).bytesWritten).toBe(2 * cost(100));
 
     // A retry and an older version are free.
     const older = {
@@ -93,14 +97,14 @@ describe("daily bytes written", () => {
       hlc: formatHlc({ wall: 1, counter: 0, node: "aaaaaaaaaaaa" }),
     };
     expect(await pushAs(alice, [a, older])).toEqual(["ok", "ok"]);
-    expect((await usage()).bytesWritten).toBe(200);
+    expect((await usage()).bytesWritten).toBe(2 * cost(100));
     expect(await pushAs(alice, [change("d", 51)])).toEqual(["quota"]);
     expect(await pushAs(alice, [change("d", 50)])).toEqual(["ok"]);
   });
 
   it("starts again the next UTC day", async () => {
     const { alice, clock, pushAs, setQuota } = await setup();
-    await setQuota(alice.userId, { bytes_per_day: 100 });
+    await setQuota(alice.userId, { bytes_per_day: cost(100) });
     expect(await pushAs(alice, [change("a", 100)])).toEqual(["ok"]);
     expect(await pushAs(alice, [change("b", 100)])).toEqual(["quota"]);
     clock.now += DAY;
@@ -127,8 +131,8 @@ describe("exemptions", () => {
   async function overDaily(now = LATER) {
     const test = await setup(now);
     await test.setQuota(test.alice.userId, {
-      bytes_per_day: 100,
-      max_bytes: 300,
+      bytes_per_day: cost(100),
+      max_bytes: 2 * cost(150),
     });
     return test;
   }
@@ -170,7 +174,7 @@ describe("exemptions", () => {
 describe("stored bytes", () => {
   it("counts a replaced row's new size, not both versions", async () => {
     const { alice, pushAs, usage, setQuota } = await setup();
-    await setQuota(alice.userId, { max_bytes: 200 });
+    await setQuota(alice.userId, { max_bytes: 2 * cost(100) });
     expect(await pushAs(alice, [change("a", 100), change("b", 100)])).toEqual([
       "ok",
       "ok",
@@ -178,9 +182,9 @@ describe("stored bytes", () => {
     expect(await pushAs(alice, [change("a", 100)])).toEqual(["ok"]);
     expect(await pushAs(alice, [change("a", 101)])).toEqual(["quota"]);
     expect(await usage()).toMatchObject({
-      storedBytes: 200,
-      maxBytes: 200,
-      bytesWritten: 300,
+      storedBytes: 2 * cost(100),
+      maxBytes: 2 * cost(100),
+      bytesWritten: 3 * cost(100),
     });
   });
 });
@@ -213,10 +217,10 @@ describe("usage", () => {
     await pushAs(alice, [change("a", 100)]);
     expect(await usage()).toEqual({
       day: new Date(LATER).toISOString().slice(0, 10),
-      bytesWritten: 100,
+      bytesWritten: cost(100),
       bytesPerDay: DEFAULT_QUOTA.bytesPerDay,
       exemptUntil: null,
-      storedBytes: 100,
+      storedBytes: cost(100),
       maxBytes: DEFAULT_QUOTA.maxBytes,
       snapshots: 0,
       snapshotsPerDay: DEFAULT_QUOTA.snapshotsPerDay,

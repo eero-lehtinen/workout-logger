@@ -1,5 +1,6 @@
 import type { PushResponse } from "@workout-logger/core";
 import { formatHlc, SCHEMA_VERSION } from "@workout-logger/core";
+import { ROW_OVERHEAD_BYTES } from "@workout-logger/core/sync-server";
 import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import type { AdminUsers } from "./admin.ts";
@@ -68,6 +69,8 @@ describe("/api/admin", () => {
   });
 
   it("lists every user with their usage", async () => {
+    /** What `push(alice, 100)` counts against quotas. */
+    const ROW = 100 + "setting".length + "s100".length + ROW_OVERHEAD_BYTES;
     const { owner, alice, call, push } = await setup();
     expect(await push(alice, 100)).toEqual({ status: "ok" });
     const body = (await (
@@ -83,8 +86,8 @@ describe("/api/admin", () => {
       id: alice.userId,
       role: "user",
       disabled: false,
-      bytesWrittenToday: 100,
-      storedBytes: 100,
+      bytesWrittenToday: ROW,
+      storedBytes: ROW,
       lastSyncAt: LATER,
       exemptUntil: null,
       overrides: {

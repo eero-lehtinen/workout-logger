@@ -22,7 +22,7 @@ export interface UsageTable {
   user_id: string;
   /** `YYYY-MM-DD`, UTC. */
   day: string;
-  /** UTF-8 bytes of the `data` of versions stored. */
+  /** Core's `rowBytes` of the versions stored. */
   bytes_written: number;
   snapshots: number;
 }

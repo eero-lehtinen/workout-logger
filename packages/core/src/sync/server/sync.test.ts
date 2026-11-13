@@ -10,8 +10,10 @@ import {
   type PushQuota,
   pull,
   push,
+  ROW_OVERHEAD_BYTES,
   readEpoch,
   readEpochStartedAt,
+  rowBytes,
   snapshot,
 } from "./sync.ts";
 
@@ -58,8 +60,10 @@ function fixedQuota(written: number, stored = Number.POSITIVE_INFINITY) {
 }
 
 /** The bytes a change of `change()` costs. */
-const size = (overrides: Partial<Change> = {}) =>
-  dataBytes(canonicalJson(change(overrides).data));
+const size = (overrides: Partial<Change> = {}) => {
+  const { table, id, data } = change(overrides);
+  return rowBytes(table, id, canonicalJson(data));
+};
 
 async function lastSeq(db: Awaited<ReturnType<typeof openTestServer>>["db"]) {
   const row = await db
@@ -223,7 +227,7 @@ describe("push", () => {
   it("stops storing at the daily bytes but still acknowledges duplicates", async () => {
     const { db } = await openTestServer();
     await pushAs(db, "u1", [change({ id: "a" })]);
-    const { quota, recorded } = fixedQuota(size() + 1);
+    const { quota, recorded } = fixedQuota(size({ id: "b" }) + 1);
     const result = await pushAs(
       db,
       "u1",
@@ -238,7 +242,7 @@ describe("push", () => {
       ],
       inserted: 1,
     });
-    expect(recorded).toEqual([size()]);
+    expect(recorded).toEqual([size({ id: "b" })]);
   });
 
   it("refuses the rest of a push once one version doesn't fit", async () => {
@@ -248,7 +252,7 @@ describe("push", () => {
       db,
       "u1",
       [change({ id: "a", ...big }), change({ id: "b" })],
-      fixedQuota(size() * 2).quota,
+      fixedQuota(size({ id: "b" }) + 50).quota,
     );
     expect(result.results).toEqual([
       { status: "rejected", reason: "quota" },
@@ -258,12 +262,12 @@ describe("push", () => {
 
   it("counts a replaced row's new size against storage, not both versions", async () => {
     const { db } = await openTestServer();
-    await pushAs(db, "u1", [change({ data: { value_json: "x".repeat(50) } })]);
+    await pushAs(db, "u1", [change({ data: { value_json: "x".repeat(300) } })]);
     // The same size again grows nothing.
     const same = await pushAs(
       db,
       "u1",
-      [change({ hlc: hlc(NOW + 1), data: { value_json: "y".repeat(50) } })],
+      [change({ hlc: hlc(NOW + 1), data: { value_json: "y".repeat(300) } })],
       fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
     );
     expect(same.results).toEqual([{ status: "ok" }]);
@@ -273,8 +277,8 @@ describe("push", () => {
       "u1",
       [
         change({ hlc: hlc(NOW + 2), data: { value_json: "" } }),
-        // 17 bytes of JSON around the value: 50 in all, what the shrink freed.
-        change({ id: "other", data: { value_json: "z".repeat(33) } }),
+        // What the shrink freed: 300 bytes, with its JSON, key and overhead.
+        change({ id: "other", data: { value_json: "z".repeat(71) } }),
       ],
       fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
     );
@@ -286,7 +290,7 @@ describe("push", () => {
         change({
           id: "other",
           hlc: hlc(NOW + 3),
-          data: { value_json: "z".repeat(34) },
+          data: { value_json: "z".repeat(72) },
         }),
       ],
       fixedQuota(Number.POSITIVE_INFINITY, 0).quota,
@@ -327,6 +331,27 @@ describe("newEpoch", () => {
     expect(await readEpochStartedAt(db)).toBe(NOW);
     await newEpoch(db, NOW + 1);
     expect(await readEpochStartedAt(db)).toBe(NOW + 1);
+  });
+
+  it("counts a row's key and fixed overhead, not only its data", async () => {
+    const { db } = await openTestServer();
+    const empty = {
+      table: `t${"a".repeat(63)}`,
+      id: "i".repeat(128),
+      data: {},
+    };
+    const cost = rowBytes(empty.table, empty.id, "{}");
+    expect(cost).toBe(2 + 64 + 128 + ROW_OVERHEAD_BYTES);
+    const result = await pushAs(
+      db,
+      "u1",
+      [change(empty), change({ ...empty, id: "j".repeat(128) })],
+      fixedQuota(Number.POSITIVE_INFINITY, cost * 2 - 1).quota,
+    );
+    expect(result.results).toEqual([
+      { status: "ok" },
+      { status: "rejected", reason: "quota" },
+    ]);
   });
 });
 

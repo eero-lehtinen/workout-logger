@@ -70,7 +70,7 @@ and the daily job keeps 7 daily and 3 monthly Brotli-compressed copies
 for the built-in catalog: roughly 5 MB of R2 per account per year, so 8 GB
 holds about 1,500 account-years and 100 accounts last over a decade. The cap
 is sized for realistic use, not for every account filling its
-[storage quota](#quotas): a full 10 MB quota is about 90 MB of R2, so even a
+[storage quota](#quotas): a full 20 MB quota is about 90 MB of R2, so even a
 third of the accounts at their quota stays near 3 GB. The quota bounds a
 runaway account, the database warning below gives months of notice, and R2
 beyond the free tier costs cents. The cap itself mostly bounds strangers, if
@@ -131,16 +131,16 @@ the server code, unless the owner sets an override for it on the
 
 | Quota | Default | Reason |
 | --- | --- | --- |
-| Bytes written per day | 5 MB of `data` | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 200 KB. |
-| Stored data size | 10 MB of `data` | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). Check the ratio of database size to stored `data` on the live server before fixing the number. |
+| Bytes written per day | 5 MB | Every stored version passes through the WAL into Litestream's incremental files, which R2 keeps for 3 days; this bounds that churn. A heavy session plus routine editing writes well under 500 KB. |
+| Stored data size | 20 MB | About 10 years of active use. Keeps one account from taking the [R2 budget](#account-cap). |
 | Requests per minute | 60 | Normal sync runs once a minute plus on writes. Stops runaway clients. |
 | Snapshot downloads per day | 10 | Snapshots are the most expensive reads. |
 
 Enforcement:
 
-- Both limits count UTF-8 bytes of `data`, not rows: what costs disk and R2 is size, and a row count would treat a setting and a long note alike. MB here is 1024².
+- Both limits count bytes, about what a row takes in the database (`rowBytes` in `core`): the UTF-8 bytes of `data`, plus the table name and id, plus 200 bytes for the rest of the row and its index entry. What costs disk and R2 is size, and a row count would treat a setting and a long note alike. Without the fixed part, rows with empty `data` would be nearly free, and one account could fill the disk with millions of them. A typical row counts about twice its `data`. MB here is 1024².
 - Only versions the server **stores** count toward bytes written: ones newer than the stored row. Duplicates from retries and versions that already lost are free.
-- The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are `sum(length(CAST(data AS BLOB)))` of the user's `head` rows, read at the start of the push; a replaced row counts its new size, not both. Once a change doesn't fit either limit, it and the rest of the push's new versions are rejected as `quota`. Only growth counts against storage, so a user over a lowered limit can still sync changes that shrink their data. Local logging keeps working.
+- The push checks and records the bytes inside its own transaction (a hook of `push` in `core`, see [sync.md](sync.md#server-side)), so two devices of one user can't overrun the limit together. Stored bytes are the sum of the user's `head` rows' bytes, read at the start of the push; a replaced row counts its new size, not both. Once a change doesn't fit either limit, it and the rest of the push's new versions are rejected as `quota`. Only growth counts against storage, so a user over a lowered limit can still sync changes that shrink their data. Local logging keeps working.
 - Days are UTC: the daily limits reset at 00:00 UTC (`usage.day`).
 - **Exempt from the daily limit**, never from the storage limit:
   - the first 24 h after the account is created, for the upload of data logged before sign-up;
