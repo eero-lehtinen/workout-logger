@@ -108,3 +108,40 @@ describe("/api", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 });
+
+describe("requests with cookies", () => {
+  /** A bodiless POST, as a page on a sibling subdomain can send with `no-cors`. */
+  const enable = (headers: Record<string, string>) =>
+    app.request("/api/admin/users/someone/enable", {
+      method: "POST",
+      headers,
+    });
+  const cookie = "better-auth.session_token=anything";
+
+  it("refuses them from another origin of the same site", async () => {
+    const res = await enable({
+      cookie,
+      origin: "http://evil.localhost:3000",
+      "sec-fetch-site": "same-site",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("passes them from the app's own origin to the route", async () => {
+    for (const headers of [
+      { cookie, "sec-fetch-site": "same-origin" },
+      // Browsers without Sec-Fetch-Site still send Origin.
+      { cookie, origin: "http://localhost:3000" },
+    ]) {
+      expect((await enable(headers)).status).toBe(401);
+    }
+  });
+
+  it("doesn't check requests without cookies", async () => {
+    const res = await enable({
+      authorization: "Bearer anything",
+      origin: "https://localhost",
+    });
+    expect(res.status).toBe(401);
+  });
+});

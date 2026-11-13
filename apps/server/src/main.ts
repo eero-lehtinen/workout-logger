@@ -35,6 +35,7 @@ const jobs = await startJobs(database.db, [
 const app = createApp({
   webRoot: config.webRoot,
   bundleRoot: config.bundleRoot,
+  publicUrl: config.publicUrl,
   commit: config.commit,
   releases: githubReleases(config.releases),
   db: database.db,

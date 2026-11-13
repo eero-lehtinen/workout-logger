@@ -22,6 +22,7 @@ export async function ownServer() {
   const app = createApp({
     webRoot,
     bundleRoot: config.bundleRoot,
+    publicUrl: config.publicUrl,
     db: database.db,
     auth,
     limitCache,

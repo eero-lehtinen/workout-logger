@@ -82,6 +82,7 @@ export async function openTestApp(
     bundleRoot: "unused",
     databasePath: ":memory:",
     ...appOverrides,
+    publicUrl: TEST_URL,
     db: database.db,
     auth,
     limitCache,

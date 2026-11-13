@@ -2,6 +2,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { EXPECTED_USER_HEADER } from "@workout-logger/core";
 import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
+import { csrf } from "hono/csrf";
 import { secureHeaders } from "hono/secure-headers";
 import pkg from "../package.json" with { type: "json" };
 import { deleteAccount } from "./account-deletion.ts";
@@ -33,6 +34,8 @@ export interface AppOptions {
   webRoot: string;
   /** Directory with the web build's live-update bundle (`apps/web/live-bundle`). */
   bundleRoot: string;
+  /** The origin users reach, e.g. `https://lift.eerolehtinen.fi`. */
+  publicUrl: string;
   /** Commit SHA the image was built from, if known. */
   commit?: string | undefined;
   /** Android releases, if the server is configured to read them. */
@@ -109,6 +112,14 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
   const bodyLimit = requestBodyLimit();
   app.use("/api/*", (c, next) =>
     c.req.path === PUSH_PATH ? next() : bodyLimit(c, next),
+  );
+
+  // SameSite=Lax cookies still come with a request from a page on a sibling
+  // subdomain, which is same-site. Only cookies can be sent by a page without
+  // knowing them: bearer-token requests from the app need no check.
+  const sameOrigin = csrf({ origin: new URL(options.publicUrl).origin });
+  app.use("/api/*", (c, next) =>
+    c.req.header("cookie") ? sameOrigin(c, next) : next(),
   );
 
   const status: StatusSource = {
