@@ -111,7 +111,9 @@ function RoutineList({ routines }: { routines: RoutineItem[] }) {
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{r.name}</p>
               {r.description && (
-                <p className="line-clamp-2 text-sm">{r.description}</p>
+                <p className="line-clamp-2 text-sm text-ink-muted">
+                  {r.description}
+                </p>
               )}
               {r.dayNames.length === 0 ? (
                 <p className="text-sm text-ink-muted">
