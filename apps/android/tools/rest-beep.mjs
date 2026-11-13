@@ -1,5 +1,7 @@
-// Generates the end-of-rest sound:
-//   node apps/android/tools/rest-beep.mjs apps/android/app/src/main/res/raw/rest_beep.wav
+// Generates the end-of-rest sound for both the Android app and the web:
+//   node apps/android/tools/rest-beep.mjs
+// The web build can't read apps/android (the Docker build excludes it), so
+// each app has a copy of the file.
 // Two beeps: a sine with some second and third harmonic, a 12 ms fade-in and
 // a 25 ms fade-out, so there is no click. The sound plays at the media volume,
 // so it is made as loud as the format allows: the beeps hold their level
@@ -10,6 +12,7 @@
 // harmonics (~2.4 and ~3.9 kHz) are where small speakers and hearing are
 // most sensitive.
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const rate = 44100,
   freq = 784,
@@ -50,4 +53,10 @@ header.writeUInt16LE(2, 32);
 header.writeUInt16LE(16, 34);
 header.write("data", 36);
 header.writeUInt32LE(pcm.length, 40);
-writeFileSync(process.argv[2], Buffer.concat([header, pcm]));
+const wav = Buffer.concat([header, pcm]);
+for (const path of [
+  "../app/src/main/res/raw/rest_beep.wav",
+  "../../web/src/lib/rest-beep.wav",
+]) {
+  writeFileSync(fileURLToPath(new URL(path, import.meta.url)), wav);
+}

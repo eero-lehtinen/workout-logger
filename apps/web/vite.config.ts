@@ -41,7 +41,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,wasm,woff2,svg,png,ico}"],
+        globPatterns: ["**/*.{js,css,html,wasm,woff2,svg,png,ico,wav}"],
         // sqlite-wasm's own worker and OPFS proxy scripts are emitted but
         // unused: the SAH-pool VFS runs in our worker.
         globIgnores: ["**/sqlite3-worker1*", "**/sqlite3-opfs-async-proxy*"],
