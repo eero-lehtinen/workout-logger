@@ -3,6 +3,7 @@ import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import { createOwner, setEmail } from "../cli.ts";
 import { openTestApp } from "../testing.ts";
+import { pruneVerifications } from "./auth.ts";
 import { challengeOf } from "./native-auth.ts";
 
 const verifier = randomBytes(32).toString("base64url");
@@ -130,6 +131,36 @@ describe("deleting a user", () => {
       n: number;
     }>`select count(*) as n from session where userId = ${userId}`.execute(db);
     expect(rows[0]?.n).toBe(0);
+  });
+});
+
+describe("pruneVerifications", () => {
+  it("deletes only expired verification rows", async () => {
+    const { auth, db } = await openTestApp();
+    const ctx = await auth.$context;
+    const now = Date.now();
+    for (const [identifier, offset] of [
+      ["expired", -1000],
+      ["live", 60_000],
+    ] as const) {
+      await ctx.internalAdapter.createVerificationValue({
+        identifier,
+        value: "state",
+        expiresAt: new Date(now + offset),
+      });
+    }
+    const count = async () =>
+      (
+        await sql<{
+          n: number;
+        }>`select count(*) as n from verification`.execute(db)
+      ).rows[0]?.n;
+    expect(await count()).toBe(2);
+    await pruneVerifications(auth, now);
+    expect(await count()).toBe(1);
+    expect(
+      await ctx.internalAdapter.findVerificationValue("live"),
+    ).not.toBeNull();
   });
 });
 

@@ -9,6 +9,7 @@ import {
   dailyCopyJob,
   openServer,
   pruneUsageJob,
+  pruneVerificationsJob,
   replicaRehearsalJob,
   tokenCheckJob,
 } from "./startup.ts";
@@ -18,6 +19,7 @@ const { database, auth, backups, limitCache } = await openServer(config);
 const replica = config.litestreamReplica;
 const jobs = await startJobs(database.db, [
   pruneUsageJob(database.db),
+  pruneVerificationsJob(auth),
   ...(backups
     ? [
         dailyCopyJob(database.db, backups),

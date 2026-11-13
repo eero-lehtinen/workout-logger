@@ -1,3 +1,4 @@
+import { isValidIP, normalizeIP } from "@better-auth/core/utils/ip";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -11,19 +12,26 @@ import { DEFAULT_QUOTA } from "./quota.ts";
 /** Enough for several devices behind one NAT. */
 export const IP_REQUESTS_PER_MINUTE = 300;
 export const USER_REQUESTS_PER_MINUTE = DEFAULT_QUOTA.requestsPerMinute;
+/** As Better Auth's own limit on `/sign-in/*`, which `/start` calls around. */
+export const SIGN_IN_STARTS_PER_MINUTE = 5;
 /** Every `/api` request body but a push, which has its own limit. */
 export const MAX_BODY_BYTES = 64 * 1024;
 
 const MINUTE = 60 * 1000;
 
 /**
- * Every request comes through the Cloudflare Tunnel, which sets
- * `CF-Connecting-IP` at the edge (docs/deployment.md#topology). Local runs
- * have only the socket.
+ * The rate limit key of a client. Every request comes through the Cloudflare
+ * Tunnel, which sets `CF-Connecting-IP` at the edge
+ * (docs/deployment.md#topology); local runs have only the socket. IPv6
+ * clients are keyed by their /64, as in Better Auth's limiter: one subscriber
+ * usually has a whole /64 and could otherwise rotate addresses within it.
  */
 export function clientIp(c: Context): string {
-  const header = c.req.header("cf-connecting-ip");
-  if (header) return header;
+  const ip = c.req.header("cf-connecting-ip") ?? socketAddress(c);
+  return isValidIP(ip) ? normalizeIP(ip, { ipv6Subnet: 64 }) : ip;
+}
+
+function socketAddress(c: Context): string {
   try {
     return getConnInfo(c).remote.address ?? "unknown";
   } catch {
@@ -39,6 +47,19 @@ export function ipLimit(): MiddlewareHandler {
     limit: IP_REQUESTS_PER_MINUTE,
     keyGenerator: clientIp,
     skip: (c) => c.req.method === "OPTIONS",
+    message: { error: "rate_limited" },
+  });
+}
+
+/**
+ * Per client IP on `/api/native-auth/start`, which stores Better Auth's OAuth
+ * state in the database before anyone has signed in.
+ */
+export function signInStartLimit(): MiddlewareHandler {
+  return rateLimiter({
+    windowMs: MINUTE,
+    limit: SIGN_IN_STARTS_PER_MINUTE,
+    keyGenerator: clientIp,
     message: { error: "rate_limited" },
   });
 }

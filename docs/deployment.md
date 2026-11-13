@@ -357,6 +357,7 @@ rehearsal restores the copy caught up before it.
 | Restore rehearsal of the Litestream replica (`replica-rehearsal`) | 04:30 | Runs when `LITESTREAM_R2_READ_*` is set |
 | R2 token separation check (`token-check`) | 04:45 | Runs when `BACKUP_R2_*` and `LITESTREAM_R2_READ_*` are set ([backups.md](backups.md#storage-isolation)) |
 | Prune `usage` rows older than 90 days (`prune-usage`) | 03:30 | Always |
+| Prune expired sign-in state from Better Auth's `verification` table (`prune-verifications`) | Hourly, at :15 | Always |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code
 ([R2 buckets](#r2-buckets)).

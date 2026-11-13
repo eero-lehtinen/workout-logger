@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { APP_IDS } from "./auth/native-auth.ts";
 import {
   IP_REQUESTS_PER_MINUTE,
   MAX_BODY_BYTES,
+  SIGN_IN_STARTS_PER_MINUTE,
   USER_REQUESTS_PER_MINUTE,
 } from "./limits.ts";
 import { openTestApp } from "./testing.ts";
@@ -36,6 +38,34 @@ describe("per-IP limit", () => {
       await app.request("/index.html", { headers });
     }
     expect((await app.request("/api/status", { headers })).status).toBe(200);
+  });
+
+  it("counts an IPv6 /64 as one client", async () => {
+    const { app } = await openTestApp();
+    const from = (ip: string) =>
+      app.request("/api/status", { headers: { "cf-connecting-ip": ip } });
+    for (let i = 0; i < IP_REQUESTS_PER_MINUTE; i++) {
+      expect((await from(`2001:db8:0:1::${i.toString(16)}`)).status).toBe(200);
+    }
+    expect((await from("2001:db8:0:1:ffff::1")).status).toBe(429);
+    expect((await from("2001:db8:0:2::1")).status).toBe(200);
+  });
+});
+
+describe("Android sign-in start", () => {
+  it("limits each IP, as Better Auth limits its sign-in", async () => {
+    const { app } = await openTestApp();
+    const appId = [...APP_IDS][0];
+    const start = (ip: string) =>
+      app.request(
+        `/api/native-auth/start?app=${appId}&challenge=${"a".repeat(43)}`,
+        { headers: { "cf-connecting-ip": ip } },
+      );
+    for (let i = 0; i < SIGN_IN_STARTS_PER_MINUTE; i++) {
+      expect((await start("203.0.113.1")).status).toBe(302);
+    }
+    expect((await start("203.0.113.1")).status).toBe(429);
+    expect((await start("203.0.113.2")).status).toBe(302);
   });
 });
 

@@ -1,6 +1,12 @@
 import { existsSync, rmSync } from "node:fs";
 import { newEpoch } from "@workout-logger/core/sync-server";
-import { createAuth, authOptions as toAuthOptions } from "./auth/auth.ts";
+import {
+  type Auth,
+  createAuth,
+  PRUNE_VERIFICATIONS_JOB,
+  pruneVerifications,
+  authOptions as toAuthOptions,
+} from "./auth/auth.ts";
 import { dailyKeys, preMigrationKey, uploadDbCopy } from "./backup/db-copy.ts";
 import {
   type BackupStore,
@@ -106,6 +112,15 @@ export function pruneUsageJob(db: ServerKysely): Job {
     schedule: "30 3 * * *",
     maxAgeMs: 24 * 60 * 60 * 1000,
     run: () => pruneUsage(db, Date.now()),
+  };
+}
+
+export function pruneVerificationsJob(auth: Auth): Job {
+  return {
+    name: PRUNE_VERIFICATIONS_JOB,
+    schedule: "15 * * * *",
+    maxAgeMs: 60 * 60 * 1000,
+    run: () => pruneVerifications(auth, Date.now()),
   };
 }
 

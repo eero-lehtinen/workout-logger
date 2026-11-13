@@ -24,7 +24,12 @@ import { nativeAuthRoutes } from "./auth/native-auth.ts";
 import type { BackupStore } from "./backup/r2.ts";
 import type { ServerKysely } from "./db/database.ts";
 import type { LimitCache } from "./limit-cache.ts";
-import { ipLimit, requestBodyLimit, userLimit } from "./limits.ts";
+import {
+  ipLimit,
+  requestBodyLimit,
+  signInStartLimit,
+  userLimit,
+} from "./limits.ts";
 import { usageReport } from "./quota.ts";
 import { ownerStatus, publicStatus, type StatusSource } from "./status.ts";
 import { PUSH_PATH, syncRoutes } from "./sync-routes.ts";
@@ -109,6 +114,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
 
   // After CORS, so the Android app can read a 429.
   app.use("/api/*", ipLimit());
+  app.use("/api/native-auth/start", signInStartLimit());
   const bodyLimit = requestBodyLimit();
   app.use("/api/*", (c, next) =>
     c.req.path === PUSH_PATH ? next() : bodyLimit(c, next),

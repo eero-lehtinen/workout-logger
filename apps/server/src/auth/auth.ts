@@ -205,6 +205,24 @@ export function createAuth(settings: AuthSettings) {
 
 export type Auth = ReturnType<typeof createAuth>;
 
+export const PRUNE_VERIFICATIONS_JOB = "prune-verifications";
+
+/**
+ * Deletes expired verification rows. Every sign-in start stores its OAuth
+ * state in one before anyone has signed in, and Better Auth deletes it only
+ * when a callback looks it up.
+ */
+export async function pruneVerifications(
+  auth: Auth,
+  now: number,
+): Promise<void> {
+  const ctx = await auth.$context;
+  await ctx.adapter.deleteMany({
+    model: "verification",
+    where: [{ field: "expiresAt", operator: "lt", value: new Date(now) }],
+  });
+}
+
 /** The providers sign-in offers, in the order the app shows them. */
 export function signInProviders(auth: Auth): SignInProvider[] {
   const enabled: Record<string, unknown> = auth.options.socialProviders;
