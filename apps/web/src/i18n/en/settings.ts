@@ -18,10 +18,10 @@ export const settings = {
     alertVolumeHintWeb: "The sound at the end of a rest.",
     sessionTimer: "Session timer",
     sessionTimerHint: "Shows how long the running session has lasted.",
-    idleEnd: "Idle end (minutes)",
-    idleEndLabel: "Idle end in minutes",
+    idleEnd: "Auto-end after (min)",
+    idleEndLabel: "Auto-end after (minutes)",
     idleEndHint:
-      "With no new set for this long, a session ends at its last set.",
+      "If no set is logged for this long, the session ends. Its end time is the last set.",
   },
   sessions: {
     title: "Sessions",

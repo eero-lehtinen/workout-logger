@@ -26,7 +26,7 @@ export const settings = {
     idleEnd: "Automaattinen lopetus (min)",
     idleEndLabel: "Automaattinen lopetus minuutteina",
     idleEndHint:
-      "Jos uutta sarjaa ei kirjata näin pitkään, treeni päättyy viimeiseen sarjaan.",
+      "Jos sarjaa ei kirjata näin pitkään, treeni päättyy. Lopetusajaksi tulee viimeisen sarjan aika.",
   },
   sessions: {
     title: "Treenit",
