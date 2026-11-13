@@ -174,12 +174,14 @@ export const Overview = {
         ),
       ).toBeVisible();
       await expect(
-        canvas.getByText(/^1\.8 MB of 10 MB stored · 120 kB of 5 MB today/),
+        canvas.getByText(
+          /^1\.8 MB of 10 MB stored · 120 kB of 5 MB uploaded today/,
+        ),
       ).toBeVisible();
       await expect(canvas.getByText(/· disabled/)).toBeVisible();
       await expect(
         canvas.getByText(
-          /^0 B of 20 MB stored · 0 B of 1 MB today · never synced$/,
+          /^0 B of 20 MB stored · 0 B of 1 MB uploaded today · never synced$/,
         ),
       ).toBeVisible();
     },
@@ -282,7 +284,7 @@ export const EditAccount = {
         ),
       );
       await userEvent.click(
-        sheet.getByRole("button", { name: "Allow for 24 h" }),
+        sheet.getByRole("button", { name: "Lift limit for 24 h" }),
       );
       await waitFor(() =>
         expect(requests).toHaveBeenCalledWith(

@@ -213,7 +213,7 @@ export const LoggingWithMarkers = pageStory({
     await userEvent.click(todayPr as HTMLElement);
     const pr = await body.findByRole("dialog", { name: /Personal record/ });
     await expect(pr).toHaveTextContent(
-      /This set129\.8 kg e1RMBest before126\.7 kg e1RM100 kg × 8 on /,
+      /This set129\.8 kg e1RMPrevious best126\.7 kg e1RM100 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
 
@@ -247,7 +247,7 @@ export const SetRecordOverAllEarlier = pageStory({
     await userEvent.click(canvas.getByRole("button", { name: "Set record" }));
     const record = await body.findByRole("dialog", { name: /Set record/ });
     await expect(record).toHaveTextContent(
-      /This set123\.5 kg e1RMBest set 2 before120\.3 kg e1RM95 kg × 8 on /,
+      /This set123\.5 kg e1RMPrevious best for set 2120\.3 kg e1RM95 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
     // Until the closing popover unmounts, its focus guards are aria-hidden
@@ -345,7 +345,7 @@ export const LoggingFinnish = pageStory({
     ).toBeVisible();
     await expect(canvas.getByLabelText("Toistot")).toBeVisible();
     await expectStepperCentered(canvas.getByLabelText("Toistot"));
-    await expectStepperCentered(canvas.getByLabelText("Paino yksikkö kg"));
+    await expectStepperCentered(canvas.getByLabelText("Paino yksikkönä kg"));
     await expect(
       canvas.getByRole("button", { name: "Aiemmat treenit" }),
     ).toBeVisible();

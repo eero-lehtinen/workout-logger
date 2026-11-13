@@ -47,7 +47,7 @@ export const settings = {
   },
   account: {
     title: "Account and sync",
-    signedOut: "Signed out",
+    signedOut: "Sign-in expired",
     sync: "Sync",
     expiredHint:
       "Your sign-in expired. Sign in again to keep syncing; nothing logged here is lost.",
@@ -134,9 +134,9 @@ export const settings = {
     merge: "Merge",
     replaceEverything: "Replace everything",
     imported: "Snapshot imported",
-    importedMerge_one: "{{count}} row was newer than yours.",
-    importedMerge_other: "{{count}} rows were newer than yours.",
-    importedReplace: "{{written}} rows written, {{deleted}} removed.",
+    importedMerge_one: "{{count}} item was updated from the file.",
+    importedMerge_other: "{{count}} items were updated from the file.",
+    importedReplace: "{{written}} items updated, {{deleted}} removed.",
     undoFailed: "Can't undo: something else has changed since then",
     undoFailedHint: "Import the snapshot saved before the replace to go back.",
     importFailed: "Import failed",
@@ -187,7 +187,8 @@ export const settings = {
     updateAvailable: "Version {{version}} is available",
     download: "Download",
     updateDownloaded: "An update is downloaded",
-    updateDownloadedHint: "It takes over once the app is in the background.",
+    updateDownloadedHint:
+      "The update is applied the next time you leave the app.",
     upToDate: "The app is up to date",
     checkFailed: "Couldn't check for updates",
   },

@@ -12,7 +12,7 @@ export const ui = {
   stepper: {
     less: "Vähennä: {{label}}",
     more: "Lisää: {{label}}",
-    inUnit: "yksikkö {{unit}}",
+    inUnit: "yksikkönä {{unit}}",
   },
   chart: {
     showAll: "Näytä kaikki",
@@ -39,9 +39,10 @@ export const ui = {
       "Tilisi on valmis. Tällä laitteella kirjaamasi tiedot siirtyvät palvelimelle ensimmäisessä synkronoinnissa.",
   },
   sync: {
-    savedFirstTitle: "Tämän laitteen tiedot tallennettiin ensin",
+    savedFirstTitle: "Tämän laitteen tiedoista tallennettiin tilannevedos",
     notDiscardedTitle: "Mitään ei hylätty",
-    snapshotFailed: "Tilannevedosta ei voitu tallentaa ensin: {{reason}}",
+    snapshotFailed:
+      "Tilannevedosta ei voitu tallentaa, joten tämän laitteen tietoja ei hylätty: {{reason}}",
   },
   backupWarning: {
     unsynced: "Muutokset eivät ole synkronoituneet päiviin",

@@ -24,9 +24,9 @@ export const shell = {
       "Selain on keskeyttänyt toisen ikkunan, joten se ei vielä pysty vapauttamaan treenilokia. Siirry siihen tai sulje se; tämä avautuu sen jälkeen itsestään.",
     tooNewTitle: "Päivitä sovellus",
     tooNewUpdate:
-      "Tietosi on tallentanut uudempi versio. Päivitä sovellus nähdäksesi ne.",
+      "Tietosi on tallennettu uudemmalla sovellusversiolla. Päivitä sovellus, niin voit avata ne.",
     tooNewReload:
-      "Tietosi on tallentanut uudempi versio. Lataa sivu uudelleen nähdäksesi ne.",
+      "Tietosi on tallennettu uudemmalla sovellusversiolla. Lataa sivu uudelleen, niin voit avata ne.",
     failedTitle: "Treeniloki ei auennut",
     failedText:
       "Tietosi ovat ennallaan. Yritä uudelleen tai lataa sovellus uudelleen.",

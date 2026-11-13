@@ -260,7 +260,7 @@ export const EditBuiltIn = pageStory({
   viewport: "pc",
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByText(/^Built in\./),
+      await within(canvasElement).findByText(/^Built-in exercise\./),
     ).toBeVisible();
   },
 });

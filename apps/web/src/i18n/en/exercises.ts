@@ -26,7 +26,7 @@ export const exercises = {
     alternatives: "Alternatives",
     sameMuscles: "Same muscles",
     allExercises: "All exercises",
-    noMatch: "No exercise matches. Create it under Exercises.",
+    noMatch: "No exercise matches. You can create one on the Exercises page.",
   },
   back: {
     toExercises: "Back to exercises",
@@ -47,14 +47,15 @@ export const exercises = {
     copyAsNew: "Copy as new",
     save: "Save exercise",
     create: "Create exercise",
-    builtIn: "Built in. Your changes are kept when the catalog updates.",
+    builtIn:
+      "Built-in exercise. Your edits are kept when the app updates its exercise list.",
     name: "Name",
     nameError: "Enter a name.",
     namePlaceholder: "e.g. Chest-Supported Row",
     type: "What a set records",
     muscles: "Muscles",
     musclesHint:
-      "Tap a muscle once for primary, twice for secondary. Pick at least one primary.",
+      "Tap a muscle once for primary, twice for secondary, a third time to clear it. Pick at least one primary.",
     restTime: "Rest time",
     restTimeHint: "m:ss. Empty uses your default.",
     restTimeError: "Enter a time as m:ss.",

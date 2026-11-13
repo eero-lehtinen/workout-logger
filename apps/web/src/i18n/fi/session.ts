@@ -42,7 +42,7 @@ export const session = {
     backToExercise: "Takaisin liikkeeseen",
     backToHistory: "Takaisin historiaan",
     editRoutine: "Muokkaa ohjelmaa",
-    empty: "Lisää liikkeet, joita teet tänään.",
+    empty: "Lisää liikkeet, joita teet tässä treenissä.",
     moveExercise: "Siirrä {{name}}",
     addExercise: "Lisää liike treeniin",
     notes: "Treenin muistiinpanot",
@@ -93,7 +93,7 @@ export const session = {
     insteadOf: "Liikkeen {{name}} tilalle",
     endedTitle: "Tämä treeni on päättynyt",
     endedIdle:
-      "Ei sarjoja klo {{time}} jälkeen. Lisätäänkö tämä sarja siihen vai aloitetaanko uusi treeni?",
+      "Treeni päättyi automaattisesti, koska sarjoja ei ole kirjattu klo {{time}} jälkeen. Lisätäänkö tämä sarja siihen vai aloitetaanko uusi treeni?",
     endedManual:
       "Treeni päättyi klo {{time}}. Lisätäänkö tämä sarja siihen vai aloitetaanko uusi treeni?",
     continueSession: "Jatka edellistä treeniä",
@@ -122,8 +122,8 @@ export const session = {
     weight_increase: "Painonnousu",
     thisSet: "Tämä sarja",
     moreWeightOrReps: "Enemmän painoa tai toistoja",
-    bestBefore: "Paras aiemmin",
-    bestSetBefore: "Paras sarja {{number}} aiemmin",
+    bestBefore: "Aiempi paras",
+    bestSetBefore: "Aiempi paras sarjassa {{number}}",
     lastTimeSet: "Viimeksi, sarja {{number}}",
     againstEarlierToday: "{{set}} aiemmin tänään",
     againstOnDate: "{{set}}, {{date}}",

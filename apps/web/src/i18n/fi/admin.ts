@@ -13,7 +13,7 @@ export const admin = {
     noMatch: "Hakua vastaavaa tiliä ei löytynyt.",
     owner: "omistaja",
     disabled: "poistettu käytöstä",
-    usage: "{{stored}} tallessa · {{today}} tänään · {{synced}}",
+    usage: "{{stored}} tallessa · {{today}} lähetetty tänään · {{synced}}",
     usageOf: "{{used}} / {{limit}}",
     neverSynced: "ei koskaan synkronoitu",
     synced: "synkronoitu {{ago}}",
@@ -21,9 +21,9 @@ export const admin = {
   cap: {
     label: "Tilien enimmäismäärä",
     hint_one:
-      "{{accounts}} / {{count}} tili, sinä mukaan lukien. Uusia tilejä ei voi luoda, kun enimmäismäärä on täynnä; sen pienentäminen ei poista ketään. Tyhjänä {{defaultMax}}.",
+      "{{accounts}} / {{count}} tili, sinä mukaan lukien. Uusia tilejä ei voi luoda, kun enimmäismäärä on täynnä; sen pienentäminen ei poista ketään. Tyhjänä käytetään oletusta {{defaultMax}}.",
     hint_other:
-      "{{accounts}} / {{count}} tiliä, sinä mukaan lukien. Uusia tilejä ei voi luoda, kun enimmäismäärä on täynnä; sen pienentäminen ei poista ketään. Tyhjänä {{defaultMax}}.",
+      "{{accounts}} / {{count}} tiliä, sinä mukaan lukien. Uusia tilejä ei voi luoda, kun enimmäismäärä on täynnä; sen pienentäminen ei poista ketään. Tyhjänä käytetään oletusta {{defaultMax}}.",
     saveFailed: "Enimmäismäärää ei voitu tallentaa",
     invalid: "Anna kokonaisluku, joka on vähintään 1, tai jätä kenttä tyhjäksi",
   },
@@ -71,7 +71,7 @@ export const admin = {
     unlimitedHint:
       "Poistaa päivittäisen lähetysrajan 24 tunniksi, esim. ennen tuontia. Tallennustilan raja pysyy.",
     unlimitedActive: "Päivittäistä lähetysrajaa ei ole {{until}} asti.",
-    allow24h: "Salli 24 tunniksi",
+    allow24h: "Poista raja 24 tunniksi",
     disabledLabel: "Poistettu käytöstä",
     disable: "Poista käytöstä",
     disabledHint:

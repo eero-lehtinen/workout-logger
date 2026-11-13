@@ -69,8 +69,8 @@ export const history = {
     edit: "Edit exercise",
     neverLogged: "Sets you log of this exercise show up here.",
     progress: "Progress",
-    metric: "Chart",
-    weight: "Weight",
+    metric: "Show",
+    weight: "At weight",
     weightOption_one: "{{weight}} ({{count}} session)",
     weightOption_other: "{{weight}} ({{count}} sessions)",
     trendLine: "Trend line",
@@ -117,6 +117,6 @@ export const history = {
     weight: "Weight",
     date: "Date",
     dimmedNote:
-      "Dimmed rows were beaten by a set with more weight and as many reps.",
+      "Dimmed rows are beaten by a set at least as heavy and with at least as many reps.",
   },
 } as const;

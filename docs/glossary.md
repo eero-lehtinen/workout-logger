@@ -16,6 +16,7 @@ so they don't get mixed up.
 | **Muscle group** | A coarse grouping of muscles used in pickers and summaries, e.g. Back = lats + upper back + traps + lower back. |
 | **Muscle target** | An exercise-to-muscle link with a contribution factor in `0..1`. A row is lats 1.0, upper back 1.0, biceps 0.5, rear delts 0.5. |
 | **Primary muscle** | Any muscle target with factor 1.0. Used to find substitutes. |
+| **Secondary muscle** | Any muscle target with factor 0.5. |
 
 ## Planning (templates)
 

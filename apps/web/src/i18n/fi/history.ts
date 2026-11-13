@@ -72,8 +72,8 @@ export const history = {
     edit: "Muokkaa liikettä",
     neverLogged: "Kun kirjaat tämän liikkeen sarjoja, ne näkyvät täällä.",
     progress: "Kehitys",
-    metric: "Kaavio",
-    weight: "Paino",
+    metric: "Näytä",
+    weight: "Painolla",
     weightOption_one: "{{weight}} ({{count}} treeni)",
     weightOption_other: "{{weight}} ({{count}} treeniä)",
     trendLine: "Trendiviiva",
@@ -120,6 +120,6 @@ export const history = {
     weight: "Paino",
     date: "Pvm",
     dimmedNote:
-      "Himmennetyt rivit on ohitettu sarjalla, jossa oli enemmän painoa ja yhtä monta toistoa.",
+      "Himmennetyn rivin voittaa sarja, jossa on vähintään yhtä paljon painoa ja toistoja.",
   },
 } satisfies Messages<typeof en>;

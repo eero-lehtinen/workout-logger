@@ -60,9 +60,7 @@ export const ExerciseHistoryFinnish = pageStory({
       canvas.getByRole("heading", { name: "Ennätykset" }),
     ).toBeVisible();
     await expect(canvas.getByText("3 treeniä")).toBeVisible();
-    await expect(
-      canvas.getByRole("combobox", { name: "Kaavio" }),
-    ).toBeVisible();
+    await expect(canvas.getByRole("combobox", { name: "Näytä" })).toBeVisible();
   },
 });
 
@@ -83,18 +81,18 @@ export const ExerciseHistoryMetrics = pageStory({
   url: () => bench,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await choose(canvasElement, "Chart", "Reps at a weight");
-    const weight = canvas.getByRole("combobox", { name: "Weight" });
+    await choose(canvasElement, "Show", "Reps at a weight");
+    const weight = canvas.getByRole("combobox", { name: "At weight" });
     await expect(weight).toBeVisible();
     await expect(
       await canvas.findByRole("img", { name: "Reps at a weight" }),
     ).toBeVisible();
-    await choose(canvasElement, "Chart", "Every set's e1RM");
+    await choose(canvasElement, "Show", "Every set's e1RM");
     await expect(await canvas.findByText("Set 2")).toBeVisible();
     await expect(
       canvas.queryByRole("switch", { name: "Trend line" }),
     ).toBeNull();
-    await choose(canvasElement, "Chart", "Sets per week");
+    await choose(canvasElement, "Show", "Sets per week");
     await expect(
       await canvas.findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();
@@ -122,7 +120,7 @@ export const ExerciseHistoryTrend = pageStory({
       },
     );
     await expect(rate).toBeVisible();
-    await choose(canvasElement, "Chart", "Heaviest weight");
+    await choose(canvasElement, "Show", "Heaviest weight");
     await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
     await expect(canvas.queryByText(/per month$/)).toBeNull();
 
@@ -134,7 +132,7 @@ export const ExerciseHistoryTrend = pageStory({
     );
     await canvas.findByRole("heading", { name: "Back Squat" });
     await expect(
-      canvas.getByRole("combobox", { name: "Chart" }),
+      canvas.getByRole("combobox", { name: "Show" }),
     ).toHaveTextContent("Heaviest weight");
     await expect(
       canvas.getByRole("switch", { name: "Trend line" }),
@@ -156,7 +154,7 @@ export const ExerciseHistoryFullScreen = pageStory({
     });
     const full = await within(dialog).findByRole("img", { name: "Best e1RM" });
     await expect(full.clientHeight).toBeGreaterThan(inline.clientHeight);
-    await choose(dialog, "Chart", "Sets per week");
+    await choose(dialog, "Show", "Sets per week");
     await expect(
       await within(dialog).findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();

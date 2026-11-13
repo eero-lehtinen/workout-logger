@@ -90,7 +90,7 @@ export const session = {
     insteadOf: "Instead of {{name}}",
     endedTitle: "This session has ended",
     endedIdle:
-      "No sets since {{time}}. Add this set to it, or start a new session?",
+      "The session ended automatically: no sets since {{time}}. Add this set to it, or start a new session?",
     endedManual:
       "It ended at {{time}}. Add this set to it, or start a new session?",
     continueSession: "Continue that session",
@@ -119,8 +119,8 @@ export const session = {
     weight_increase: "Weight increase",
     thisSet: "This set",
     moreWeightOrReps: "More weight or reps",
-    bestBefore: "Best before",
-    bestSetBefore: "Best set {{number}} before",
+    bestBefore: "Previous best",
+    bestSetBefore: "Previous best for set {{number}}",
     lastTimeSet: "Last time, set {{number}}",
     againstEarlierToday: "{{set}} earlier today",
     againstOnDate: "{{set}} on {{date}}",

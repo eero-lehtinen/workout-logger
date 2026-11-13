@@ -37,9 +37,10 @@ export const ui = {
       "Your account is ready. What you logged on this device uploads in the first sync.",
   },
   sync: {
-    savedFirstTitle: "Saved this device's data first",
+    savedFirstTitle: "Saved a snapshot of this device's data",
     notDiscardedTitle: "Nothing was discarded",
-    snapshotFailed: "Saving a snapshot first failed: {{reason}}",
+    snapshotFailed:
+      "Couldn't save a snapshot, so this device's data was kept: {{reason}}",
   },
   backupWarning: {
     unsynced: "Changes haven't synced for days",

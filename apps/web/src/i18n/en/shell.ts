@@ -21,8 +21,10 @@ export const shell = {
     blockedText:
       "The browser has paused the other window, so it can't let go of your log yet. Switch to it or close it; this opens on its own after that.",
     tooNewTitle: "Update the app",
-    tooNewUpdate: "Your data was saved by a newer version. Update to get it.",
-    tooNewReload: "Your data was saved by a newer version. Reload to get it.",
+    tooNewUpdate:
+      "A newer version of the app saved your data. Update the app to open it.",
+    tooNewReload:
+      "A newer version of the app saved your data. Reload to open it.",
     failedTitle: "Your log didn't open",
     failedText: "Your data is untouched. Try again, or reload the app.",
   },

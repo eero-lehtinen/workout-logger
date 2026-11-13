@@ -139,6 +139,7 @@ The words the UI uses for each [glossary](glossary.md) term:
 | weighted sets | weighted sets | painotetut sarjat |
 | muscle, muscle group | muscle, muscle group | lihas, lihasryhmä |
 | primary muscle | primary muscle | päälihas |
+| secondary muscle | secondary muscle | apulihas |
 | muscle target | muscle target | kohdelihas |
 | metric | metric | mittari |
 | measurement | measurement | mittaus |

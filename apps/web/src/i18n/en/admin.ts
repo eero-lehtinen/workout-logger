@@ -10,7 +10,7 @@ export const admin = {
     noMatch: "No account matches.",
     owner: "owner",
     disabled: "disabled",
-    usage: "{{stored}} stored · {{today}} today · {{synced}}",
+    usage: "{{stored}} stored · {{today}} uploaded today · {{synced}}",
     usageOf: "{{used}} of {{limit}}",
     neverSynced: "never synced",
     synced: "synced {{ago}}",
@@ -18,9 +18,9 @@ export const admin = {
   cap: {
     label: "Account cap",
     hint_one:
-      "{{accounts}} of {{count}} account, you included. Sign-ups stop at the cap; a lower cap removes no one. Empty is {{defaultMax}}.",
+      "{{accounts}} of {{count}} account, you included. Sign-ups stop at the cap; a lower cap removes no one. Leave empty to use the default, {{defaultMax}}.",
     hint_other:
-      "{{accounts}} of {{count}} accounts, you included. Sign-ups stop at the cap; a lower cap removes no one. Empty is {{defaultMax}}.",
+      "{{accounts}} of {{count}} accounts, you included. Sign-ups stop at the cap; a lower cap removes no one. Leave empty to use the default, {{defaultMax}}.",
     saveFailed: "The cap didn't save",
     invalid: "Enter a whole number of 1 or more, or leave it empty",
   },
@@ -65,7 +65,7 @@ export const admin = {
     unlimitedHint:
       "Lifts the daily upload limit for 24 hours, e.g. before an import. Storage stays limited.",
     unlimitedActive: "The daily upload limit is lifted until {{until}}.",
-    allow24h: "Allow for 24 h",
+    allow24h: "Lift limit for 24 h",
     disabledLabel: "Disabled",
     disable: "Disable",
     disabledHint: "Can't sign in or sync. The data stays on the server.",

@@ -30,7 +30,7 @@ export const exercises = {
     sameMuscles: "Samat lihakset",
     allExercises: "Kaikki liikkeet",
     noMatch:
-      "Hakua vastaavaa liikettä ei löytynyt. Voit luoda sen Liikkeet-välilehdellä.",
+      "Hakua vastaavaa liikettä ei löytynyt. Voit luoda uuden Liikkeet-näkymässä.",
   },
   back: {
     toExercises: "Takaisin liikkeisiin",
@@ -52,14 +52,14 @@ export const exercises = {
     save: "Tallenna liike",
     create: "Luo liike",
     builtIn:
-      "Sovelluksen valmis liike. Muutoksesi säilyvät, vaikka liikeluettelo päivittyisi.",
+      "Sovelluksen mukana tuleva liike. Muokkauksesi säilyvät, kun sovelluksen liikelista päivittyy.",
     name: "Nimi",
     nameError: "Anna nimi.",
     namePlaceholder: "esim. Rintatuettu soutu",
     type: "Mitä sarjasta kirjataan",
     muscles: "Lihakset",
     musclesHint:
-      "Napauta lihasta kerran, niin se on päälihas, ja kahdesti, niin se on apulihas. Valitse vähintään yksi päälihas.",
+      "Napauta lihasta kerran, niin se on päälihas, kahdesti, niin se on apulihas, ja kolmesti, niin valinta poistuu. Valitse vähintään yksi päälihas.",
     restTime: "Tauon pituus",
     restTimeHint: "m:ss. Tyhjänä käytetään oletusta.",
     restTimeError: "Anna aika muodossa m:ss.",
