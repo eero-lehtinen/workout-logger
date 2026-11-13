@@ -31,8 +31,8 @@ import {
 /** The database, auth, and backup store, migrated and ready to serve. */
 export async function openServer(config: ServerConfig) {
   const database = openDatabase(config.databasePath);
-  // Loaded after the migrations that create `limits`; only the sign-up hook
-  // reads it, and that runs once the server serves.
+  // Loaded after the migrations that create `limits` and `ban_key`; only the
+  // sign-up hooks read it, and those run once the server serves.
   let limitCache: LimitCache | null = null;
   const authSettings = {
     db: database.db as never,
@@ -40,6 +40,7 @@ export async function openServer(config: ServerConfig) {
     secret: config.authSecret,
     signIn: config.signIn,
     maxAccounts: () => limitCache?.maxAccounts() ?? DEFAULT_MAX_ACCOUNTS,
+    isBanned: (key: string) => limitCache?.isBanned(key) ?? false,
   };
   const backups = config.backups ? r2Store(config.backups) : undefined;
   await prepareDatabase(database.db, toAuthOptions(authSettings), backups);

@@ -8,6 +8,7 @@ import {
 import { bearer } from "better-auth/plugins/bearer";
 import type { GoogleOptions } from "better-auth/social-providers";
 import { type Kysely, sql } from "kysely";
+import { accountBanKey, emailBanKey } from "../ban.ts";
 
 export type Role = "owner" | "user";
 
@@ -33,6 +34,11 @@ export interface AuthSettings {
    * forever.
    */
   maxAccounts: () => number;
+  /**
+   * Whether sign-up refuses a ban key (docs/accounts.md#bans). From memory,
+   * for the same reason as `maxAccounts`.
+   */
+  isBanned: (key: string) => boolean;
   /** Better Auth's limiter; off in tests, where every request has the same IP. */
   rateLimit?: boolean;
   /** Tests stand in for Google's token check and profile. */
@@ -92,8 +98,11 @@ export function authOptions(settings: AuthSettings) {
           // Runs inside the transaction that creates the user and its
           // provider account, so two sign-ups can't both take the last
           // place. A creation outside a request (`create-owner`) passes.
-          async before(_user, context) {
+          async before(user, context) {
             if (!context) return;
+            if (settings.isBanned(emailBanKey(user.email))) {
+              throw accountDisabled();
+            }
             const adapter = await getCurrentAdapter(context.context.adapter);
             const accounts = await adapter.count({ model: "user" });
             if (accounts >= settings.maxAccounts()) {
@@ -105,16 +114,29 @@ export function authOptions(settings: AuthSettings) {
           },
         },
       },
+      account: {
+        create: {
+          // A provider account is created on sign-up, in the user's
+          // transaction, and when a sign-in links it to the account with its
+          // email. Its id outlasts an email change at the provider.
+          async before(account) {
+            if (
+              settings.isBanned(
+                accountBanKey(account.providerId, account.accountId),
+              )
+            ) {
+              throw accountDisabled();
+            }
+          },
+        },
+      },
       session: {
         create: {
           // The admin page deletes a disabled user's sessions; this keeps
           // them from signing in again.
           async before(session, context) {
             if (await isDisabled(settings.db, session.userId, context)) {
-              throw new APIError("FORBIDDEN", {
-                code: "account_disabled",
-                message: "This account is disabled",
-              });
+              throw accountDisabled();
             }
           },
         },
@@ -146,6 +168,14 @@ export function authOptions(settings: AuthSettings) {
 }
 
 export type AuthOptions = ReturnType<typeof authOptions>;
+
+/** Also a ban's answer: to the person, a banned account is a disabled one. */
+function accountDisabled() {
+  return new APIError("FORBIDDEN", {
+    code: "account_disabled",
+    message: "This account is disabled",
+  });
+}
 
 type HookContext = GenericEndpointContext | null;
 

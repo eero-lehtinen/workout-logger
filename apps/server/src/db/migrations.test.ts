@@ -1,16 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { authOptions } from "../auth/auth.ts";
+import { testAuthOptions as settings } from "../testing.ts";
 import { openDatabase } from "./database.ts";
 import { migrateServer, pendingMigrations } from "./migrations.ts";
-
-const settings = (db: unknown) =>
-  authOptions({
-    db: db as never,
-    publicUrl: "http://localhost:3000",
-    secret: "test-secret-that-is-long-enough-for-better-auth",
-    signIn: {},
-    maxAccounts: () => 100,
-  });
 
 describe("server migrations", () => {
   it("roll back a failed step, which the next start runs again", async () => {

@@ -15,6 +15,13 @@ export const admin = {
     neverSynced: "never synced",
     synced: "synced {{ago}}",
   },
+  bans: {
+    title: "Banned accounts",
+    hint: "{{email}} · banned {{banned}}",
+    unban: "Unban",
+    unbanFailed: "The ban wasn't lifted",
+    note: "Sign-up refuses a banned account's email and its Google and GitHub accounts. Another Google or GitHub account with a new email gets through.",
+  },
   cap: {
     label: "Account cap",
     hint_one:
@@ -92,5 +99,12 @@ export const admin = {
     confirmDisableTitle: "Disable {{name}}?",
     confirmDisableBody:
       "Their devices are signed out and stop syncing. Their local data stays, and you can enable the account again.",
+    ban: "Ban",
+    banHint:
+      "Deletes the account and all its data, as Delete does, and refuses its email and its Google and GitHub accounts at sign-up from then on.",
+    banAccount: "Ban account",
+    confirmBanTitle: "Ban {{name}}?",
+    confirmBanBody:
+      "Everything the server holds for {{email}} is deleted now. The server keeps only the name, email, and sign-in ids, to refuse them. Unbanning lets them sign up again, without their old data.",
   },
 } as const;

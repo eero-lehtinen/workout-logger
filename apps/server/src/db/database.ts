@@ -44,6 +44,21 @@ export interface LimitsTable {
   max_accounts: number | null;
 }
 
+/** A banned account, kept after its deletion (docs/accounts.md#bans). */
+export interface BanTable {
+  /** The deleted account's id. */
+  user_id: string;
+  name: string;
+  email: string;
+  created_at: number;
+}
+
+/** What sign-up refuses for a ban: `email:<email>` or `account:<provider>:<id>`. */
+export interface BanKeyTable {
+  user_id: string;
+  key: string;
+}
+
 /** The columns of Better Auth's `user` table that the server reads itself. */
 export interface UserTable {
   id: string;
@@ -56,13 +71,23 @@ export interface UserTable {
   createdAt: string | number;
 }
 
+/** The columns of Better Auth's `account` table, a user's provider sign-ins, that the server reads. */
+export interface AccountTable {
+  userId: string;
+  providerId: string;
+  accountId: string;
+}
+
 /** Server tables besides Better Auth's, which it types itself. */
 export interface ServerTables extends ServerSyncTables {
   job_run: JobRunTable;
   usage: UsageTable;
   quota: QuotaTable;
   limits: LimitsTable;
+  ban: BanTable;
+  ban_key: BanKeyTable;
   user: UserTable;
+  account: AccountTable;
 }
 
 export type ServerKysely = Kysely<ServerTables>;

@@ -35,6 +35,15 @@ export interface AdminUsers {
   /** The account cap; null is `defaultMaxAccounts`. */
   maxAccounts: number | null;
   defaultMaxAccounts: number;
+  bans: AdminBan[];
+}
+
+/** A banned account, deleted when it was banned. */
+export interface AdminBan {
+  userId: string;
+  name: string;
+  email: string;
+  createdAt: number;
 }
 
 /** The DB copies in the `wl-backups` bucket, by key prefix. */
@@ -91,6 +100,15 @@ export async function exemptUser(userId: string): Promise<void> {
 /** The same as the user's own account deletion. */
 export async function deleteUser(userId: string): Promise<void> {
   await call(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
+/** Deletes the account and refuses its email and sign-in accounts from then on. */
+export async function banUser(userId: string): Promise<void> {
+  await call(`/users/${encodeURIComponent(userId)}/ban`, { method: "POST" });
+}
+
+export async function unbanUser(userId: string): Promise<void> {
+  await call(`/bans/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }
 
 export async function setDisabled(

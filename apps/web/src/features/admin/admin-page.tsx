@@ -18,6 +18,7 @@ import { matchesSearch } from "../../lib/search.ts";
 import { refreshOwnerStatus, useOwnerStatus } from "../../lib/server-status.ts";
 import { useNow } from "../../lib/use-now.ts";
 import { AccountCap } from "./account-cap.tsx";
+import { BannedAccounts } from "./banned-accounts.tsx";
 import { ServerSection } from "./server-section.tsx";
 import { UserSheet } from "./user-sheet.tsx";
 
@@ -144,6 +145,7 @@ export function AdminPage() {
                   </li>
                 ))}
               </ul>
+              <BannedAccounts bans={users.data.bans} />
             </>
           )}
         </>

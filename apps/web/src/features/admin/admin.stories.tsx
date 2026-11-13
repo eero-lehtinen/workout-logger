@@ -84,6 +84,14 @@ const users: AdminUsers = {
   },
   maxAccounts: null,
   defaultMaxAccounts: 100,
+  bans: [
+    {
+      userId: "u3",
+      name: "Mallory Example",
+      email: "mallory@example.com",
+      createdAt: NOW - 3 * 24 * 60 * 60 * 1000,
+    },
+  ],
 };
 
 const realFetch = globalThis.fetch;
@@ -343,6 +351,58 @@ export const EditAccount = {
         expect(requests).toHaveBeenCalledWith(
           "POST",
           "/api/admin/users/u1/disable",
+          null,
+        ),
+      );
+    },
+  }),
+  beforeEach: asOwner(),
+};
+
+/**
+ * A ban deletes the account and is listed below the accounts, where it can
+ * be lifted. Banning asks first.
+ */
+export const Bans = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/admin",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(
+        await canvas.findByRole("heading", { name: "Banned accounts" }),
+      ).toBeVisible();
+      await expect(canvas.getByText("Mallory Example")).toBeVisible();
+      await expect(
+        canvas.getByText(/^mallory@example\.com · banned /),
+      ).toBeVisible();
+      await userEvent.click(canvas.getByRole("button", { name: "Unban" }));
+      await waitFor(() =>
+        expect(requests).toHaveBeenCalledWith(
+          "DELETE",
+          "/api/admin/bans/u3",
+          null,
+        ),
+      );
+
+      await userEvent.click(
+        canvas.getByRole("button", { name: /^Alice Example/ }),
+      );
+      const page = within(canvasElement.ownerDocument.body);
+      const dialog = await page.findByRole("dialog", { name: "Alice Example" });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Ban account" }),
+      );
+      const confirm = await page.findByRole("alertdialog", {
+        name: "Ban Alice Example?",
+      });
+      await userEvent.click(
+        within(confirm).getByRole("button", { name: "Ban account" }),
+      );
+      await waitFor(() =>
+        expect(requests).toHaveBeenCalledWith(
+          "POST",
+          "/api/admin/users/u1/ban",
           null,
         ),
       );

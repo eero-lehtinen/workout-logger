@@ -4,6 +4,7 @@ import { deleteAccount } from "./account-deletion.ts";
 import { type AuthEnv, requireOwner } from "./auth/middleware.ts";
 import type { BackupStore } from "./backup/r2.ts";
 import { summarizeStorage } from "./backup/storage.ts";
+import { type Ban, banAccount, listBans, unban } from "./ban.ts";
 import type { ServerKysely } from "./db/database.ts";
 import { DEFAULT_MAX_ACCOUNTS, type LimitCache } from "./limit-cache.ts";
 import {
@@ -48,6 +49,7 @@ export interface AdminUsers {
   /** The owner's account cap; null is `defaultMaxAccounts`. */
   maxAccounts: number | null;
   defaultMaxAccounts: number;
+  bans: Ban[];
 }
 
 const OVERRIDE_KEYS = [
@@ -145,8 +147,17 @@ export function adminRoutes(
       defaults: DEFAULT_QUOTA,
       maxAccounts: limitCache.maxAccountsSetting,
       defaultMaxAccounts: DEFAULT_MAX_ACCOUNTS,
+      bans: await listBans(db),
     } satisfies AdminUsers),
   );
+
+  app.delete("/bans/:id", async (c) => {
+    if (!(await unban(db, c.req.param("id")))) {
+      return c.json({ error: "not found" }, 404);
+    }
+    await limitCache.refresh();
+    return c.body(null, 204);
+  });
 
   /**
    * The DB copies in the backup bucket; null when none is configured. Not on
@@ -183,7 +194,7 @@ export function adminRoutes(
   });
 
   // Every action is on another account; the owner's own has no quota and
-  // can't be disabled.
+  // can't be disabled, deleted, or banned.
   app.use("/users/:id/*", async (c, next) => {
     const id = c.req.param("id");
     if (id === c.get("user").id) {
@@ -244,6 +255,13 @@ export function adminRoutes(
 
   app.delete("/users/:id", async (c) => {
     await deleteAccount(db, c.req.param("id"));
+    await limitCache.refresh();
+    return c.body(null, 204);
+  });
+
+  /** Deletes the account and refuses its email and provider accounts at sign-up. */
+  app.post("/users/:id/ban", async (c) => {
+    await banAccount(db, c.req.param("id"), now());
     await limitCache.refresh();
     return c.body(null, 204);
   });

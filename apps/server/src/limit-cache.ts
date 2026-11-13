@@ -1,3 +1,4 @@
+import { banKeys } from "./ban.ts";
 import type { ServerKysely } from "./db/database.ts";
 import { DEFAULT_QUOTA } from "./quota.ts";
 
@@ -6,14 +7,15 @@ export const DEFAULT_MAX_ACCOUNTS = 100;
 
 /**
  * The limits read on every request or sign-up, copied into memory: each
- * user's request limit override and the account cap. Whatever writes them
- * calls `refresh` (docs/accounts.md, server tables). There is one server
- * instance, so one copy.
+ * user's request limit override, the account cap, and the ban keys. Whatever
+ * writes them calls `refresh` (docs/accounts.md, server tables). There is
+ * one server instance, so one copy.
  */
 export class LimitCache {
   readonly #db: ServerKysely;
   #requestsPerMinute = new Map<string, number>();
   #maxAccounts: number | null = null;
+  #banKeys = new Set<string>();
 
   private constructor(db: ServerKysely) {
     this.#db = db;
@@ -40,6 +42,7 @@ export class LimitCache {
       .where("id", "=", 1)
       .executeTakeFirst();
     this.#maxAccounts = limits?.max_accounts ?? null;
+    this.#banKeys = await banKeys(this.#db);
   }
 
   /** The owner's cap, or null for the default. */
@@ -49,6 +52,11 @@ export class LimitCache {
 
   maxAccounts(): number {
     return this.#maxAccounts ?? DEFAULT_MAX_ACCOUNTS;
+  }
+
+  /** `key` from `emailBanKey` or `accountBanKey`. */
+  isBanned(key: string): boolean {
+    return this.#banKeys.has(key);
   }
 
   /** The user's override, or the default. */

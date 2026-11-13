@@ -18,6 +18,13 @@ export const admin = {
     neverSynced: "ei koskaan synkronoitu",
     synced: "synkronoitu {{ago}}",
   },
+  bans: {
+    title: "Porttikiellot",
+    hint: "{{email}} · porttikielto {{banned}}",
+    unban: "Poista porttikielto",
+    unbanFailed: "Porttikieltoa ei voitu poistaa",
+    note: "Porttikiellon saanut ei voi luoda uutta tiliä samalla sähköpostilla eikä samalla Google- tai GitHub-tilillä. Toisella Google- tai GitHub-tilillä ja uudella sähköpostilla se onnistuu.",
+  },
   cap: {
     label: "Tilien enimmäismäärä",
     hint_one:
@@ -99,5 +106,12 @@ export const admin = {
     confirmDisableTitle: "Poistetaanko {{name}} käytöstä?",
     confirmDisableBody:
       "Käyttäjän laitteet kirjataan ulos, eivätkä ne enää synkronoi. Laitteiden tiedot säilyvät, ja voit ottaa tilin myöhemmin uudelleen käyttöön.",
+    ban: "Porttikielto",
+    banHint:
+      "Poistaa tilin ja kaikki sen tiedot kuten Poista, ja estää sen jälkeen uuden tilin luomisen samalla sähköpostilla tai samalla Google- tai GitHub-tilillä.",
+    banAccount: "Anna porttikielto",
+    confirmBanTitle: "Annetaanko käyttäjälle {{name}} porttikielto?",
+    confirmBanBody:
+      "Kaikki palvelimella olevat käyttäjän {{email}} tiedot poistetaan nyt. Palvelin säilyttää vain nimen, sähköpostin ja kirjautumistunnukset, jotta se voi estää ne. Kun porttikielto poistetaan, käyttäjä voi luoda tilin uudelleen ilman aiempia tietojaan.",
   },
 } satisfies Messages<typeof en>;

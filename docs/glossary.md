@@ -105,4 +105,5 @@ See [accounts.md](accounts.md).
 | **Account cap** | The most accounts the server allows, the owner included. Sign-up is open until it is reached. |
 | **Quota** | A per-user limit on server usage: bytes written per day, bytes stored, request rate, snapshots per day. Hitting one pauses sync, never local use. |
 | **Disabled account** | An account the owner has switched off: its sign-ins and Android tokens are revoked and it can't sign in or sync. Its data stays on the server and on its devices. |
+| **Ban** | The owner's deletion of an account that also refuses its email and its provider accounts at sign-up from then on, until the owner lifts it. |
 | **API key** | A personal, revocable token the CLI uses instead of a login session. |

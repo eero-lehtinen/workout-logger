@@ -56,6 +56,21 @@ const STEPS: Record<string, Migration> = {
       await sql`INSERT INTO limits (id) VALUES (1)`.execute(db);
     },
   },
+  "0005_bans": {
+    async up(db: Kysely<unknown>) {
+      await sql`CREATE TABLE ban (
+        user_id    TEXT PRIMARY KEY NOT NULL,
+        name       TEXT NOT NULL,
+        email      TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )`.execute(db);
+      await sql`CREATE TABLE ban_key (
+        user_id TEXT NOT NULL,
+        key     TEXT NOT NULL,
+        PRIMARY KEY (user_id, key)
+      ) WITHOUT ROWID`.execute(db);
+    },
+  },
 };
 
 // Kysely runs SQLite migrations without a transaction (its SQLite adapter

@@ -7,10 +7,9 @@ import { push } from "@workout-logger/core/sync-server";
 import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import { deleteAccount } from "./account-deletion.ts";
-import { authOptions } from "./auth/auth.ts";
 import { openDatabase, type ServerKysely, syncDb } from "./db/database.ts";
 import { migrateServer } from "./db/migrations.ts";
-import { openTestApp } from "./testing.ts";
+import { openTestApp, testAuthOptions } from "./testing.ts";
 
 function change(id: string, value: string): Change {
   return {
@@ -174,16 +173,7 @@ describe("secure delete", () => {
     const path = join(mkdtempSync(join(tmpdir(), "wl-delete-")), "app.db");
     const database = openDatabase(path);
     if (!secure) database.sqlite.pragma("secure_delete = OFF");
-    await migrateServer(
-      database.db,
-      authOptions({
-        db: database.db as never,
-        publicUrl: "http://localhost:3000",
-        secret: "test-secret-that-is-long-enough-for-better-auth",
-        signIn: {},
-        maxAccounts: () => 100,
-      }),
-    );
+    await migrateServer(database.db, testAuthOptions(database.db));
     await pushAs(database.db, "u1", [change("note", `"${MARKER.repeat(50)}"`)]);
     await pushAs(database.db, "u2", [change("note", '"kept"')]);
     database.sqlite.pragma("wal_checkpoint(TRUNCATE)");

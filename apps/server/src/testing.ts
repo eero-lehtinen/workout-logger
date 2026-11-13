@@ -14,6 +14,19 @@ import { prepareDatabase } from "./startup.ts";
 export const TEST_URL = "http://localhost:3000";
 
 const CLIENT = { clientId: "client-id", clientSecret: "client-secret" };
+const SECRET = "test-secret-that-is-long-enough-for-better-auth";
+
+/** Better Auth's configuration for migrating a test database. */
+export function testAuthOptions(db: unknown) {
+  return authOptions({
+    db: db as never,
+    publicUrl: TEST_URL,
+    secret: SECRET,
+    signIn: {},
+    maxAccounts: () => 100,
+    isBanned: () => false,
+  });
+}
 
 /**
  * Google's id-token sign-in, with the token standing for the Google
@@ -47,9 +60,10 @@ export async function openTestApp(
   const settings: AuthSettings = {
     db: database.db as never,
     publicUrl: TEST_URL,
-    secret: "test-secret-that-is-long-enough-for-better-auth",
+    secret: SECRET,
     signIn: clients ?? { google: CLIENT, github: CLIENT },
     maxAccounts: () => cache?.maxAccounts() ?? 0,
+    isBanned: (key) => cache?.isBanned(key) ?? false,
     rateLimit: false,
     googleOverrides: FAKE_GOOGLE,
   };

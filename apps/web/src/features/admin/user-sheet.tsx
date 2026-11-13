@@ -7,6 +7,7 @@ import { toasts } from "../../components/toasts.tsx";
 import {
   type AdminUser,
   type AdminUsers,
+  banUser,
   deleteUser,
   exemptUser,
   type QuotaOverrides,
@@ -28,7 +29,7 @@ const FIELDS: { key: Field; bytes: boolean }[] = [
   { key: "snapshotsPerDay", bytes: false },
 ];
 
-/** One account's quotas, exemption, and disable switch. */
+/** One account's quotas, exemption, disable switch, deletion, and ban. */
 export function UserSheet(props: {
   user: AdminUser;
   defaults: AdminUsers["defaults"];
@@ -61,6 +62,7 @@ export function UserSheet(props: {
   );
   const [confirmDisable, setConfirmDisable] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmBan, setConfirmBan] = useState(false);
 
   function parsed(): QuotaOverrides | null {
     const result = {} as QuotaOverrides;
@@ -191,7 +193,29 @@ export function UserSheet(props: {
             {t("admin.user.deleteAccount")}
           </Button>
         </Row>
+        <Row stacked label={t("admin.user.ban")} hint={t("admin.user.banHint")}>
+          <Button
+            variant="danger"
+            disabled={action.isPending}
+            onClick={() => setConfirmBan(true)}
+          >
+            {t("admin.user.banAccount")}
+          </Button>
+        </Row>
       </div>
+      <Confirm
+        open={confirmBan}
+        onOpenChange={setConfirmBan}
+        title={t("admin.user.confirmBanTitle", { name: user.name })}
+        description={t("admin.user.confirmBanBody", { email: user.email })}
+        actions={[
+          {
+            label: t("admin.user.banAccount"),
+            variant: "danger",
+            onClick: () => action.mutate(() => banUser(user.id)),
+          },
+        ]}
+      />
       <Confirm
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

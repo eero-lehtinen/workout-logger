@@ -9,7 +9,7 @@ traffic or scale.
 
 | Role | Who | Limits | Extra abilities |
 | --- | --- | --- | --- |
-| `owner` | You | None | The [admin page](#admin-page): users, usage, quotas, disable, delete. Sees the server's backup status. |
+| `owner` | You | None | The [admin page](#admin-page): users, usage, quotas, disable, delete, ban. Sees the server's backup status. |
 | `user` | Everyone else | [Quotas](#quotas) | None |
 
 There are no shared data, teams, or social features. Each account's data is
@@ -50,8 +50,9 @@ The owner account is created once with a server command, never by sign-up. See
 ### Account cap
 
 There are no invites. The app isn't advertised, so few strangers will find
-it, and the owner can disable or delete any account. What needs a limit is
-the total, because every account's data is copied many times into R2.
+it, and the owner can disable, delete, or [ban](#bans) any account. What
+needs a limit is the total, because every account's data is copied many
+times into R2.
 
 - The cap is 100 accounts, the owner included, changeable on the [admin page](#admin-page) without a deploy.
 - `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"; a 403 from id-token sign-in, `?error=signup_closed` on the OAuth redirect). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place. That needs `transaction: true` in its database options: without it Better Auth runs the two inserts without a transaction.
@@ -159,10 +160,26 @@ backup or a database over 700 MB instead of its description.
 
 - **Server:** the database size (with a warning over 700 MB), free disk, and each [backup layer](backups.md#visibility): when it last succeeded, whether it is stale, and the last errors of the daily copy, the two restore rehearsals, and the token check, from the owner's `/api/status`. A failed rehearsal or token check shows as "Failed". Below them, the size of the DB copies in `wl-backups`, per key prefix, from `GET /api/admin/backup-storage`.
 - **Account cap:** edited next to the number of accounts. Empty uses the built-in 100. Lowering it below the number of accounts only stops new sign-ups.
-- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete. None of these apply to the owner's own account.
-- `GET /api/admin/users` (with the cap and the account count); `GET /api/admin/backup-storage`, `{ bytes, objects, groups }` or null without a backup bucket; `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`; `DELETE /api/admin/users/:id`.
+- **Users:** name, email, created, last sync (the newest `received_at` in `head`), bytes written today, stored bytes; a search box filters them by name and email. Per user, in a sheet: edit quota overrides (bytes in MB; empty uses the default), allow unlimited uploads for 24 h, disable or enable, delete, ban. None of these apply to the owner's own account.
+- **Banned accounts:** below the users, when there are any: name, email, and when banned, each with an Unban button.
+- `GET /api/admin/users` (with the cap, the account count, and the bans); `GET /api/admin/backup-storage`, `{ bytes, objects, groups }` or null without a backup bucket; `PUT /api/admin/limits` with `{ maxAccounts }`, a number or null; `PUT /api/admin/users/:id/quota` with all four overrides, each a number or null; `POST /api/admin/users/:id/exempt`, `/disable`, `/enable`, `/ban`; `DELETE /api/admin/users/:id`; `DELETE /api/admin/bans/:id` (the banned account's id).
 - **Disable** sets `disabled`, deletes the user's sessions, and `session.create.before` refuses new ones (`account_disabled` on the sign-in redirect, and as a toast in the app).
 - **Delete** is the same as the user's own [account deletion](#privacy).
+- **Ban** is a delete that also keeps the person from signing up again ([Bans](#bans)).
+
+### Bans
+
+Disable keeps an account and its data, which still count toward the
+[account cap](#account-cap); Delete frees both, but the same provider account
+can sign up again. A ban does both: it deletes the account and refuses it at
+sign-up.
+
+- In one transaction, the ban records the account's name, email, and creation time in `ban`, its ban keys in `ban_key`, and deletes the account as [account deletion](#privacy) does.
+- **Ban keys:** `email:<email>`, lowercased, and `account:<provider>:<id>` for each linked provider account (Google's `sub`, GitHub's user id). The provider id catches a provider account whose email changed, e.g. a GitHub profile email.
+- `databaseHooks.user.create.before` refuses a banned email, and `databaseHooks.account.create.before` a banned provider account, both with `account_disabled`: to the person, a banned account looks disabled, and every sign-in path already shows that code. The account hook runs inside the sign-up's transaction, so a refused sign-up leaves no user behind. It also refuses linking a banned provider account to another account with the same email.
+- The hooks read the ban keys from the server's in-memory copy (`LimitCache`), for the same reason as the cap. The ban and unban endpoints refresh it.
+- **Unban** deletes the `ban` and `ban_key` rows. The person can then sign up again, as a new account without the old data.
+- Known limit: a different Google or GitHub account with an email not banned gets through. Accounts are free to create; the ban only stops the same identity.
 
 ## Privacy
 
@@ -174,6 +191,7 @@ backup or a database over 700 MB instead of its description.
   - `DELETE /api/me` with `{ email }`, which must match the account's (400 otherwise), hard-deletes, in one transaction, the user's `head`, `user_sync`, `usage`, and `quota` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days. The owner's admin page deletes another account the same way (`DELETE /api/admin/users/:id`).
   - The server database runs with `secure_delete`, so the deleted rows don't stay readable in free pages of `app.db`, which Litestream would otherwise copy into each new snapshot until SQLite reuses them ([deployment.md](deployment.md#litestream)).
   - The owner can't delete their own account.
+  - A [ban](#bans) keeps the name, email, and provider account ids on the server, so sign-up can refuse them, until the owner lifts it.
   - The device keeps its local data and signs out. Signing in with another account later asks to merge or discard, as for any account change.
   - Copies made before the deletion persist until they expire:
     - Litestream: 3 days
@@ -190,12 +208,15 @@ usage   (user_id, day, bytes_written, snapshots,
 quota   (user_id PK, bytes_per_day?, max_bytes?, requests_per_minute?,
          snapshots_per_day?, exempt_until?)                 -- NULL = the default
 limits  (id PK CHECK (id = 1), max_accounts?)              -- one row; NULL = 100
+ban     (user_id PK, name, email, created_at)              -- the deleted account's id
+ban_key (user_id, key, PRIMARY KEY (user_id, key))
+        WITHOUT ROWID                                      -- email:… or account:<provider>:<id>
 ```
 
 A quota for an account is its `quota` override, else the default from the
 code. The per-minute request limiter reads the overrides from memory, and so
-does the sign-up hook the cap (`LimitCache`); the admin endpoints refresh
-that copy when they write.
+do the sign-up hooks the cap and the ban keys (`LimitCache`); the admin
+endpoints refresh that copy when they write.
 
 `role` and `disabled` live on the auth user record. The sync tables (`head`,
 `server_meta`, `user_sync`) are in [sync.md](sync.md#server-side).

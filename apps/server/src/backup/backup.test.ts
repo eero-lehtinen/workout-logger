@@ -6,7 +6,6 @@ import { newEpoch, readEpoch } from "@workout-logger/core/sync-server";
 import Database from "better-sqlite3";
 import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
-import { authOptions } from "../auth/auth.ts";
 import { openDatabase, syncDb } from "../db/database.ts";
 import { readJob, runJob, startJobs } from "../jobs.ts";
 import {
@@ -23,7 +22,7 @@ import {
   DAILY_COPY_JOB,
   REPLICA_REHEARSAL_JOB,
 } from "../status.ts";
-import { openTestApp } from "../testing.ts";
+import { openTestApp, testAuthOptions } from "../testing.ts";
 import {
   compressCopy,
   dailyKeys,
@@ -320,14 +319,7 @@ describe("unpack-copy", () => {
 });
 
 describe("pre-migration copy", () => {
-  const settings = (db: unknown) =>
-    authOptions({
-      db: db as never,
-      publicUrl: "http://localhost:3000",
-      secret: "test-secret-that-is-long-enough-for-better-auth",
-      signIn: {},
-      maxAccounts: () => 100,
-    });
+  const settings = testAuthOptions;
 
   it("is skipped for a new database", async () => {
     const { db } = openDatabase(":memory:");

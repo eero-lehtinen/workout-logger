@@ -161,6 +161,7 @@ The words the UI uses for each [glossary](glossary.md) term:
 | account cap | account cap | tilien enimmäismäärä |
 | quota | quota | kiintiö |
 | disabled account | disabled account | käytöstä poistettu tili |
+| ban | ban | porttikielto |
 | sign in / out | sign in / out | kirjaudu sisään / ulos |
 | archive | archive | arkistoi |
 | undo | undo | kumoa |
