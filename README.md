@@ -23,3 +23,9 @@ future work; see [docs/implementation-plan.md](docs/implementation-plan.md).
 - [docs/fitnotes-import.md](docs/fitnotes-import.md) - migrating data from FitNotes
 - [docs/implementation-plan.md](docs/implementation-plan.md) - phases and milestones
 - [docs/open-questions.md](docs/open-questions.md) - undecided items
+
+## License
+
+The source is published for reference. Pull requests are not accepted, and
+there is no support. Noncommercial use is allowed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE.md).
