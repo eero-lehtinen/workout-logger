@@ -180,8 +180,8 @@ Owner-only at first; multi-user hardening is phase 11.
 Result: sign-in is GitHub only, instead of email
 and password: the Android app signs in through a Custom Tab and a deep link
 ([accounts.md](accounts.md#login)). The Playwright suite syncs two browser
-devices through the real server. The restore rehearsal job and the warning
-for old on-device snapshots moved to phase 11b.
+devices through the real server. The restore rehearsal job moved to phase
+11b.
 
 ## Phase 7: History, records, calendar (M) [done]
 
@@ -254,7 +254,6 @@ Moved out of phase 11: they protect the owner's backups, not other users.
 
 - Daily restore rehearsals of the newest daily copy and of the Litestream replica, with their warning dot [done] ([backups.md](backups.md#restore-rehearsal)).
 - Checks that the R2 buckets and tokens are separate.
-- Warning dot for an on-device snapshot older than 7 days.
 
 ## Future work
 

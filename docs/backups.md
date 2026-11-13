@@ -102,7 +102,9 @@ Admin row in Settings):
 - for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days, each restore rehearsal > 2 days)
 - for the owner: the server database is over 700 MB, at most about 4 GB of R2 once retention fills ([accounts.md](accounts.md#account-cap)); also on the admin page
 
-Not built yet: a dot for an on-device snapshot older than 7 days.
+The on-device snapshots have no dot: they are written only when a session
+ends, so their age says nothing on its own, and a failed write already shows
+an error.
 
 An external dead-man check is **required**: an uptime monitor polls
 `/api/status` and alerts when it reports stale backups or doesn't respond.
