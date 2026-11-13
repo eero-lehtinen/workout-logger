@@ -227,7 +227,7 @@ A shell below `minNative` keeps its web build, and the APK prompt offers the rel
 **Signing.** The app only installs a bundle whose signature (RSA with SHA-256 over the zip) verifies against the public key in `apps/web/capacitor.config.ts`. A compromised VPS or Cloudflare account therefore can't run code in the app; whoever can build a signed bundle can, which is the same trust as the APK's signing key in GitHub Actions.
 
 - The private key is on the owner's PC in `~/Documents/ai-doc/workout-logger/android-release/live-update-private.pem`, next to the APK keystore, and is never committed. Keep a second copy with the keystore's.
-- CI reads it from the GitHub Actions secret `LIVE_UPDATE_PRIVATE_KEY` (the PEM file's content) and passes it to the image build as a BuildKit secret, so it is in no image layer. The `image` job fails without the secret: an unsigned bundle would deploy fine and every phone would refuse it.
+- CI reads it from the GitHub Actions secret `LIVE_UPDATE_PRIVATE_KEY` (the PEM file's content) and passes it to the image build as a BuildKit secret, so it is in no image layer. Only the job's check step and the build step get it, not the other actions in the job. The `image` job fails without the secret: an unsigned bundle would deploy fine and every phone would refuse it.
 - The build fails if the key doesn't match the public key in the app config.
 - Builds without the key, such as local ones and CI's `e2e` job, make an unsigned bundle. To test live updates against a local server, set `LIVE_UPDATE_PRIVATE_KEY` for `pnpm build`.
 - The signature covers the zip, not the manifest. A server could at worst hand out an older signed build, or claim a `minNative` that keeps phones from updating.
