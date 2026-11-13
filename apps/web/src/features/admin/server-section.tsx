@@ -54,6 +54,18 @@ export function ServerSection(props: {
         layer={status.backups.dailyCopy}
         now={now}
       />
+      <BackupRow
+        label={t("admin.server.copyRehearsal")}
+        hint={t("admin.server.copyRehearsalHint")}
+        layer={status.backups.copyRehearsal}
+        now={now}
+      />
+      <BackupRow
+        label={t("admin.server.replicaRehearsal")}
+        hint={t("admin.server.replicaRehearsalHint")}
+        layer={status.backups.replicaRehearsal}
+        now={now}
+      />
       <StorageRow storage={props.storage} />
     </Section>
   );
@@ -127,10 +139,12 @@ function BackupRow(props: {
         </>
       }
     >
-      <Value warn={layer.stale}>
-        {layer.stale && layer.lastOkAt !== null
-          ? t("admin.server.stale", { value })
-          : value}
+      <Value warn={layer.stale || layer.failed === true}>
+        {layer.failed
+          ? t("admin.server.failed")
+          : layer.stale && layer.lastOkAt !== null
+            ? t("admin.server.stale", { value })
+            : value}
       </Value>
     </Row>
   );

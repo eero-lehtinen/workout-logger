@@ -7,11 +7,14 @@ import { type ServerKysely, syncDb } from "./db/database.ts";
 import { readJob } from "./jobs.ts";
 
 export const DAILY_COPY_JOB = "daily-db-copy";
+export const COPY_REHEARSAL_JOB = "copy-rehearsal";
+export const REPLICA_REHEARSAL_JOB = "replica-rehearsal";
 
 const HOUR = 60 * 60 * 1000;
 /** Thresholds from docs/backups.md#visibility. */
 const LITESTREAM_MAX_AGE = HOUR;
 const DAILY_COPY_MAX_AGE = 48 * HOUR;
+const REHEARSAL_MAX_AGE = 48 * HOUR;
 
 export interface BackupLayer {
   /** False when the layer isn't configured on this server. */
@@ -19,6 +22,13 @@ export interface BackupLayer {
   lastOkAt: number | null;
   stale: boolean;
   lastError?: string | null;
+  /**
+   * The last run failed and that needs attention now, before the layer is
+   * stale. Only the restore rehearsals set it: a failed rehearsal means a
+   * backup that doesn't restore, while a failed daily copy is retried the
+   * next day.
+   */
+  failed?: boolean;
 }
 
 /** What anyone, e.g. the uptime monitor, sees. */
@@ -36,7 +46,12 @@ export interface OwnerStatus extends PublicStatus {
   epoch: string;
   databaseBytes: number;
   freeDiskBytes: number | null;
-  backups: { litestream: BackupLayer; dailyCopy: BackupLayer };
+  backups: {
+    litestream: BackupLayer;
+    dailyCopy: BackupLayer;
+    copyRehearsal: BackupLayer;
+    replicaRehearsal: BackupLayer;
+  };
 }
 
 export interface StatusSource {
@@ -46,6 +61,7 @@ export interface StatusSource {
   databasePath: string;
   backupsConfigured: boolean;
   litestreamSocket: string | undefined;
+  replicaRehearsalConfigured: boolean;
   signIn: SignInProvider[];
   now?: () => number;
 }
@@ -67,6 +83,17 @@ export async function backupLayers(
     lastOkAt,
     stale: configured && (lastOkAt === null || now - lastOkAt > maxAge),
   });
+  const rehearsal = async (
+    job: string,
+    configured: boolean,
+  ): Promise<BackupLayer> => {
+    const state = await readJob(source.db, job);
+    return {
+      ...layer(configured, state?.lastOkAt ?? null, REHEARSAL_MAX_AGE),
+      lastError: state?.lastError ?? null,
+      failed: configured && Boolean(state?.lastError),
+    };
+  };
   return {
     litestream: layer(
       source.litestreamSocket !== undefined,
@@ -81,6 +108,14 @@ export async function backupLayers(
       ),
       lastError: copy?.lastError ?? null,
     },
+    copyRehearsal: await rehearsal(
+      COPY_REHEARSAL_JOB,
+      source.backupsConfigured,
+    ),
+    replicaRehearsal: await rehearsal(
+      REPLICA_REHEARSAL_JOB,
+      source.replicaRehearsalConfigured,
+    ),
   };
 }
 
@@ -109,7 +144,9 @@ function summary(
   return {
     version: source.version,
     commit: source.commit,
-    backupsOk: !backups.litestream.stale && !backups.dailyCopy.stale,
+    backupsOk: Object.values(backups).every(
+      (layer) => !layer.stale && !layer.failed,
+    ),
     signIn: source.signIn,
   };
 }

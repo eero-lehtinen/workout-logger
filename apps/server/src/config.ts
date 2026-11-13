@@ -25,6 +25,11 @@ export interface ServerConfig {
   backups: R2Config | undefined;
   /** Litestream's control socket, for the replica's freshness. */
   litestreamSocket: string | undefined;
+  /**
+   * The `wl-litestream` bucket with a read-only token, for the replica's
+   * restore rehearsal; unset turns the rehearsal off.
+   */
+  litestreamReplica: R2Config | undefined;
   releases: { repository: string; token: string } | undefined;
 }
 
@@ -70,6 +75,19 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
         }
       : undefined;
 
+  const litestreamReplica =
+    env.LITESTREAM_R2_ENDPOINT &&
+    env.LITESTREAM_R2_BUCKET &&
+    env.LITESTREAM_R2_READ_ACCESS_KEY_ID &&
+    env.LITESTREAM_R2_READ_SECRET_ACCESS_KEY
+      ? {
+          endpoint: env.LITESTREAM_R2_ENDPOINT,
+          bucket: env.LITESTREAM_R2_BUCKET,
+          accessKeyId: env.LITESTREAM_R2_READ_ACCESS_KEY_ID,
+          secretAccessKey: env.LITESTREAM_R2_READ_SECRET_ACCESS_KEY,
+        }
+      : undefined;
+
   return {
     port,
     webRoot:
@@ -86,6 +104,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     minClientVersion: env.MIN_CLIENT_VERSION || undefined,
     backups,
     litestreamSocket: env.LITESTREAM_SOCKET || undefined,
+    litestreamReplica,
     releases: env.GITHUB_RELEASES_TOKEN
       ? {
           repository:

@@ -89,6 +89,9 @@ const users: AdminUsers = {
 const realFetch = globalThis.fetch;
 const requests = fn();
 
+const MALFORMED_COPY =
+  "daily/2026-11-12.db.br: integrity check: database disk image is malformed";
+
 const healthy: OwnerStatus = {
   backupsOk: true,
   databaseBytes: 40 * MB,
@@ -100,6 +103,20 @@ const healthy: OwnerStatus = {
       lastOkAt: NOW - 5 * 60 * 60 * 1000,
       stale: false,
       lastError: null,
+    },
+    copyRehearsal: {
+      configured: true,
+      lastOkAt: NOW - 4 * 60 * 60 * 1000,
+      stale: false,
+      lastError: null,
+      failed: false,
+    },
+    replicaRehearsal: {
+      configured: true,
+      lastOkAt: NOW - 3 * 60 * 60 * 1000,
+      stale: false,
+      lastError: null,
+      failed: false,
     },
   },
 };
@@ -167,6 +184,8 @@ export const Overview = {
       await expect(canvas.getByText("20 GB")).toBeVisible();
       await expect(canvas.getByText("just now")).toBeVisible();
       await expect(canvas.getByText("5 hours ago")).toBeVisible();
+      await expect(canvas.getByText("4 hours ago")).toBeVisible();
+      await expect(canvas.getByText("3 hours ago")).toBeVisible();
       await expect(await canvas.findByText("330 MB")).toBeVisible();
       await expect(
         canvas.getByText(
@@ -213,8 +232,8 @@ export const OverviewPc = {
 };
 
 /**
- * A stale layer and the job's last error; over 700 MB, R2's free tier is
- * close. The bucket can't be listed.
+ * A stale layer and the job's last error, and a failed restore test; over
+ * 700 MB, R2's free tier is close. The bucket can't be listed.
  */
 export const ServerTrouble = {
   ...pageStory({
@@ -226,6 +245,10 @@ export const ServerTrouble = {
       await expect(await canvas.findByText(/^Over 700 MB,/)).toBeVisible();
       await expect(canvas.getByText("Stale · 3 days ago")).toBeVisible();
       await expect(canvas.getByText("Last run failed: R2 down")).toBeVisible();
+      await expect(canvas.getByText("Failed")).toBeVisible();
+      await expect(
+        canvas.getByText(`Last run failed: ${MALFORMED_COPY}`),
+      ).toBeVisible();
       await expect(
         await canvas.findByText(
           "Couldn't list the bucket: The server answered 502",
@@ -246,6 +269,13 @@ export const ServerTrouble = {
           lastOkAt: NOW - 3 * 24 * 60 * 60 * 1000,
           stale: true,
           lastError: "R2 down",
+        },
+        copyRehearsal: {
+          configured: true,
+          lastOkAt: NOW - 28 * 60 * 60 * 1000,
+          stale: false,
+          lastError: MALFORMED_COPY,
+          failed: true,
         },
       },
     },

@@ -1,30 +1,51 @@
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { readEpoch } from "@workout-logger/core/sync-server";
+import { newEpoch, readEpoch } from "@workout-logger/core/sync-server";
 import Database from "better-sqlite3";
+import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import { authOptions } from "../auth/auth.ts";
-import { unpackCopyFile } from "../cli.ts";
 import { openDatabase, syncDb } from "../db/database.ts";
-import { readJob, runJob } from "../jobs.ts";
+import { readJob, runJob, startJobs } from "../jobs.ts";
 import {
+  copyRehearsalJob,
   dailyCopyJob,
   finishRestore,
   prepareDatabase,
+  replicaRehearsalJob,
   restoredMarker,
 } from "../startup.ts";
-import { DAILY_COPY_JOB } from "../status.ts";
+import {
+  COPY_REHEARSAL_JOB,
+  DAILY_COPY_JOB,
+  REPLICA_REHEARSAL_JOB,
+} from "../status.ts";
 import { openTestApp } from "../testing.ts";
-import { compressCopy, dailyKeys, unpackCopy } from "./db-copy.ts";
+import {
+  compressCopy,
+  dailyKeys,
+  unpackCopy,
+  unpackCopyFile,
+} from "./db-copy.ts";
 import { type BackupStore, parseListPage } from "./r2.ts";
+import {
+  newestDailyCopy,
+  rehearseCopyRestore,
+  rehearseReplicaRestore,
+} from "./rehearsal.ts";
 
 function memoryStore() {
   const files = new Map<string, Uint8Array>();
   const store: BackupStore = {
     async put(key, body) {
       files.set(key, body);
+    },
+    async get(key) {
+      const body = files.get(key);
+      if (!body) throw new Error(`no ${key}`);
+      return body;
     },
     async list() {
       return [...files].map(([key, body]) => ({ key, size: body.length }));
@@ -35,6 +56,7 @@ function memoryStore() {
 
 const failingStore: BackupStore = {
   put: () => Promise.reject(new Error("R2 down")),
+  get: () => Promise.reject(new Error("R2 down")),
   list: () => Promise.reject(new Error("R2 down")),
 };
 
@@ -83,6 +105,180 @@ describe("daily DB copy", () => {
       "daily/2026-12-01.db.br",
       "monthly/2026-12-01.db.br",
     ]);
+  });
+});
+
+describe("restore rehearsal", () => {
+  const today = () => dailyKeys(new Date())[0] ?? "";
+
+  it("restores the newest daily copy and records the run", async () => {
+    const { db, signIn } = await openTestApp();
+    await signIn("owner@example.com", "owner");
+    const { store } = memoryStore();
+    await runJob(db, dailyCopyJob(db, store));
+    expect(await runJob(db, copyRehearsalJob(db, store), () => 1000)).toBe(
+      true,
+    );
+    expect(await readJob(db, COPY_REHEARSAL_JOB)).toEqual({
+      lastRunAt: 1000,
+      lastOkAt: 1000,
+      lastError: null,
+    });
+  });
+
+  it("fails without a daily copy", async () => {
+    const { db } = await openTestApp();
+    await expect(
+      rehearseCopyRestore(db, memoryStore().store, Date.now()),
+    ).rejects.toThrow("no daily copy in the bucket");
+  });
+
+  it("fails when the newest copy is over 2 days old", async () => {
+    const { db } = await openTestApp();
+    const { files, store } = memoryStore();
+    await runJob(db, dailyCopyJob(db, store));
+    files.set("daily/2026-01-01.db.br", files.get(today()) ?? new Uint8Array());
+    files.delete(today());
+    await expect(
+      rehearseCopyRestore(db, store, Date.parse("2026-01-02T23:59:00Z")),
+    ).resolves.toBeUndefined();
+    await expect(
+      rehearseCopyRestore(db, store, Date.parse("2026-01-03T00:01:00Z")),
+    ).rejects.toThrow("daily/2026-01-01.db.br, is over 2 days old");
+  });
+
+  it("fails on a copy that isn't a database", async () => {
+    const { db } = await openTestApp();
+    const { files, store } = memoryStore();
+    files.set(today(), await compressCopy(Buffer.from("not a database")));
+    await expect(rehearseCopyRestore(db, store, Date.now())).rejects.toThrow(
+      `${today()}: integrity check`,
+    );
+  });
+
+  it("fails on a copy without the live database's accounts", async () => {
+    const { db, signIn } = await openTestApp();
+    const { store } = memoryStore();
+    await runJob(db, dailyCopyJob(db, store));
+    await signIn("owner@example.com", "owner");
+    await expect(rehearseCopyRestore(db, store, Date.now())).rejects.toThrow(
+      "no user rows in the copy; the live database has 1",
+    );
+  });
+
+  it("picks the newest daily copy, not monthly or pre-migration ones", () => {
+    expect(
+      newestDailyCopy([
+        { key: "daily/2026-11-11.db.br", size: 1 },
+        { key: "daily/2026-11-12.db.br", size: 1 },
+        { key: "daily/2026-01-01.db.gz", size: 1 },
+        { key: "monthly/2026-11-13.db.br", size: 1 },
+        { key: "pre-migration/2026-11-14T00-00-00.000Z-x.db.br", size: 1 },
+      ]),
+    ).toEqual({
+      key: "daily/2026-11-12.db.br",
+      copiedAt: Date.parse("2026-11-12T00:00:00Z"),
+    });
+    expect(newestDailyCopy([])).toBeNull();
+  });
+
+  it("runs after the daily copy when both catch up at startup", async () => {
+    const { db } = await openTestApp();
+    const { store } = memoryStore();
+    const jobs = await startJobs(db, [
+      dailyCopyJob(db, store),
+      copyRehearsalJob(db, store),
+    ]);
+    await jobs.caughtUp;
+    jobs.stop();
+    expect((await readJob(db, COPY_REHEARSAL_JOB))?.lastError).toBeNull();
+  });
+});
+
+describe("replica restore rehearsal", () => {
+  /** A replica that has everything committed when it is restored. */
+  const upToDate =
+    (db: Awaited<ReturnType<typeof openTestApp>>["db"]) =>
+    async (out: string) => {
+      await sql`VACUUM INTO ${out}`.execute(db);
+    };
+
+  /** A replica that stopped at the database as it is now. */
+  async function frozen(db: Awaited<ReturnType<typeof openTestApp>>["db"]) {
+    const file = join(mkdtempSync(join(tmpdir(), "wl-replica-")), "app.db");
+    await sql`VACUUM INTO ${file}`.execute(db);
+    return async (out: string) => copyFileSync(file, out);
+  }
+
+  async function bumpSeq(db: Awaited<ReturnType<typeof openTestApp>>["db"]) {
+    await db
+      .updateTable("server_meta")
+      .set({ value: sql`value + 1` })
+      .where("key", "=", "seq")
+      .execute();
+  }
+
+  it("restores the replica and records the run", async () => {
+    const { db, signIn } = await openTestApp();
+    await signIn("owner@example.com", "owner");
+    const job = replicaRehearsalJob(db, upToDate(db), 0);
+    expect(await runJob(db, job, () => 1000)).toBe(true);
+    expect(await readJob(db, REPLICA_REHEARSAL_JOB)).toMatchObject({
+      lastOkAt: 1000,
+      lastError: null,
+    });
+  });
+
+  it("fails when the replica lacks a push from before the wait", async () => {
+    const { db } = await openTestApp();
+    const restore = await frozen(db);
+    await bumpSeq(db);
+    await expect(rehearseReplicaRestore(db, restore, 0)).rejects.toThrow(
+      /^replica: the replica is at seq \d+, but the live database was at \d+ 0 s before the restore$/,
+    );
+  });
+
+  it("passes when only pushes during the wait are missing", async () => {
+    const { db } = await openTestApp();
+    const restore = await frozen(db);
+    await expect(
+      rehearseReplicaRestore(
+        db,
+        async (out) => {
+          await bumpSeq(db);
+          await restore(out);
+        },
+        0,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("fails on a replica from another epoch", async () => {
+    const { db } = await openTestApp();
+    const restore = await frozen(db);
+    await newEpoch(syncDb(db));
+    await expect(rehearseReplicaRestore(db, restore, 0)).rejects.toThrow(
+      /^replica: epoch .+ in the replica; the live database has /,
+    );
+  });
+
+  it("fails when the restore fails or writes no database", async () => {
+    const { db } = await openTestApp();
+    await expect(
+      rehearseReplicaRestore(
+        db,
+        () =>
+          Promise.reject(new Error("litestream restore failed: no backups")),
+        0,
+      ),
+    ).rejects.toThrow("replica: litestream restore failed: no backups");
+    await expect(
+      rehearseReplicaRestore(
+        db,
+        async (out) => writeFileSync(out, "not a database"),
+        0,
+      ),
+    ).rejects.toThrow("replica: integrity check:");
   });
 });
 
@@ -266,6 +462,60 @@ describe("/api/status", () => {
       backups: {
         litestream: { configured: false, stale: false },
         dailyCopy: { configured: true, lastOkAt: null, stale: true },
+        copyRehearsal: {
+          configured: true,
+          lastOkAt: null,
+          stale: true,
+          failed: false,
+        },
+        replicaRehearsal: { configured: false, stale: false, failed: false },
+      },
+    });
+  });
+
+  it("is not ok when the last restore rehearsal failed", async () => {
+    const { store } = memoryStore();
+    const { app, db, signIn } = await openTestApp({
+      backups: store,
+      replicaRehearsal: true,
+    });
+    const { token } = await signIn("owner@example.com", "owner");
+    await runJob(db, dailyCopyJob(db, store));
+    await runJob(db, copyRehearsalJob(db, store));
+    const replicaFailing = async () => {
+      throw new Error("litestream restore failed: no backups");
+    };
+    const replicaUp = async (out: string) => {
+      await sql`VACUUM INTO ${out}`.execute(db);
+    };
+    await runJob(db, replicaRehearsalJob(db, replicaUp, 0));
+    const status = async () => {
+      const res = await app.request("/api/status", {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      return (await res.json()) as { backupsOk: boolean };
+    };
+    expect((await status()).backupsOk).toBe(true);
+
+    await runJob(db, copyRehearsalJob(db, failingStore));
+    expect(await status()).toMatchObject({
+      backupsOk: false,
+      backups: {
+        copyRehearsal: { stale: false, failed: true, lastError: "R2 down" },
+      },
+    });
+
+    await runJob(db, copyRehearsalJob(db, store));
+    await runJob(db, replicaRehearsalJob(db, replicaFailing, 0));
+    expect(await status()).toMatchObject({
+      backupsOk: false,
+      backups: {
+        copyRehearsal: { failed: false },
+        replicaRehearsal: {
+          stale: false,
+          failed: true,
+          lastError: "replica: litestream restore failed: no backups",
+        },
       },
     });
   });

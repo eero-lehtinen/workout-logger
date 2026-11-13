@@ -34,6 +34,10 @@ WORKDIR /app
 COPY --from=build /out/server server
 COPY --from=build /repo/apps/web/dist web/dist
 COPY --from=build /repo/apps/web/live-bundle web/live-bundle
+# The replica's restore rehearsal runs `litestream restore` (a static
+# binary). Keep the version of the Litestream services in
+# deploy/compose.yaml, which write the replica.
+COPY --from=litestream/litestream:0.5.18 /usr/local/bin/litestream /usr/local/bin/litestream
 
 # A new named volume takes this directory's owner, so the app can write it.
 RUN mkdir /data && chown node:node /data

@@ -17,6 +17,7 @@ export interface StoredObject {
 /** Where backup files go. An interface so tests can keep them in memory. */
 export interface BackupStore {
   put(key: string, body: Uint8Array): Promise<void>;
+  get(key: string): Promise<Uint8Array>;
   list(): Promise<StoredObject[]>;
 }
 
@@ -41,6 +42,16 @@ export function r2Store(config: R2Config): BackupStore {
           `R2 upload of ${key} failed: ${res.status} ${await res.text()}`,
         );
       }
+    },
+
+    async get(key) {
+      const res = await client.fetch(`${base}/${key}`);
+      if (!res.ok) {
+        throw new Error(
+          `R2 download of ${key} failed: ${res.status} ${await res.text()}`,
+        );
+      }
+      return new Uint8Array(await res.arrayBuffer());
     },
 
     async list() {

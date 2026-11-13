@@ -3,13 +3,22 @@ import { newEpoch } from "@workout-logger/core/sync-server";
 import { createAuth, authOptions as toAuthOptions } from "./auth/auth.ts";
 import { dailyKeys, preMigrationKey, uploadDbCopy } from "./backup/db-copy.ts";
 import { type BackupStore, r2Store } from "./backup/r2.ts";
+import {
+  REPLICA_SETTLE_MS,
+  rehearseCopyRestore,
+  rehearseReplicaRestore,
+} from "./backup/rehearsal.ts";
 import type { ServerConfig } from "./config.ts";
 import { openDatabase, type ServerKysely, syncDb } from "./db/database.ts";
 import { migrateServer, pendingMigrations } from "./db/migrations.ts";
 import type { Job } from "./jobs.ts";
 import { DEFAULT_MAX_ACCOUNTS, LimitCache } from "./limit-cache.ts";
 import { PRUNE_USAGE_JOB, pruneUsage } from "./quota.ts";
-import { DAILY_COPY_JOB } from "./status.ts";
+import {
+  COPY_REHEARSAL_JOB,
+  DAILY_COPY_JOB,
+  REPLICA_REHEARSAL_JOB,
+} from "./status.ts";
 
 /** The database, auth, and backup store, migrated and ready to serve. */
 export async function openServer(config: ServerConfig) {
@@ -101,5 +110,29 @@ export function dailyCopyJob(db: ServerKysely, backups: BackupStore): Job {
         await uploadDbCopy(db, backups, key);
       }
     },
+  };
+}
+
+/** An hour after the daily copy, which it restores. */
+export function copyRehearsalJob(db: ServerKysely, backups: BackupStore): Job {
+  return {
+    name: COPY_REHEARSAL_JOB,
+    schedule: "0 4 * * *",
+    maxAgeMs: 24 * 60 * 60 * 1000,
+    run: () => rehearseCopyRestore(db, backups, Date.now()),
+  };
+}
+
+/** `restore` writes the replica's newest state to a new file. */
+export function replicaRehearsalJob(
+  db: ServerKysely,
+  restore: (out: string) => Promise<void>,
+  settleMs = REPLICA_SETTLE_MS,
+): Job {
+  return {
+    name: REPLICA_REHEARSAL_JOB,
+    schedule: "30 4 * * *",
+    maxAgeMs: 24 * 60 * 60 * 1000,
+    run: () => rehearseReplicaRestore(db, restore, settleMs),
   };
 }

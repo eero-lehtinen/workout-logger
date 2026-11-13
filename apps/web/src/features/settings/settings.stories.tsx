@@ -501,7 +501,7 @@ export const OwnerBackupsStale = {
       await expect(canvas.getByRole("link", { name: "Open" })).toBeVisible();
       await expect(canvas.queryByText("Delete account")).toBeNull();
       await expect(
-        canvas.getByText("A server backup is out of date."),
+        canvas.getByText("A server backup didn't pass its restore test."),
       ).toBeVisible();
     },
   }),
@@ -522,6 +522,20 @@ export const OwnerBackupsStale = {
           lastOkAt: null,
           stale: true,
           lastError: "R2 down",
+        },
+        copyRehearsal: {
+          configured: true,
+          lastOkAt: null,
+          stale: true,
+          lastError: "no daily copy in the bucket",
+          failed: true,
+        },
+        replicaRehearsal: {
+          configured: false,
+          lastOkAt: null,
+          stale: false,
+          lastError: null,
+          failed: false,
         },
       },
     });

@@ -12,13 +12,20 @@ export interface BackupLayer {
   lastOkAt: number | null;
   stale: boolean;
   lastError?: string | null;
+  /** The last run failed, which needs attention before the layer is stale. */
+  failed?: boolean;
 }
 
 export interface OwnerStatus {
   backupsOk: boolean;
   databaseBytes: number;
   freeDiskBytes: number | null;
-  backups: { litestream: BackupLayer; dailyCopy: BackupLayer };
+  backups: {
+    litestream: BackupLayer;
+    dailyCopy: BackupLayer;
+    copyRehearsal: BackupLayer;
+    replicaRehearsal: BackupLayer;
+  };
 }
 
 let status: OwnerStatus | null = null;
@@ -93,6 +100,9 @@ export function useBackupWarning(): string | null {
 
 /** What on the server needs the owner's attention, or null. */
 export function ownerWarning(owner: OwnerStatus, t: TFunction): string | null {
+  if (Object.values(owner.backups).some((layer) => layer.failed)) {
+    return t("ui.backupWarning.restoreFailed");
+  }
   if (!owner.backupsOk) return t("ui.backupWarning.backupStale");
   if (owner.databaseBytes > DATABASE_WARNING_BYTES) {
     return t("ui.backupWarning.databaseLarge");

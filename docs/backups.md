@@ -2,8 +2,8 @@
 
 Goal: never lose training data, and never discover a broken backup too late.
 FitNotes' failure mode was backups that silently didn't happen, so every layer
-reports its freshness, and restores are to be rehearsed automatically
-(phase 11b).
+reports its freshness, and the daily copy and the Litestream replica are
+restored automatically every day.
 
 ## Threats
 
@@ -45,10 +45,11 @@ Each writer has its own bucket and its own R2 token:
 
 | Bucket | Writer | Readers |
 | --- | --- | --- |
-| `wl-litestream` | Litestream sidecar (its own token) | Restore procedure |
-| `wl-backups` | App daily job (its own token) | Restore procedure |
+| `wl-litestream` | Litestream sidecar (its own token) | Restore procedure, the app's restore rehearsal (a read-only token) |
+| `wl-backups` | App daily job (its own token) | Restore procedure, restore rehearsal |
 
 A leaked app token then can't delete the Litestream replica, and vice versa.
+The app's token for `wl-litestream` can only read it.
 R2 bucket locks (retention locks) may prevent deletion even with a write
 token. Their availability still needs checking.
 
@@ -82,7 +83,7 @@ It can be read without the app (`sqlite3`, the CLI) and imported by the app.
 - the time of the last Litestream upload, from its control socket
 - the time of the last good daily DB copy, and the last error
 - free disk space and the database size
-- the result of the last restore rehearsal (phase 11b)
+- the time of the last good restore rehearsal of each, and their last errors
 
 Settings shows the user's own last sync time and unsynced changes, and on
 Android, the time of the last snapshot file. The owner's
@@ -91,30 +92,43 @@ disk, the database size, and the size of the DB copies in `wl-backups` by
 prefix (`daily`, `monthly`, `pre-migration`), which shows whether the
 lifecycle rules keep up. The server lists the bucket with its own token
 only when the page is opened, not on `/api/status`: a listing is a billed
-R2 operation. The Litestream replica isn't counted, since the app has no
-token for `wl-litestream`.
+R2 operation. The Litestream replica isn't counted.
 
 The Settings tab shows a warning dot when (the owner's two also show on the
 Admin row in Settings):
 
 - signed in, with unsynced local changes, and no sync in the last 3 days (or ever)
-- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days)
+- for the owner: the last run of a restore rehearsal failed
+- for the owner: any server backup layer is stale (Litestream > 1 h, daily copy > 2 days, each restore rehearsal > 2 days)
 - for the owner: the server database is over 700 MB, at most about 4 GB of R2 once retention fills ([accounts.md](accounts.md#account-cap)); also on the admin page
 
-Not built yet: a dot for an on-device snapshot older than 7 days, and for a
-failed rehearsal.
+Not built yet: a dot for an on-device snapshot older than 7 days.
 
 An external dead-man check is **required**: an uptime monitor polls
 `/api/status` and alerts when it reports stale backups or doesn't respond.
 
 ## Restore rehearsal
 
-- **Monthly** (server scheduled job, phase 11b):
-  1. Restore the Litestream replica into a temp file.
-  2. Run `PRAGMA integrity_check`.
-  3. Compare per-table row counts with the live DB.
+Two server jobs restore a backup into a temp file every day and check it
+against the live database. A failed run makes `backupsOk` false at once,
+without waiting for the layer to go stale, so the uptime monitor alerts; the
+next good run clears it. Each costs a few R2 reads a day.
 
-  It does the same with the newest daily copy. The result goes to `/api/status`.
+Both check that `head` and `user` aren't empty in the restored file when
+they aren't in the live database. Rows leave those tables only when an
+account is deleted, so an empty one means the file isn't of this database.
+Exact counts can't be compared: the live database changes after the backup.
+
+- **Daily copy** (`copy-rehearsal`, 04:00 UTC, an hour after the copy):
+  1. List `wl-backups` and take the newest `daily/` copy. It fails if there is none or the newest is over 2 days old: copies are uploaded but don't arrive, or the lifecycle rules deleted them.
+  2. Download it and restore it the way `server unpack-copy` does, including `PRAGMA integrity_check`.
+- **Litestream replica** (`replica-rehearsal`, 04:30 UTC):
+  1. Read the live `epoch` and `seq` from `server_meta`. `seq` only grows, also when an account is deleted.
+  2. Wait 30 s, three times Litestream's `sync-interval`, so everything committed before is in the replica.
+  3. `litestream restore` the replica's newest state, the way the "Server DB corrupted" procedure does ([deployment.md](deployment.md#recovery-procedures)), and run `PRAGMA integrity_check`.
+  4. The restored epoch must be the live one, and its `seq` at least the one read in step 1. A lower `seq` means the replica misses pushes the server acknowledged over 30 s ago.
+
+  It runs in the app container, with the `litestream` binary the image copies from the Litestream image and a read-only token for `wl-litestream` (`LITESTREAM_R2_READ_*`), which the compose file requires. Without the token, e.g. in local runs, it is off.
 - **CI:** `snapshot.test.ts` in `core` exports a database with rows and tombstones as a snapshot file, imports it into an empty one, and compares.
 - **Manual, before opening sign-up** (done in phase 6): walk through the "VPS lost" procedure into a scratch volume.
 

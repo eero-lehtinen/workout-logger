@@ -40,6 +40,12 @@ export const admin = {
     dailyCopy: "Päivittäinen kopio",
     dailyCopyHint:
       "Koko tietokanta kerran päivässä. Vanhentunut, jos yli 2 päivää vanha.",
+    copyRehearsal: "Päivittäisen kopion palautustesti",
+    copyRehearsalHint:
+      "Uusin päivittäinen kopio ladataan, palautetaan ja verrataan tietokantaan joka päivä. Vanhentunut, jos yli 2 päivää vanha.",
+    replicaRehearsal: "Replikan palautustesti",
+    replicaRehearsalHint:
+      "Replika palautetaan ja verrataan tietokantaan joka päivä. Siinä pitää olla kaikki muutokset 30 sekunnin takaa. Vanhentunut, jos yli 2 päivää vanha.",
     backupStorage: "Varmuuskopioiden tallennustila",
     storageHint:
       "Tietokannan kopiot R2:ssa. Litestream-replikaa ei lasketa mukaan.",
@@ -52,6 +58,7 @@ export const admin = {
     off: "Pois käytöstä",
     never: "Ei koskaan",
     stale: "Vanhentunut · {{value}}",
+    failed: "Epäonnistui",
     lastRunFailed: "Viimeisin ajo epäonnistui: {{error}}",
   },
   user: {

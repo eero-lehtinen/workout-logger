@@ -47,6 +47,7 @@ export const ui = {
   backupWarning: {
     unsynced: "Muutokset eivät ole synkronoituneet päiviin",
     backupStale: "Palvelimen varmuuskopio on vanhentunut",
+    restoreFailed: "Palvelimen varmuuskopion palautustesti epäonnistui",
     databaseLarge: "Palvelimen tietokanta on yli 700 Mt",
   },
   restTimer: {

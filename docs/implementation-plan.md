@@ -252,8 +252,9 @@ accounts. No one else has been invited.
 
 Moved out of phase 11: they protect the owner's backups, not other users.
 
-- Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
-- Warning dot for an on-device snapshot older than 7 days, and for a failed rehearsal.
+- Daily restore rehearsals of the newest daily copy and of the Litestream replica, with their warning dot [done] ([backups.md](backups.md#restore-rehearsal)).
+- Checks that the R2 buckets and tokens are separate.
+- Warning dot for an on-device snapshot older than 7 days.
 
 ## Future work
 

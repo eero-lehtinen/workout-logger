@@ -1,10 +1,7 @@
-import { existsSync } from "node:fs";
-import { readFile, rm, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { newEpoch } from "@workout-logger/core/sync-server";
-import Database from "better-sqlite3";
 import type { Auth } from "./auth/auth.ts";
-import { unpackCopy } from "./backup/db-copy.ts";
+import { unpackCopyFile } from "./backup/db-copy.ts";
 import { readConfig } from "./config.ts";
 import { syncDb } from "./db/database.ts";
 import { openServer } from "./startup.ts";
@@ -24,29 +21,6 @@ const USAGE = `Usage: server <command>
       ones) and checks its integrity. Refuses to overwrite <out.db>. Doesn't
       open the server database.
 `;
-
-/** Writes the database inside a backup copy to `out` and checks it. */
-export async function unpackCopyFile(input: string, out: string) {
-  if (existsSync(out)) throw new Error(`${out} exists; move it away first`);
-  await writeFile(out, unpackCopy(input, await readFile(input)));
-  // The output is usually /data/app.db: a file that fails the check must not
-  // be left there for the server to start on.
-  let result: unknown;
-  try {
-    const db = new Database(out, { readonly: true });
-    try {
-      result = db.pragma("integrity_check", { simple: true });
-    } finally {
-      db.close();
-    }
-  } catch (error) {
-    result = error instanceof Error ? error.message : String(error);
-  }
-  if (result !== "ok") {
-    await rm(out, { force: true });
-    throw new Error(`integrity check: ${String(result)}`);
-  }
-}
 
 /** Creates the owner, or explains why not. */
 export async function createOwner(

@@ -44,6 +44,8 @@ export interface AppOptions {
   /** The `wl-backups` bucket; unset when the DB copies are off. */
   backups?: BackupStore | undefined;
   litestreamSocket?: string | undefined;
+  /** Whether the Litestream replica's restore rehearsal runs. */
+  replicaRehearsal?: boolean;
   minClientVersion?: string | undefined;
   now?: () => number;
 }
@@ -116,6 +118,7 @@ export function createApp(options: AppOptions): Hono<AuthEnv> {
     databasePath: options.databasePath,
     backupsConfigured: options.backups !== undefined,
     litestreamSocket: options.litestreamSocket,
+    replicaRehearsalConfigured: options.replicaRehearsal ?? false,
     signIn: signInProviders(auth),
     now,
   };

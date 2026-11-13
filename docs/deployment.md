@@ -9,8 +9,10 @@ provider, so losing either the VPS or the bucket loses no data.
 ([Android releases](#android-releases), [live updates](#live-updates)),
 sign-in, and sync, with its
 database on the `data` volume. Litestream replicates the database to R2, and a
-daily job copies it there too. Accounts, sign-up, quotas, and the admin page
-are in [accounts.md](accounts.md); the restore rehearsal is phase 11b.
+daily job copies it there too. Two more jobs restore the copy and the replica
+every day to check them.
+Accounts, sign-up, quotas, and the admin page are in
+[accounts.md](accounts.md).
 
 The origin `https://lift.eerolehtinen.fi` is where browsers keep the local
 database (OPFS is per origin). Moving the app to another hostname strands the
@@ -58,7 +60,10 @@ Cloudflare R2
 Litestream 0.5.18 (`litestream/litestream:0.5.18`, the Debian image). The
 config is inline in [`deploy/compose.yaml`](../deploy/compose.yaml) as a
 compose `configs` entry; `$${VAR}` there leaves the variables for Litestream
-to expand at runtime, so the secrets never land in the file.
+to expand at runtime, so the secrets never land in the file. The app image
+copies the `litestream` binary of the same version from that image, for the
+replica's [restore rehearsal](backups.md#restore-rehearsal); the binary is
+static, so it runs in the Node image. Change both versions together.
 
 - **App pragmas:** `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_keys=ON`, `secure_delete=ON`. Only Better Auth's tables declare foreign keys: deleting a user deletes their sessions and accounts. The sync tables have none. `secure_delete` overwrites deleted content with zeros: without it a deleted account's rows stay in free pages of `app.db`, and Litestream copies the whole file, free pages included, into every new snapshot until SQLite reuses them, which breaks the hard delete that [account deletion](accounts.md#privacy) promises. It costs extra writes on deletes and replaced rows, which are few. With `NORMAL` a restart of the app, the container, or a cleanly rebooted VPS loses nothing. A host power loss, kernel panic, or hard reset can roll back roughly the last 30 s of commits (Linux's default writeback delay). A push lost that way isn't re-sent, because the device already dropped it from its outbox, and the rolled-back `seq` values get reused, so devices that pulled past them skip later changes. This is accepted as rare; after such a crash, run `new-epoch` so every device re-uploads and pulls again. Auto-checkpoint stays on: Litestream recommends turning it off only for very high write loads, and without it a stopped Litestream would let the WAL grow without bound.
 - **Sync interval:** 10 s, to keep R2 write operations low. The R2 free tier allows 1M Class A operations/month.
@@ -67,7 +72,7 @@ to expand at runtime, so the secrets never land in the file.
 - **Freshness:** Litestream's Prometheus metrics have no "last upload" timestamp, but its control socket's `GET /list` reports `last_sync_at` per database: the last successful upload, recorded on every sync tick even when nothing changed. The socket is on the shared `litestream-run` volume; the app reads it for `/api/status` (`LITESTREAM_SOCKET`).
 - **Init step:** when `/data/app.db` is missing, `litestream restore -if-replica-exists /data/app.db`, and if that restored anything, an empty `/data/app.db.restored`. On a fresh VPS this restores automatically; on an existing one it does nothing. At startup the app sees the marker, starts a new epoch, and deletes the marker, so a restore never serves the old epoch. Any manual restore into the volume can create the same marker instead of running `new-epoch`.
 - **Point-in-time restore:** `litestream restore -config /etc/litestream.yml -timestamp <RFC 3339, exclusive> -o <file> /data/app.db`, e.g. from a one-off container of the same image with the same environment.
-- **Never run two Litestream instances against the same replica path.** Rehearsal restores only read from it.
+- **Never run two Litestream instances against the same replica path.** The restore rehearsal only reads from it, with a token that can't write.
 
 ## Static files
 
@@ -252,7 +257,8 @@ backups or sign-in.
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | The Google OAuth client ([below](#google-oauth-client)) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Optional. The GitHub OAuth app ([below](#github-oauth-app)), needed only when `SIGN_IN_PROVIDERS` lists `github`. |
 | `BACKUP_R2_ENDPOINT`, `BACKUP_R2_BUCKET`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY` | `wl-backups` and the app's token for it. The endpoint is `https://<account id>.r2.cloudflarestorage.com`. |
-| `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token, for `litestream` and `litestream-init` only |
+| `LITESTREAM_R2_ENDPOINT`, `LITESTREAM_R2_BUCKET`, `LITESTREAM_R2_ACCESS_KEY_ID`, `LITESTREAM_R2_SECRET_ACCESS_KEY` | `wl-litestream` and Litestream's token. The token goes to `litestream` and `litestream-init` only; the app gets the endpoint and bucket. |
+| `LITESTREAM_R2_READ_ACCESS_KEY_ID`, `LITESTREAM_R2_READ_SECRET_ACCESS_KEY` | A read-only token for `wl-litestream`, for the app's restore rehearsal of the replica ([backups.md](backups.md#restore-rehearsal)). Outside the compose file, unset turns that rehearsal off. |
 | `MIN_CLIENT_VERSION` | Optional. Android apps below it get HTTP 426 "update the app". |
 | `GITHUB_RELEASES_TOKEN` | Optional. Reads the repository's releases for the Android update endpoints ([Android releases](#android-releases)) |
 
@@ -304,8 +310,8 @@ for `pnpm start` and `pnpm dev` (whose proxy forwards `/api`).
 Two buckets in the owner's Cloudflare account, in the default (automatic)
 location and Standard storage, which is what the free tier covers:
 
-- `wl-litestream`, with an R2 API token that has Object Read & Write on that bucket only, for the `LITESTREAM_R2_*` variables.
-- `wl-backups`, with another such token on that bucket only, for the `BACKUP_R2_*` variables. The app uploads the DB copies with it and lists them for the admin page.
+- `wl-litestream`, with an R2 API token that has Object Read & Write on that bucket only, for the `LITESTREAM_R2_*` variables, and a second token with Object Read only on that bucket, for `LITESTREAM_R2_READ_*`.
+- `wl-backups`, with another such token on that bucket only, for the `BACKUP_R2_*` variables. The app uploads the DB copies with it, lists them for the admin page, and downloads the newest for the restore rehearsal.
 
 Their lifecycle rules are in [`deploy/r2/`](../deploy/r2/), one file per
 bucket. CI doesn't apply them. After creating a bucket, or after changing a
@@ -339,11 +345,14 @@ needed.
 These run in-process with `croner`, in UTC. Each run is recorded in the
 `job_run` table. On startup, a job whose last good run is older than its
 period runs right away, which catches up on a run missed during downtime.
+Those catch-up runs go one at a time, in the table's order, so the restore
+rehearsal restores the copy caught up before it.
 
 | Job | Schedule | Status |
 | --- | --- | --- |
 | Daily DB copy (`daily-db-copy`) | 03:00 | Runs when `BACKUP_R2_*` is set |
-| Restore rehearsal | monthly | Phase 11b |
+| Restore rehearsal of the daily copy (`copy-rehearsal`) | 04:00 | Runs when `BACKUP_R2_*` is set ([backups.md](backups.md#restore-rehearsal)) |
+| Restore rehearsal of the Litestream replica (`replica-rehearsal`) | 04:30 | Runs when `LITESTREAM_R2_READ_*` is set |
 | Prune `usage` rows older than 90 days (`prune-usage`) | 03:30 | Always |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code
@@ -352,7 +361,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code
 ## Monitoring
 
 - Dokploy container logs, rotated by the json-file log driver in `deploy/compose.yaml` (3 × 10 MB).
-- `GET /api/status`: `{ version, commit, backupsOk, signIn }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy is over 2 days old. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the daily copy's last error ([backups.md](backups.md#visibility)).
+- `GET /api/status`: `{ version, commit, backupsOk, signIn }` for anyone. `backupsOk` is false when a configured backup layer is stale: the Litestream replica's last upload is over 1 h old, or the last good daily copy or run of either restore rehearsal is over 2 days old. It is also false right after a failed restore rehearsal. The owner (signed in) also gets the server epoch, the database and free disk size, each layer's last success and whether it is stale, and the last errors of the daily copy and the rehearsals ([backups.md](backups.md#visibility)).
 - An external uptime monitor on `/api/status` (required). It alerts when the endpoint is down or doesn't contain `"backupsOk":true`.
 - If Litestream can't upload, the WAL keeps growing. Free disk and the replica's age on `/api/status` catch this early.
 

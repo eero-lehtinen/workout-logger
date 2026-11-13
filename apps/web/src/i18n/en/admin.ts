@@ -36,6 +36,12 @@ export const admin = {
     replicaHint: "Litestream, continuous. Stale after 1 hour.",
     dailyCopy: "Daily copy",
     dailyCopyHint: "The whole database, once a day. Stale after 2 days.",
+    copyRehearsal: "Daily copy restore test",
+    copyRehearsalHint:
+      "Every day, the newest daily copy is downloaded, restored, and checked against the database. Stale after 2 days.",
+    replicaRehearsal: "Replica restore test",
+    replicaRehearsalHint:
+      "Every day, the replica is restored and checked against the database. It must have every change from 30 seconds before. Stale after 2 days.",
     backupStorage: "Backup storage",
     storageHint: "The DB copies in R2. The Litestream replica isn't counted.",
     storageHintGroups:
@@ -47,6 +53,7 @@ export const admin = {
     off: "Off",
     never: "Never",
     stale: "Stale · {{value}}",
+    failed: "Failed",
     lastRunFailed: "Last run failed: {{error}}",
   },
   user: {

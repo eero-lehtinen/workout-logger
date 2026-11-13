@@ -71,26 +71,34 @@ export async function runJob(
 /**
  * Schedules the jobs in-process (docs/deployment.md#scheduled-jobs). A job
  * whose last good run is too old, e.g. after downtime over its slot, also
- * runs right away.
+ * runs right away. Those catch-up runs go one at a time in the order of
+ * `jobs`, so the restore rehearsal restores the copy caught up before it.
  */
 export async function startJobs(
   db: ServerKysely,
   jobs: readonly Job[],
   now: () => number = Date.now,
-): Promise<() => void> {
+): Promise<{ stop: () => void; caughtUp: Promise<void> }> {
   const crons = jobs.map(
     (job) =>
       new Cron(job.schedule, { timezone: "UTC", protect: true }, async () => {
         await runJob(db, job, now);
       }),
   );
+  const due: Job[] = [];
   for (const job of jobs) {
     const state = await readJob(db, job.name);
     if (!state?.lastOkAt || now() - state.lastOkAt > job.maxAgeMs) {
-      void runJob(db, job, now);
+      due.push(job);
     }
   }
-  return () => {
-    for (const cron of crons) cron.stop();
+  const caughtUp = (async () => {
+    for (const job of due) await runJob(db, job, now);
+  })();
+  return {
+    caughtUp,
+    stop: () => {
+      for (const cron of crons) cron.stop();
+    },
   };
 }
