@@ -123,7 +123,7 @@ Principles:
 | Android shell | Capacitor | Reuses the web UI unchanged. |
 | Android live updates | `@capawesome/capacitor-live-update` (pinned 8.8.1) | Downloads a zip of the web build from our own server and runs it from the same origin. See [live updates](#live-updates). |
 | Server | Hono on Node (`hono`, `@hono/node-server`) | Small, typed, and portable across runtimes. In development Node runs the TypeScript sources by stripping types; the image runs a bundle. |
-| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI (phase 10). See [accounts.md](accounts.md#login). |
+| Auth | Better Auth (pinned 1.7.18), Google sign-in (GitHub behind a flag) | TypeScript auth library with Hono and Kysely/SQLite support, a bearer-token plugin for the native app, and an API-key plugin for the CLI once it is built. See [accounts.md](accounts.md#login). |
 | Hosting | Owner's VPS under Dokploy, behind a Cloudflare Tunnel | See [deployment.md](deployment.md). |
 | Server storage | SQLite file on a Docker volume (better-sqlite3 via Kysely) | Same engine as the clients. No platform row limits. Kysely's migrator for the server's tables. |
 | Server jobs | `croner` | In-process cron with overrun protection; the daily DB copy. |
@@ -131,7 +131,7 @@ Principles:
 | Server bundle | esbuild | The image runs one bundled file; see [deployment.md](deployment.md#build-and-release). |
 | Server backups | Litestream to Cloudflare R2 | Continuous replication with point-in-time restore, at a different provider than the VPS. |
 | Object storage | Cloudflare R2 | Litestream replica and daily DB copies, in separate buckets. |
-| CLI (phase 10) | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
+| CLI (not built yet) | Node/Bun script in the monorepo | Reuses `core` for the schema and sync client. |
 
 ## Repository layout
 
@@ -144,7 +144,7 @@ apps/
               the RestTimer plugin (Kotlin)
   server/     Hono server: the web build, /api/status, Android updates,
               auth, sync, quotas, DB copies to R2, the server CLI
-  cli/        `wl` command (phase 10, not built yet)
+  cli/        `wl` command (not built yet)
 packages/
   core/       schema, migrations, domain logic (e1RM, records, next-day,
               idle end), queries, sync client
@@ -525,7 +525,7 @@ Not tested with the navigation-guidance usage: any of the cases above, the alert
 
 ### Health Connect
 
-Phase 8, not built yet.
+Not built yet ([future work](implementation-plan.md#future-work)).
 
 - Read body weight records through a Capacitor health plugin. Candidates: Capawesome Health, `@capgo/capacitor-health`. Requires the `READ_WEIGHT` permission.
 - Health Connect limits reads to about 30 days of history unless the user also grants history access. Request it for the first import.
@@ -540,7 +540,7 @@ Phase 8, not built yet.
 
 ## CLI
 
-Phase 10, not built yet.
+Not built yet ([future work](implementation-plan.md#future-work)).
 
 `wl` logs in with a personal API key and keeps a local SQLite mirror by using
 the same pull protocol as the app. It can also read a snapshot file instead.

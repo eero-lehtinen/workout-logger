@@ -176,7 +176,7 @@ export const CategoryBars: StoryObj = {
   ),
 };
 
-// Phase 8 prototypes: built directly on ECharts, not on the chart API.
+// Measurement chart prototypes: built directly on ECharts, not on the chart API.
 
 // Moves overlapping end labels apart.
 use([LabelLayout]);

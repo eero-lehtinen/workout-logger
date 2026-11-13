@@ -1,13 +1,14 @@
 # Workout Logger
 
 Local-first strength training logger. A web app plus an Android build from the
-same codebase, sync between devices, accounts for a few users, and a CLI for
-exporting data to scripts and AI tools.
+same codebase, sync between devices, and accounts for a few users.
 
-Status: the web app logs workouts locally and works offline, the Android app
-wraps it with a background rest timer, and both sync through the server after
-a Google sign-in. See
-[docs/implementation-plan.md](docs/implementation-plan.md).
+Status: in daily use, replacing FitNotes. The web app logs workouts locally and
+works offline, with exercise history, records, a calendar, and frequency
+stats. The Android app wraps it with a background rest timer and takes web
+updates without a new APK. Both sync through the server after a Google sign-in,
+and the server backs up to R2. Measurements, a CLI, and more analytics are
+future work; see [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## Documentation
 

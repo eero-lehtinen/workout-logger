@@ -205,7 +205,7 @@ HLC are derived from the source:
 | Source | id | HLC wall | Node |
 | --- | --- | --- | --- |
 | Built-in catalog (muscles, exercises, body weight metric) | UUIDv5(`muscle:<key>`, `exercise:<key>`, `exercise_muscle:<exercise key>:<muscle key>`, `metric:<key>`) | `CATALOG_WALL`, fixed at 2026-11-10; the counter is `CATALOG_REVISION` | `seed` |
-| Health Connect record (phase 8) | UUIDv5(HC record id) | Record's last-modified time | `hc` |
+| Health Connect record (not built yet) | UUIDv5(HC record id) | Record's last-modified time | `hc` |
 | FitNotes import | UUIDv5(FitNotes natural key; see [fitnotes-import.md](fitnotes-import.md#ids)) | Conversion time; see [fitnotes-import.md](fitnotes-import.md#importing) | `fitnotes` |
 
 Each source has its own fixed UUIDv5 namespace (`ID_NAMESPACES` in `core`), so

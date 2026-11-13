@@ -8,7 +8,7 @@ Data exists in several places, at different schema versions, at the same time:
 | Rows arriving via sync | `v` of the app that wrote them | Row upgrade on apply |
 | Server `head` table | Each row's original `v` | Never upgraded on the server. Readers upgrade. |
 | Snapshots and backups | `schema_version` in their `meta` table | Row upgrade on import |
-| CLI mirror (phase 10) | `SCHEMA_VERSION` of the CLI build | The same client migrations |
+| CLI mirror (not built yet) | `SCHEMA_VERSION` of the CLI build | The same client migrations |
 | Server's own tables (auth, `head`, `job_run`, ...) | Server schema | Server migrations, on startup |
 
 The domain schema has one version number, `SCHEMA_VERSION` in `packages/core`.
@@ -46,7 +46,7 @@ The same upgrade functions are used everywhere:
 
   `migrate` takes a `beforeMigrate(from, to)` hook, called for an existing database before the transaction starts. The caller copies the database file there. A database from a newer app (`user_version` above the app's version) is never touched; opening it fails with "update the app".
 - **Sync pull:** incoming rows with `v < SCHEMA_VERSION` are passed through each step up to the current version before the LWW comparison.
-- **Snapshot import** uses the same path, and so will the CLI mirror and `wl restore` (phase 10).
+- **Snapshot import** uses the same path, and so will the CLI mirror and `wl restore` once the CLI is built.
 
 ### Rules
 

@@ -18,8 +18,11 @@ These are human estimates. AI agents can do large phases very quickly.
 
 | Milestone | After phase | Meaning |
 | --- | --- | --- |
-| **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records, and measurements. Workouts are logged only here from now on. |
+| **M1: FitNotes replaced** | 9 | Android app with a reliable rest timer, sync between phone and web, server backups running, history and records. Workouts are logged only here from now on. |
 | **M2: other users** | 11 | Google sign-in, sign-up up to an account cap, quotas, admin, account deletion. |
+
+Both milestones are reached. Phase 11b is the only open phase; the rest is
+in [future work](#future-work).
 
 ## Phase 0: Scaffolding (S) [done]
 
@@ -117,10 +120,6 @@ production build. Review in a PC browser led to fixed screen headers with
 only the body scrolling, drag reordering, in-place set editing, marker
 explanations, and calmer warm visuals ([architecture.md](architecture.md)).
 
-The real-workout check on the phone moves to phase 9, when the app replaces
-FitNotes. Firefox (tab handoff, the
-storage prompt) is untested.
-
 ## Phase 4: Static hosting (S) [done]
 
 Host the static web build over HTTPS on the VPS, so the phone can use it: the
@@ -152,10 +151,6 @@ notification, and alert work in the foreground and with the phone locked
 found and fixed two bugs: a `resume` without a `freeze` left the app waiting
 for its own database lock, and the update download was answered by the web
 app's service worker in the phone's browser.
-
-The rest timer matrix for silent mode, DND, music, and swipe-away was not
-repeated in the app; it passed in the phase 1 spike with the same service
-and alert code ([architecture.md](architecture.md#device-test-results)).
 
 ## Phase 6: Server, sync, deployment (L) [done]
 
@@ -208,12 +203,6 @@ read-only.
 Only routines can be archived: days and slots have no archived flag, and
 deleting them is undoable. Dates use `Temporal`, so everything needs Node 26.
 
-## Phase 8: Measurements (M)
-
-- Metrics and measurements UI with manual entry.
-- Health Connect import (plugin choice, permissions, history access, deterministic writes).
-- Combined chart: stacked panels and normalized overlay, smoothing.
-
 ## Phase 9: FitNotes import (S–M) [done]
 
 - A private conversion script, outside this repo, that turns the owner's backup into a snapshot ([fitnotes-import.md](fitnotes-import.md)). No import in the app or the CLI: only the owner has FitNotes history.
@@ -222,11 +211,11 @@ deleting them is undoable. Dates use `Temporal`, so everything needs Node 26.
 
 **Exit:** **M1.** A full real workout logged on the phone, including the phase 3 check that the data survives reload and offline use. You've stopped using FitNotes.
 
-Status: built before phase 8. The conversion and the mapping are in the
-private `workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it
-matches FitNotes per exercise on set count, session count, and best e1RM.
-No further import is planned. Left: the check on the phone, and the
-cutover.
+Result: the conversion and the mapping are in the private
+`workout-logger-fitnotes` repo; on the owner's 2026-11-10 backup it matches
+FitNotes per exercise on set count, session count, and best e1RM. No
+further import is planned. The owner has cut over and logs real workouts on
+the phone; the bugs found in use were small.
 
 ## Phase 9b: Android live updates (S) [done]
 
@@ -239,11 +228,6 @@ Result ([architecture.md](architecture.md#live-updates),
 [deployment.md](deployment.md#live-updates)): the Capawesome live-update
 plugin, a signed bundle in the server image, its endpoints, and the app's
 check and rollback handling. `v0.5.0` is the first APK with the plugin.
-
-## Phase 10: CLI (S–M)
-
-- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup`, `restore`.
-- API keys in the app settings, with read and write scopes.
 
 ## Phase 11: Multi-user (M) [done]
 
@@ -271,10 +255,29 @@ Moved out of phase 11: they protect the owner's backups, not other users.
 - Monthly restore rehearsal job; checks that the R2 buckets and tokens are separate.
 - Warning dot for an on-device snapshot older than 7 days, and for a failed rehearsal.
 
-## Phase 12: Analytics and P2 (ongoing)
+## Future work
+
+Not scheduled. When work on an item starts, give it a phase above.
+
+### Measurements (M)
+
+- Metrics and measurements UI with manual entry.
+- Health Connect import (plugin choice, permissions, history access, deterministic writes).
+- Combined chart: stacked panels and normalized overlay, smoothing.
+
+### CLI (S–M)
+
+- `apps/cli`: `login`, `pull` (mirror via the same sync client and migrations), `sessions`, `exercise`, `measurements`, `export`, `sql`, `backup`, `restore`.
+- API keys in the app settings, with read and write scopes.
+
+### Analytics
 
 - Analytics page: weekly weighted sets per muscle over time, durations, PR list.
-- Multi-step undo/redo, year heatmap, scatter plots, relative strength, kg/lb display polish.
+- Year heatmap, scatter plots, relative strength.
+
+### Other
+
+- Multi-step undo/redo, kg/lb display polish.
 - Server push notifications (SSE) instead of polling.
 - Prepared-statement cache in the client drivers (`node-driver.ts`, `wasm-driver.ts`), keyed by SQL with a bounded LRU. Measured on synthetic data: applying a 30k-row snapshot drops from 1.4 s to 0.6 s natively and 0.9 s on WASM, and every UI query gets a little faster. The WASM driver finalizes statements after each use today; a cache needs `reset()` and rebinding instead. Don't cache statements used through `iterate()`, where a nested use of the same SQL would clash.
 

@@ -43,7 +43,7 @@ The owner account is created once with a server command, never by sign-up. See
   - Logout calls `POST /api/native-auth/sign-out`, which deletes the session.
 - **CORS:** `/api/sync/*`, `/api/me` and below it, `/api/admin/*`, `/api/native-auth/*`, and `/api/status` (for the owner's backup status) allow only the Capacitor Android origin (`https://localhost`), without credentials, with `GET`, `POST`, `PUT`, and `DELETE`, and the `Authorization`, `Content-Type`, `X-Client-Version`, and `X-Expected-User` headers. Their preflight answer may be cached for 2 hours (`Access-Control-Max-Age`), so a sync doesn't cost an extra round trip. `/api/android/*` allows that origin with Hono's default methods and headers.
 - **Current user:** `GET /api/me` returns `{ id, name, email, image, role }`, or 401. A disabled account gets 403 `account_disabled` on every route behind sign-in; the app shows "This account is disabled" in Settings, and local data stays. Disabling also ends the account's sessions, so its devices usually see 401 first and then a refused sign-in.
-- **CLI:** personal API keys (Better Auth API-key plugin), created in the app's settings and revocable (phase 10).
+- **CLI:** personal API keys (Better Auth API-key plugin), created in the app's settings and revocable. Not built yet.
   - Read-only by default.
   - Write scope must be granted explicitly and is needed for `wl restore` and imports.
 
