@@ -19,16 +19,36 @@ import {
 } from "../../lib/format.ts";
 import { usePopupCollisionPadding } from "../../lib/safe-area.ts";
 
-/** PR: trophy. Set record: outline star. Weight increase: up arrow. */
+/**
+ * PR: trophy. Set record: outline star. Weight increase: up arrow. A match is
+ * its record's icon in grey.
+ */
 function MarkerIcon(props: { marker: ProgressMarker; size: number }) {
   const { marker, size } = props;
-  if (marker === "pr") {
-    return <Trophy size={size} strokeWidth={2.25} className="text-pr" />;
+  switch (marker) {
+    case "pr":
+    case "pr_match":
+      return (
+        <Trophy
+          size={size}
+          strokeWidth={2.25}
+          className={marker === "pr" ? "text-pr" : "text-ink-muted"}
+        />
+      );
+    case "set_record":
+    case "set_record_match":
+      return (
+        <Star
+          size={size}
+          strokeWidth={2.25}
+          className={marker === "set_record" ? "text-record" : "text-ink-muted"}
+        />
+      );
+    case "weight_increase":
+      return (
+        <ArrowUp size={size} strokeWidth={2.75} className="text-increase" />
+      );
   }
-  if (marker === "set_record") {
-    return <Star size={size} strokeWidth={2.25} className="text-record" />;
-  }
-  return <ArrowUp size={size} strokeWidth={2.75} className="text-increase" />;
 }
 
 /**
@@ -88,7 +108,7 @@ export function Marker(props: {
   );
 }
 
-/** This set's value next to what it beat. */
+/** This set's value next to what it beat or matched. */
 function Comparison(props: {
   marker: ProgressMarker;
   basis: MarkerExplanation;
@@ -106,18 +126,20 @@ function Comparison(props: {
         date: formatSessionDate(against.startedAt, against.tz),
       });
   const label =
-    props.marker === "pr"
+    props.marker === "pr" || props.marker === "pr_match"
       ? t("session.marker.bestBefore")
-      : props.marker === "set_record"
+      : props.marker === "set_record" || props.marker === "set_record_match"
         ? t("session.marker.bestSetBefore", { number: against.setNumber })
         : t("session.marker.lastTimeSet", { number: against.setNumber });
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pt-2 text-sm">
       <dt className="text-ink-muted">{t("session.marker.thisSet")}</dt>
       <dd className="font-medium">
-        {basis.measure === "weight_and_reps"
-          ? t("session.marker.moreWeightOrReps")
-          : amount(basis.measure, basis.value, unit)}
+        {basis.measure !== "weight_and_reps"
+          ? amount(basis.measure, basis.value, unit)
+          : props.marker === "set_record_match"
+            ? t("session.marker.sameWeightAndReps")
+            : t("session.marker.moreWeightOrReps")}
       </dd>
       <dt className="text-ink-muted">{label}</dt>
       <dd>

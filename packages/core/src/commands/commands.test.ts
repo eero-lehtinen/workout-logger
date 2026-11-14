@@ -208,8 +208,9 @@ describe("logging", () => {
     await run("logSet", { sessionExerciseId: se2, values: set(100, 8) });
     await run("logSet", { sessionExerciseId: se2, values: set(105, 4) });
     const log = await query("exerciseLog", { sessionExerciseId: se2 });
+    // Set 1 ties the first session's 100 × 8.
     expect(log?.sets.map((s) => s.marker)).toEqual([
-      null,
+      "pr_match",
       "set_record",
       "weight_increase",
     ]);
@@ -234,10 +235,10 @@ describe("logging", () => {
         (s) => s.marker,
       );
     // 100 × 6 beats last time's 100 × 5, but not the first session's 100 × 7.
-    expect(await markers()).toEqual([null, null]);
+    expect(await markers()).toEqual(["pr_match", null]);
 
     await run("deleteSession", { sessionId: first });
-    expect(await markers()).toEqual([null, "set_record"]);
+    expect(await markers()).toEqual(["pr_match", "set_record"]);
   });
 
   it("gives the session view the same markers as the logging view", async () => {

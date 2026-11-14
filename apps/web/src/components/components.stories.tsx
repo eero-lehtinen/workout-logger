@@ -141,6 +141,14 @@ export const Markers: StoryObj = {
         <Marker marker="weight_increase" type="weight_reps" unit="kg" /> Weight
         increase
       </li>
+      <li className="flex items-center gap-2">
+        <Marker marker="pr_match" type="weight_reps" unit="kg" /> Matched
+        personal record
+      </li>
+      <li className="flex items-center gap-2">
+        <Marker marker="set_record_match" type="weight_reps" unit="kg" />{" "}
+        Matched set record
+      </li>
     </ul>
   ),
 };

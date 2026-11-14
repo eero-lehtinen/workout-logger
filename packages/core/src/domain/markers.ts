@@ -3,7 +3,12 @@ import { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./e1rm.ts";
 import { WEIGHT_EPSILON_KG } from "./units.ts";
 
 /** At most one per set. Rules in docs/features.md#progress-markers. */
-export type ProgressMarker = "pr" | "set_record" | "weight_increase";
+export type ProgressMarker =
+  | "pr"
+  | "set_record"
+  | "weight_increase"
+  | "pr_match"
+  | "set_record_match";
 
 export type SetValues = Pick<
   SetLogTable,
@@ -32,12 +37,13 @@ export interface MarkerBasis {
   measure: MarkerMeasure;
   /** This set's value of the measure (kg, reps, s, m); null for weight_and_reps. */
   value: number | null;
-  /** The value it beat; null for weight_and_reps. */
+  /** The value it beat or matched; null for weight_and_reps. */
   compared: number | null;
   /**
    * The set it was compared with, as indexes into the performances: the
    * previous best for a PR, the best earlier set with the same set number for
-   * a set record, the reference set for a weight increase.
+   * a set record, the reference set for a weight increase. A match points at
+   * the set it matched.
    */
   against: SetIndex;
 }
@@ -85,19 +91,23 @@ export function explainPerformances(
       }
 
       // The first performance would be all PRs.
-      if (index > 0 && score && bestBefore) {
-        if (greater(score.value, bestBefore.value)) {
-          return {
-            marker: "pr",
-            measure: score.kind,
-            value: score.value,
-            compared: bestBefore.value,
-            against: bestBefore.at,
-          };
-        }
-      }
+      const pr =
+        index > 0 && score && bestBefore
+          ? {
+              outcome: compare(score.value, bestBefore.value),
+              basis: {
+                measure: score.kind,
+                value: score.value,
+                compared: bestBefore.value,
+                against: bestBefore.at,
+              },
+            }
+          : undefined;
+      if (pr?.outcome === "beat") return { marker: "pr", ...pr.basis };
       const record = setRecordOverAll(type, set, earlierByNumber[i], cap);
-      if (record) return { marker: "set_record", ...record };
+      if (record?.outcome === "beat") {
+        return { marker: "set_record", ...record.basis };
+      }
       const reference = previous?.[i];
       if (
         reference &&
@@ -111,6 +121,10 @@ export function explainPerformances(
           compared: weight(reference),
           against: { performance: index - 1, set: i },
         };
+      }
+      if (pr?.outcome === "tie") return { marker: "pr_match", ...pr.basis };
+      if (record?.outcome === "tie") {
+        return { marker: "set_record_match", ...record.basis };
       }
       return null;
     });
@@ -130,33 +144,39 @@ interface EarlierSet {
 }
 
 /**
- * A set record beats every earlier set with the same set number. The basis
- * points at the one hardest to beat: the highest compared value, then the
- * most weight, then the most reps, and the first to reach that on a tie.
+ * A set record beats every earlier set with the same set number; a match ties
+ * at least one of them and beats the rest. The basis points at the one
+ * hardest to beat: the highest compared value, then the most weight, then the
+ * most reps, and the first to reach that on a tie.
  */
 function setRecordOverAll(
   type: ExerciseType,
   set: SetValues,
   earlier: readonly EarlierSet[] | undefined,
   cap: number,
-): (Comparison & { against: SetIndex }) | null {
+): { outcome: Outcome; basis: Comparison & { against: SetIndex } } | null {
   // A set without added weight can never beat a weighted one, so one weighted
   // session would end its set records for good.
   const comparable =
     type === "bodyweight_reps" && !hasAddedWeight(set)
       ? earlier?.filter((e) => !hasAddedWeight(e.set))
       : earlier;
+  let outcome: Outcome = "beat";
   let hardest: { comparison: Comparison; earlier: EarlierSet } | undefined;
   for (const e of comparable ?? []) {
     const comparison = setRecord(type, set, e.set, cap);
     if (!comparison) return null;
+    if (comparison.outcome === "tie") outcome = "tie";
     if (!hardest || harder(comparison, e.set, hardest)) {
       hardest = { comparison, earlier: e };
     }
   }
-  return hardest
-    ? { ...hardest.comparison, against: hardest.earlier.at }
-    : null;
+  if (!hardest) return null;
+  const { measure, value, compared } = hardest.comparison;
+  return {
+    outcome,
+    basis: { measure, value, compared, against: hardest.earlier.at },
+  };
 }
 
 function harder(
@@ -209,15 +229,18 @@ function prScore(
   }
 }
 
+/** Whether a set beat or only tied what it was compared with. */
+type Outcome = "beat" | "tie";
+
 type Comparison = Pick<MarkerBasis, "measure" | "value" | "compared">;
 
-/** The set record comparison that holds, if any. */
+/** The set record comparison that holds, if any: beating or tying the set. */
 function setRecord(
   type: ExerciseType,
   set: SetValues,
   reference: SetValues,
   cap: number,
-): Comparison | null {
+): (Comparison & { outcome: Outcome }) | null {
   switch (type) {
     case "reps":
       return beats("reps", set.reps ?? 0, reference.reps ?? 0);
@@ -239,33 +262,34 @@ function beats(
   measure: MarkerMeasure,
   value: number,
   compared: number,
-): Comparison | null {
-  return greater(value, compared) ? { measure, value, compared } : null;
+): (Comparison & { outcome: Outcome }) | null {
+  const outcome = compare(value, compared);
+  return outcome ? { measure, value, compared, outcome } : null;
 }
 
 function weightSetRecord(
   set: SetValues,
   reference: SetValues,
   cap: number,
-): Comparison | null {
+): (Comparison & { outcome: Outcome }) | null {
   const e1 = e1rm(set, cap);
   const e1Reference = e1rm(reference, cap);
   if (e1 !== undefined && e1Reference !== undefined) {
     return beats("e1rm", e1, e1Reference);
   }
   // Above the cap the estimate isn't trusted: require at least as much weight
-  // and reps, and strictly more of one.
+  // and reps, and strictly more of one to beat it.
   const w = weight(set);
   const wRef = weight(reference);
   const r = set.reps ?? 0;
   const rRef = reference.reps ?? 0;
-  const dominates =
-    !greater(wRef, w) &&
-    !greater(rRef, r) &&
-    (greater(w, wRef) || greater(r, rRef));
-  return dominates
-    ? { measure: "weight_and_reps", value: null, compared: null }
-    : null;
+  if (greater(wRef, w) || greater(rRef, r)) return null;
+  return {
+    measure: "weight_and_reps",
+    value: null,
+    compared: null,
+    outcome: greater(w, wRef) || greater(r, rRef) ? "beat" : "tie",
+  };
 }
 
 function isWeightType(type: ExerciseType) {
@@ -284,7 +308,12 @@ function e1rm(set: SetValues, cap: number) {
   return estimateOneRepMax(weight(set), set.reps ?? 0, cap);
 }
 
-/** Greater by more than the epsilon; ties get no marker. */
+/** Greater by more than the epsilon; within it is a tie. */
 function greater(a: number, b: number) {
   return a > b + WEIGHT_EPSILON_KG;
+}
+
+function compare(value: number, compared: number): Outcome | null {
+  if (greater(value, compared)) return "beat";
+  return greater(compared, value) ? null : "tie";
 }

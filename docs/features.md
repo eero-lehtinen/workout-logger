@@ -109,6 +109,13 @@ Each set gets at most one marker, checked in this order:
 1. **PR** (trophy)
 2. **Set record** (star)
 3. **Weight increase** (up arrow)
+4. **Matched PR** (grey trophy)
+5. **Matched set record** (grey star)
+
+A match ties a record instead of beating it: the same comparison, equal
+within the epsilon. A matched set record ties at least one earlier set with
+its set number and beats the rest. Weight increases have no match: the same
+weight as last time is the usual case, not an achievement.
 
 A set record compares against every earlier set with the same set number: set 2
 today against set 2 of every earlier performance of the exercise. A weight
@@ -125,7 +132,7 @@ don't count.
   - if both have an e1RM: this set's e1RM is greater;
   - otherwise (either is above the cap): this set dominates the earlier one, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
 
-  Matching an earlier best, or beating last time after a worse session, is not a set record. Tapping the star shows the earlier set that was hardest to beat: the highest e1RM, or above the cap the heaviest, then the most reps.
+  Matching an earlier best is a matched set record. Beating last time after a worse session is nothing. Tapping the star shows the earlier set that was hardest to beat: the highest e1RM, or above the cap the heaviest, then the most reps.
 - **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
 - `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight. For set records, a set without added weight is compared only with earlier sets without added weight; a set with added weight is compared with all of them.
 
@@ -139,7 +146,7 @@ don't count.
 
 ### Edge cases
 
-- "Greater" means greater by more than an epsilon (1e-6 kg). Ties get no marker.
+- "Greater" means greater by more than an epsilon (1e-6 kg). Values within it tie, which gives a matched PR or set record.
 - No earlier set with the same set number (first session of the exercise, or more sets than ever before): no set record. No reference set (more sets than last time): no weight increase.
 - A session that has the exercise twice is one performance, numbered in session order, so its sets don't compete with each other for set records.
 - The first session of an exercise never shows PRs, because everything would be one. For the same reason, a PR needs at least one earlier comparable set: one with an e1RM, or for the other kinds, a value of the same kind.

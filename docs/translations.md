@@ -133,6 +133,7 @@ The words the UI uses for each [glossary](glossary.md) term:
 | PR | PR | ennätys |
 | set record | set record | sarjaennätys |
 | weight increase | weight increase | painonnousu |
+| matched PR, matched set record | matched personal record, matched set record | sivuttu ennätys, sivuttu sarjaennätys |
 | e1RM | e1RM | e1RM |
 | weight unit | weight unit | painoyksikkö |
 | weight step | weight step | painoaskel |

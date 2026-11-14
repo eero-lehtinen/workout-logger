@@ -54,15 +54,40 @@ describe("weight_reps", () => {
     ).toEqual(["pr"]);
   });
 
-  it("gives ties no marker", () => {
-    expect(last("weight_reps", [[s(100, 5)], [s(100, 5)]])).toEqual([null]);
+  it("marks a tie with the best as a matched PR", () => {
+    expect(last("weight_reps", [[s(100, 5)], [s(100, 5)]])).toEqual([
+      "pr_match",
+    ]);
+  });
+
+  it("matches a PR set earlier today", () => {
+    expect(last("weight_reps", [[s(90, 5)], [s(100, 5), s(100, 5)]])).toEqual([
+      "pr",
+      "pr_match",
+    ]);
   });
 
   it("doesn't create records from unit conversion", () => {
     const enteredInLb = toKg(225, "lb");
     expect(
       last("weight_reps", [[s(102.0582833, 5)], [s(enteredInLb, 5)]]),
-    ).toEqual([null]);
+    ).toEqual(["pr_match"]);
+  });
+
+  it("marks a tie with the best earlier set of its number as a matched set record", () => {
+    expect(
+      last("weight_reps", [
+        [s(100, 8), s(90, 8)],
+        [s(100, 6), s(90, 8)],
+      ]),
+    ).toEqual([null, "set_record_match"]);
+  });
+
+  it("prefers any colored marker over a match", () => {
+    // Matches the PR from two sessions ago, and is heavier than last time.
+    expect(last("weight_reps", [[s(100, 8)], [s(90, 8)], [s(100, 8)]])).toEqual(
+      ["weight_increase"],
+    );
   });
 
   it("marks a set record when the e1RM beats every earlier set with its number but not the PR", () => {
@@ -72,7 +97,7 @@ describe("weight_reps", () => {
 
   it("does not mark a set record for beating only last time", () => {
     const history = [
-      [s(100, 8), s(100, 8)],
+      [s(100, 8), s(100, 9)],
       [s(100, 6), s(100, 6)],
       [s(100, 7), s(100, 8)],
     ];
@@ -98,7 +123,7 @@ describe("weight_reps", () => {
     expect(
       last("weight_reps", [
         [s(100, 8), s(80, 8)],
-        [s(100, 8), s(85, 8)],
+        [s(95, 8), s(85, 8)],
       ]),
     ).toEqual([null, "set_record"]);
   });
@@ -111,9 +136,9 @@ describe("weight_reps", () => {
       [s(100, 8), s(100, 8), s(92.5, 8), s(80, 8)],
     ];
     const marks = markPerformances("weight_reps", history);
-    expect(marks[2]).toEqual([null, null, "set_record"]);
+    expect(marks[2]?.[2]).toBe("set_record");
     // Nothing earlier has a fourth set.
-    expect(marks[3]).toEqual([null, null, null, null]);
+    expect(marks[3]?.[3]).toBeNull();
   });
 
   it("uses dominance when either set is above the cap", () => {
@@ -129,8 +154,10 @@ describe("weight_reps", () => {
     expect(last("weight_reps", [[s(60, 15)], [s(65, 13)]])).toEqual([
       "weight_increase",
     ]);
-    // Equal on both is a tie.
-    expect(last("weight_reps", [[s(60, 15)], [s(60, 15)]])).toEqual([null]);
+    // Equal on both matches.
+    expect(last("weight_reps", [[s(60, 15)], [s(60, 15)]])).toEqual([
+      "set_record_match",
+    ]);
     // Dominates last time but not an earlier heavier set.
     expect(
       last("weight_reps", [[s(65, 13)], [s(60, 15)], [s(62.5, 15)]]),
@@ -177,7 +204,7 @@ describe("bodyweight_reps", () => {
     ];
     expect(markPerformances("bodyweight_reps", history)).toEqual([
       [null, null],
-      ["pr", null],
+      ["pr", "set_record_match"],
       [null, "set_record"],
     ]);
   });
@@ -192,7 +219,7 @@ describe("bodyweight_reps", () => {
     expect(
       last("bodyweight_reps", [
         [s(20, 8), s(20, 8)],
-        [s(20, 8), s(22.5, 3)],
+        [s(20, 7), s(22.5, 3)],
       ]),
     ).toEqual([null, "weight_increase"]);
   });
@@ -236,9 +263,10 @@ describe("other exercise types", () => {
   });
 
   it("distance_time: compares distance", () => {
+    // A faster time over the same distance only matches.
     expect(
       last("distance_time", [[cardio(5000, 1500)], [cardio(5000, 1400)]]),
-    ).toEqual([null]);
+    ).toEqual(["pr_match"]);
     expect(
       last("distance_time", [[cardio(5000, 1500)], [cardio(6000, 2000)]]),
     ).toEqual(["pr"]);
@@ -316,6 +344,19 @@ describe("explainPerformances", () => {
         measure: "weight_and_reps",
         value: null,
         compared: null,
+        against: { performance: 0, set: 0 },
+      },
+    ]);
+  });
+
+  it("points a match at the set it matched", () => {
+    const history = [[s(100, 8)], [s(100, 6)], [s(100, 8)]];
+    expect(explainPerformances("weight_reps", history).at(-1)).toEqual([
+      {
+        marker: "pr_match",
+        measure: "e1rm",
+        value: 100 * (1 + 8 / 30),
+        compared: 100 * (1 + 8 / 30),
         against: { performance: 0, set: 0 },
       },
     ]);
