@@ -115,6 +115,20 @@ export function tooltip(
 }
 
 /**
+ * A bar with stubs above and below, like ECharts' default handle but wider,
+ * in a 40-unit-tall box that `handleSize` scales to the slider's height.
+ * ECharts hit-tests a handle by its bounding box, which includes the bare
+ * moveTo points, so those widen the target to `hitHalfWidth` either side
+ * without drawing anything.
+ */
+function handleIcon(hitHalfWidth: number) {
+  const bar =
+    "M-3,10a2,2,0,0,1,2-2h2a2,2,0,0,1,2,2v20a2,2,0,0,1-2,2h-2a2,2,0,0,1-2-2Z";
+  const stubs = "M0,0V8M0,32V40";
+  return `path://M${-hitHalfWidth},20M${hitHalfWidth},20${stubs}${bar}`;
+}
+
+/**
  * Ctrl+wheel zoom, mouse drag pans, and a slider below the plot for both
  * (pinch is `attachPinchZoom`). A one-finger drag must not pan: it would fight the page's
  * vertical scroll, so on touch screens it moves the crosshair instead.
@@ -143,14 +157,18 @@ export function zoomOptions(
       type: "slider",
       xAxisIndex,
       filterMode: "filter",
+      // A zoom re-renders the chart with a new trend, and that rebuilds the
+      // handles from the last dispatched range. With the default 100 ms
+      // throttle, that range trails the pointer and the handles lag behind.
+      throttle: 0,
       height: sliderHeight(),
       bottom: 2,
-      // Room for half of each round handle at the ends.
+      // Room for half of each handle's hit area at the ends.
       left: fine ? 2 : 18,
       right: fine ? 6 : 18,
-      // On touch, a page scroll that starts on the slider would brush a
-      // tiny range instead.
-      brushSelect: fine,
+      // Brushing makes the filler inert and leaves only a thin strip along
+      // its top edge for moving the window.
+      brushSelect: false,
       showDetail: false,
       borderColor: theme.rule,
       borderRadius: 6,
@@ -164,14 +182,9 @@ export function zoomOptions(
         lineStyle: { color: ink, width: 1, opacity: 0.7 },
         areaStyle: { opacity: 0 },
       },
-      // The default handle is a few pixels wide: fine for a mouse, but a
-      // finger needs a target as tall as the slider in both directions.
-      ...(fine
-        ? { handleSize: "70%" }
-        : { handleIcon: "circle", handleSize: "100%" }),
+      handleIcon: handleIcon(fine ? 14 : 24),
+      handleSize: "100%",
       handleStyle: { color: theme.raised, borderColor: muted, borderWidth: 1 },
-      moveHandleSize: 0,
-      brushStyle: { color: alpha(ink, 0.12) },
       emphasis: {
         handleStyle: { borderColor: ink },
       },
