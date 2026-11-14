@@ -76,7 +76,6 @@ export const history = {
     weight: "At weight",
     weightOption_one: "{{weight}} ({{count}} session)",
     weightOption_other: "{{weight}} ({{count}} sessions)",
-    trendLine: "Trend line",
     fullScreen: "Full screen",
     noE1rmSets: "No sets within the e1RM rep limit yet.",
     nothingToShow: "Nothing to show for this chart yet.",

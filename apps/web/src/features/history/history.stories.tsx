@@ -90,9 +90,6 @@ export const ExerciseHistoryMetrics = pageStory({
     ).toBeVisible();
     await choose(canvasElement, "Show", "Every set's e1RM");
     await expect(await canvas.findByText("Set 2")).toBeVisible();
-    await expect(
-      canvas.queryByRole("switch", { name: "Trend line" }),
-    ).toBeNull();
     await choose(canvasElement, "Show", "Sets per week");
     await expect(
       await canvas.findByRole("img", { name: "Sets per week" }),
@@ -105,8 +102,8 @@ export const ExerciseHistoryMetrics = pageStory({
 });
 
 /**
- * The trend line states its rate and hides with its switch. The chart choice
- * and the switch carry over to the next exercise.
+ * The trend line states its rate. The chart choice carries over to the next
+ * exercise.
  */
 export const ExerciseHistoryTrend = pageStory({
   fixture: withHistory,
@@ -122,8 +119,6 @@ export const ExerciseHistoryTrend = pageStory({
     );
     await expect(rate).toBeVisible();
     await choose(canvasElement, "Show", "Heaviest weight");
-    await userEvent.click(canvas.getByRole("switch", { name: "Trend line" }));
-    await expect(canvas.queryByText(/per month$/)).toBeNull();
 
     await userEvent.click(
       canvas.getByRole("link", { name: "Back to exercises" }),
@@ -135,9 +130,6 @@ export const ExerciseHistoryTrend = pageStory({
     await expect(
       canvas.getByRole("combobox", { name: "Show" }),
     ).toHaveTextContent("Heaviest weight");
-    await expect(
-      canvas.getByRole("switch", { name: "Trend line" }),
-    ).not.toBeChecked();
   },
 });
 

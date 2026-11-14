@@ -79,7 +79,6 @@ export const history = {
     weight: "Painolla",
     weightOption_one: "{{weight}} ({{count}} treeni)",
     weightOption_other: "{{weight}} ({{count}} treeniä)",
-    trendLine: "Trendiviiva",
     fullScreen: "Koko näyttö",
     noE1rmSets: "Ei vielä sarjoja e1RM-toistorajan sisällä.",
     nothingToShow: "Tälle kaaviolle ei ole vielä näytettävää.",

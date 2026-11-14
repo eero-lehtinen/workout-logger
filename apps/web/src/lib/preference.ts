@@ -50,7 +50,7 @@ export function usePreference<T extends string>(
 
 const SWITCH = ["on", "off"] as const;
 
-/** An on/off view preference, e.g. whether a chart shows its trend line. */
+/** An on/off view preference, e.g. whether a chart shows muscles. */
 export function useSwitchPreference(
   key: string,
   initial: boolean,

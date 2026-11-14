@@ -31,7 +31,6 @@ import { Empty, PageHeader, Screen } from "../../components/page.tsx";
 import { Segmented } from "../../components/segmented.tsx";
 import { Select } from "../../components/select.tsx";
 import { FullScreen } from "../../components/sheet.tsx";
-import { Switch } from "../../components/switch.tsx";
 import { useDbQuery } from "../../db/react.tsx";
 import { i18n } from "../../i18n/index.ts";
 import {
@@ -42,7 +41,7 @@ import {
   numberFormat,
   todayIso,
 } from "../../lib/format.ts";
-import { usePreference, useSwitchPreference } from "../../lib/preference.ts";
+import { usePreference } from "../../lib/preference.ts";
 import { backToOrigin, type Origin, originOf } from "../exercises/origin.ts";
 import { SetLine } from "../session/set-line.tsx";
 import { ONE_DECIMAL, SHORT_DATE } from "./format-options.ts";
@@ -211,7 +210,6 @@ function ProgressChart(props: {
     metrics,
     metrics[0] ?? "best_e1rm",
   );
-  const [trend, setTrend] = useSwitchPreference("history-trend", true);
   const weights = isWeighted(exercise.type) ? loggedWeights(performances) : [];
   const mostUsed = weights.reduce<(typeof weights)[number] | undefined>(
     (best, w) => (!best || w.sessions > best.sessions ? w : best),
@@ -248,18 +246,6 @@ function ProgressChart(props: {
           }))}
         />
       )}
-      {metric !== "weekly_sets" && metric !== "set_e1rm" && (
-        <span className="flex items-center gap-3">
-          <Switch
-            label={t("history.exercise.trendLine")}
-            checked={trend}
-            onChange={setTrend}
-          />
-          <span aria-hidden className="text-ink-muted">
-            {t("history.exercise.trendLine")}
-          </span>
-        </span>
-      )}
     </>
   );
   const chart = (height: ChartHeight) =>
@@ -270,7 +256,6 @@ function ProgressChart(props: {
         history={history}
         metric={metric}
         weightKg={weightKg}
-        trend={trend}
         unit={unit}
         height={height}
       />
@@ -311,7 +296,6 @@ function chartSeries(
   history: ExerciseHistory,
   metric: ValueMetric,
   weightKg: number | undefined,
-  trend: boolean,
 ): TimeSeries[] {
   const options = {
     e1rmRepCap: history.e1rmRepCap,
@@ -339,7 +323,7 @@ function chartSeries(
       points,
       kind: "line",
       color: seriesColor(0),
-      trend,
+      trend: true,
     },
   ];
 }
@@ -350,13 +334,12 @@ function MetricChart(props: {
   history: ExerciseHistory;
   metric: ValueMetric;
   weightKg: number | undefined;
-  trend: boolean;
   unit: WeightUnit;
   height: ChartHeight;
 }) {
   const { history, metric, unit } = props;
   const { t } = useTranslation();
-  const series = chartSeries(history, metric, props.weightKg, props.trend);
+  const series = chartSeries(history, metric, props.weightKg);
   if (series.length === 0) {
     return (
       <p className="py-10 text-center text-[0.9375rem] text-ink-muted">
