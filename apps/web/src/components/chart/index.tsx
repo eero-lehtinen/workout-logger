@@ -6,10 +6,14 @@ import type { BarChartProps, TimeChartProps } from "./types.ts";
 const LazyTimeChart = lazy(() => import("./time-chart.tsx"));
 const LazyBarChart = lazy(() => import("./bar-chart.tsx"));
 
+// Fallbacks keep the range row's space, so the page doesn't shift on load.
+
 export function TimeChart(props: TimeChartProps) {
   return (
     <Suspense
-      fallback={<ChartFrame label={props.label} height={props.height} />}
+      fallback={
+        <ChartFrame label={props.label} height={props.height} range="" />
+      }
     >
       <LazyTimeChart {...props} />
     </Suspense>
@@ -19,7 +23,13 @@ export function TimeChart(props: TimeChartProps) {
 export function BarChart(props: BarChartProps) {
   return (
     <Suspense
-      fallback={<ChartFrame label={props.label} height={props.height} />}
+      fallback={
+        <ChartFrame
+          label={props.label}
+          height={props.height}
+          range={props.xKind === "time" ? "" : undefined}
+        />
+      }
     >
       <LazyBarChart {...props} />
     </Suspense>

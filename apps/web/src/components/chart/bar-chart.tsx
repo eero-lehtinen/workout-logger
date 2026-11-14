@@ -12,9 +12,15 @@ import {
   valueAxis,
   zoomOptions,
 } from "./options.ts";
+import { formatSpan, weeksSpan } from "./range.ts";
 import { type ChartTheme, seriesColor, useChartTheme } from "./theme.ts";
 import type { BarChartProps } from "./types.ts";
-import { useChartOption, useEChart, useZoomReset } from "./use-echart.ts";
+import {
+  useChartOption,
+  useEChart,
+  useVisibleRange,
+  useZoomReset,
+} from "./use-echart.ts";
 
 const HALF_WEEK = 3.5 * 24 * 3600_000;
 
@@ -27,6 +33,7 @@ export default function EChartsBarChart(props: BarChartProps) {
   const theme = useChartTheme();
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const chart = useEChart(el);
+  const range = useVisibleRange(chart);
   const option = barChartOption(props, theme);
   // Before the zoom reset, so the reset applies to the new bars.
   useChartOption(chart, option);
@@ -35,12 +42,14 @@ export default function EChartsBarChart(props: BarChartProps) {
     chart,
     `${props.xKind}:${props.bars.length}:${props.bars[0]?.x}:${props.bars.at(-1)?.x}`,
   );
+  const weeks = props.xKind === "time" && weeksSpan(props.bars, range);
 
   return (
     <ChartFrame
       label={props.label}
       height={props.height}
       chartRef={setEl}
+      range={weeks ? formatSpan(weeks, "UTC") : undefined}
       onReset={zoom.zoomed ? zoom.reset : undefined}
     />
   );

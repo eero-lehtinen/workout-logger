@@ -109,6 +109,8 @@ export const Line: StoryObj = {
     await expect(
       await canvas.findByRole("img", { name: "Best e1RM" }),
     ).toBeVisible();
+    // The axis shows only years; the row above it states the exact days.
+    await expect(await canvas.findByText(/2021\s*–.*2026/)).toBeVisible();
   },
 };
 
@@ -156,6 +158,12 @@ export const WeeklyBars: StoryObj = {
       reference={{ value: average, label: `Average ${average.toFixed(1)}` }}
     />
   ),
+  play: async ({ canvasElement }) => {
+    // The last bar is the week of Monday Oct 26, 2026, through Sunday Nov 1.
+    await expect(
+      await within(canvasElement).findByText(/2022\s*–\s*(Nov 1, |1 Nov )2026/),
+    ).toBeVisible();
+  },
 };
 
 export const CategoryBars: StoryObj = {

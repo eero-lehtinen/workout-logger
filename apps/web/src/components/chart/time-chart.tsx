@@ -1,5 +1,4 @@
 import type { LineSeriesOption, ScatterSeriesOption } from "echarts/charts";
-import type { ECharts } from "echarts/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChartFrame } from "./frame.tsx";
@@ -12,11 +11,16 @@ import {
   valueAxis,
   zoomOptions,
 } from "./options.ts";
-import { currentWindow } from "./pinch.ts";
+import { formatSpan, seriesSpan } from "./range.ts";
 import { type ChartTheme, useChartTheme } from "./theme.ts";
 import { linearTrend, type Trend } from "./trend.ts";
 import type { TimeChartProps, TimePoint, TimeSeries } from "./types.ts";
-import { useChartOption, useEChart, useZoomReset } from "./use-echart.ts";
+import {
+  useChartOption,
+  useEChart,
+  useVisibleRange,
+  useZoomReset,
+} from "./use-echart.ts";
 
 interface AxisParam {
   seriesId?: string;
@@ -64,12 +68,14 @@ export default function EChartsTimeChart(props: TimeChartProps) {
         })
         .join(", ")
     : "";
+  const span = range ?? seriesSpan(props.series);
   return (
     <>
       <ChartFrame
         label={props.label}
         height={props.height}
         chartRef={setEl}
+        range={span && formatSpan(span)}
         onReset={zoom.zoomed ? zoom.reset : undefined}
       />
       {several && (
@@ -109,25 +115,6 @@ function dataKey(series: readonly TimeSeries[]) {
         `${s.id}:${s.points.length}:${s.points[0]?.t}:${s.points.at(-1)?.t}`,
     )
     .join();
-}
-
-/** The x range in view, in epoch ms; null before the first zoom. */
-function useVisibleRange(chart: ECharts | null) {
-  const [range, setRange] = useState<{ start: number; end: number } | null>(
-    null,
-  );
-  useEffect(() => {
-    if (!chart) return;
-    const onZoom = () => {
-      const w = currentWindow(chart);
-      setRange(w ? { start: w.startValue, end: w.endValue } : null);
-    };
-    chart.on("datazoom", onZoom);
-    return () => {
-      if (!chart.isDisposed()) chart.off("datazoom", onZoom);
-    };
-  }, [chart]);
-  return range;
 }
 
 const TREND_SUFFIX = ":trend";

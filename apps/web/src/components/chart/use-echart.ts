@@ -4,6 +4,7 @@ import { useCurrentLanguage } from "../../i18n/index.ts";
 import { echarts } from "./echarts.ts";
 import { chartLocale } from "./locale.ts";
 import { attachPinchZoom, currentWindow } from "./pinch.ts";
+import type { Span } from "./range.ts";
 import { attachTouchTooltip, hideTooltip } from "./touch-tooltip.ts";
 
 /**
@@ -58,6 +59,26 @@ export function useChartOption(
   useEffect(() => {
     chart?.setOption(option, { replaceMerge: ["series"] });
   }, [chart, option]);
+}
+
+/**
+ * The x range in view, in axis values; null before the first zoom. A zoom
+ * reset for new data dispatches a zoom too, so the range follows the data.
+ */
+export function useVisibleRange(chart: ECharts | null): Span | null {
+  const [range, setRange] = useState<Span | null>(null);
+  useEffect(() => {
+    if (!chart) return;
+    const onZoom = () => {
+      const w = currentWindow(chart);
+      setRange(w ? { start: w.startValue, end: w.endValue } : null);
+    };
+    chart.on("datazoom", onZoom);
+    return () => {
+      if (!chart.isDisposed()) chart.off("datazoom", onZoom);
+    };
+  }, [chart]);
+  return range;
 }
 
 /**
