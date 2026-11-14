@@ -166,9 +166,11 @@ function BottomNav() {
           to={item.to}
           activeOptions={{ exact: item.exact }}
           onClick={onTab(item.to)}
-          className="relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-muted data-[status=active]:text-ink"
+          className="group relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-muted data-[status=active]:text-ink"
         >
-          <item.icon size={22} />
+          <span className="flex h-8 w-14 items-center justify-center rounded-full group-data-[status=active]:bg-surface">
+            <item.icon size={22} />
+          </span>
           {t(`shell.nav.${item.label}`)}
           {item.to === "/" && (
             <span className="absolute top-2.5 left-[calc(50%+0.6rem)]">
