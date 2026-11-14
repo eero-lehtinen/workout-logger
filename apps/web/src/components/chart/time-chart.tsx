@@ -15,13 +15,14 @@ import {
 import { currentWindow } from "./pinch.ts";
 import { type ChartTheme, useChartTheme } from "./theme.ts";
 import { linearTrend, type Trend } from "./trend.ts";
-import type { TimeChartProps, TimeSeries } from "./types.ts";
+import type { TimeChartProps, TimePoint, TimeSeries } from "./types.ts";
 import { useChartOption, useEChart, useZoomReset } from "./use-echart.ts";
 
 interface AxisParam {
   seriesId?: string;
   axisValue?: number | string;
-  value?: unknown;
+  /** The index in the series' `points`, also when zoomed. */
+  dataIndex: number;
 }
 
 export default function EChartsTimeChart(props: TimeChartProps) {
@@ -136,10 +137,7 @@ function timeChartOption(
   theme: ChartTheme,
   trends: { series: TimeSeries; trend: Trend }[],
 ) {
-  const labels = new Map(props.series.map((s) => [s.id, s.label]));
-  const colors = new Map(
-    props.series.map((s) => [s.id, theme.colors[s.color]]),
-  );
+  const byId = new Map(props.series.map((s) => [s.id, s]));
   const several = props.series.length > 1;
   return {
     ...baseOption(theme),
@@ -152,23 +150,28 @@ function timeChartOption(
       formatter: (raw: unknown) => {
         const params = (Array.isArray(raw) ? raw : [raw]) as AxisParam[];
         const t = Number(params[0]?.axisValue);
-        // Points that share a time (every set's e1RM) come as one entry each.
-        const bySeries = new Map<string, number[]>();
+        const bySeries = new Map<TimeSeries, TimePoint[]>();
         for (const p of params) {
-          if (!p.seriesId || p.seriesId.endsWith(TREND_SUFFIX)) continue;
-          const v = (p.value as [number, number])[1];
-          bySeries.set(p.seriesId, [...(bySeries.get(p.seriesId) ?? []), v]);
+          const s = p.seriesId ? byId.get(p.seriesId) : undefined;
+          const point = s?.points[p.dataIndex];
+          if (!s || !point) continue;
+          bySeries.set(s, [...(bySeries.get(s) ?? []), point]);
         }
         return tooltipHtml(
           theme,
           props.formatTime(t),
-          [...bySeries].map(([id, values]) => ({
-            ...(several && { color: colors.get(id), label: labels.get(id) }),
-            value: values
-              .sort((a, b) => b - a)
-              .map(props.formatValue)
-              .join(", "),
-          })),
+          [...bySeries].flatMap(([s, points]) =>
+            points
+              .sort((a, b) => b.v - a.v)
+              .map((point) => ({
+                ...(several && {
+                  color: theme.colors[s.color],
+                  label: s.label,
+                }),
+                value: props.formatValue(point.v),
+                detail: point.detail,
+              })),
+          ),
         );
       },
     },

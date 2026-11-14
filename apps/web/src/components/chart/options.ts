@@ -187,17 +187,22 @@ export function tooltipHtml(
     color?: string | undefined;
     label?: string | undefined;
     value: string;
+    detail?: string | undefined;
   }[],
 ) {
   const enc = echarts.format.encodeHTML;
-  const head = `<div style="color:${theme.colors["ink-muted"]};font-size:12px">${enc(heading)}</div>`;
+  const muted = theme.colors["ink-muted"];
+  const head = `<div style="color:${muted};font-size:12px">${enc(heading)}</div>`;
   const body = lines
     .map((l) => {
       const dot = l.color
         ? `<span style="display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px;background:${l.color}"></span>`
         : "";
       const label = l.label ? `${enc(l.label)} ` : "";
-      return `<div style="font-variant-numeric:tabular-nums">${dot}${label}<b style="font-weight:600">${enc(l.value)}</b></div>`;
+      const detail = l.detail
+        ? ` <span style="color:${muted}">· ${enc(l.detail)}</span>`
+        : "";
+      return `<div style="font-variant-numeric:tabular-nums">${dot}${label}<b style="font-weight:600">${enc(l.value)}</b>${detail}</div>`;
     })
     .join("");
   return head + body;

@@ -38,6 +38,7 @@ import {
   dateFormat,
   dateFromIso,
   formatSessionDate,
+  formatSet,
   formatWeightWithUnit,
   numberFormat,
   todayIso,
@@ -290,18 +291,41 @@ function ProgressChart(props: {
 const controlsClass =
   "flex flex-wrap items-center gap-x-4 gap-y-2 pb-3 text-[0.9375rem]";
 
-/** One colored line, or one per set number for every set's e1RM. */
+/**
+ * Metrics whose point's set says more than the value: the set behind an e1RM,
+ * the reps at the top weight, the time of the longest distance. For the
+ * others, the set would only repeat the value.
+ */
+const SET_DETAIL: ReadonlySet<ValueMetric> = new Set([
+  "best_e1rm",
+  "set_e1rm",
+  "top_weight",
+  "best_distance",
+]);
+
+/**
+ * One colored line, or one per set number for every set's e1RM. A point's
+ * tooltip names its set where that adds something (`SET_DETAIL`).
+ */
 function chartSeries(
   history: ExerciseHistory,
   metric: ValueMetric,
   weightKg: number | undefined,
+  unit: WeightUnit,
 ): TimeSeries[] {
   const options = {
     e1rmRepCap: history.e1rmRepCap,
     ...(weightKg !== undefined && { weightKg }),
   };
+  const showSet = SET_DETAIL.has(metric);
   const toPoints = (points: HistoryPoint[]) =>
-    points.map((p) => ({ t: p.at, v: p.value }));
+    points.map((p) => ({
+      t: p.at,
+      v: p.value,
+      ...(showSet && {
+        detail: formatSet(p.set, history.exercise.type, unit),
+      }),
+    }));
   if (metric === "set_e1rm") {
     return setE1rmSeries(history.performances, options).map((s, i) => ({
       id: `set-${s.setNumber}`,
@@ -338,7 +362,7 @@ function MetricChart(props: {
 }) {
   const { history, metric, unit } = props;
   const { t } = useTranslation();
-  const series = chartSeries(history, metric, props.weightKg);
+  const series = chartSeries(history, metric, props.weightKg, unit);
   if (series.length === 0) {
     return (
       <p className="py-10 text-center text-[0.9375rem] text-ink-muted">

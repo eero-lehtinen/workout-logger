@@ -76,6 +76,8 @@ export interface HistoryPoint {
   at: number;
   value: number;
   sessionId: string;
+  /** The set the value comes from; on a tie, the better or first one. */
+  set: SetValues;
 }
 
 export interface HistoryOptions {
@@ -96,10 +98,8 @@ export function historySeries(
 ): HistoryPoint[] {
   const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
   return performances.flatMap((p) => {
-    const value = sessionValue(type, p.sets, metric, cap, options.weightKg);
-    return value === undefined
-      ? []
-      : [{ at: p.startedAt, value, sessionId: p.sessionId }];
+    const best = sessionBest(type, p.sets, metric, cap, options.weightKg);
+    return best ? [{ at: p.startedAt, sessionId: p.sessionId, ...best }] : [];
   });
 }
 
@@ -119,7 +119,7 @@ export function setE1rmSeries(
       const value = setE1rm(set, cap);
       if (value === undefined) return;
       series[i] ??= [];
-      series[i].push({ at: p.startedAt, value, sessionId: p.sessionId });
+      series[i].push({ at: p.startedAt, value, sessionId: p.sessionId, set });
     });
   }
   return series.flatMap((points, i) =>
@@ -127,35 +127,41 @@ export function setE1rmSeries(
   );
 }
 
-function sessionValue(
+function sessionBest(
   type: ExerciseType,
   sets: readonly SetValues[],
   metric: SessionMetric,
   cap: number,
   weightKg: number | undefined,
-): number | undefined {
+): { value: number; set: SetValues } | undefined {
   switch (metric) {
     case "best_e1rm":
-      return max(sets.map((s) => setE1rm(s, cap)));
+      return best(sets, (s) => setE1rm(s, cap));
     case "top_weight":
-      return max(sets.map((s) => positive(s.weight_kg)));
+      return best(
+        sets,
+        (s) => positive(s.weight_kg),
+        (s) => s.reps ?? 0,
+      );
     case "reps_at_weight":
       if (weightKg === undefined) return undefined;
-      return max(
-        sets
-          .filter((s) => sameWeight(s.weight_kg ?? 0, weightKg))
-          .map((s) => positive(s.reps)),
+      return best(sets, (s) =>
+        sameWeight(s.weight_kg ?? 0, weightKg) ? positive(s.reps) : undefined,
       );
     case "best_reps":
-      return max(
-        sets
-          .filter((s) => type !== "bodyweight_reps" || !hasWeight(s))
-          .map((s) => positive(s.reps)),
+      return best(sets, (s) =>
+        type !== "bodyweight_reps" || !hasWeight(s)
+          ? positive(s.reps)
+          : undefined,
       );
     case "best_duration":
-      return max(sets.map((s) => positive(s.duration_s)));
+      return best(sets, (s) => positive(s.duration_s));
     case "best_distance":
-      return max(sets.map((s) => positive(s.distance_m)));
+      return best(
+        sets,
+        (s) => positive(s.distance_m),
+        (s) => -(positive(s.duration_s) ?? Number.POSITIVE_INFINITY),
+      );
   }
 }
 
@@ -373,10 +379,27 @@ function positive(value: number | null | undefined): number | undefined {
   return value != null && value > 0 ? value : undefined;
 }
 
-function max(values: (number | undefined)[]): number | undefined {
-  let best: number | undefined;
-  for (const v of values) {
-    if (v !== undefined && (best === undefined || v > best)) best = v;
+/**
+ * The set with the highest value. A tie goes to the higher `tiebreak`, so the
+ * tooltip shows the better set, e.g. the most reps at the top weight; then to
+ * the first set.
+ */
+function best(
+  sets: readonly SetValues[],
+  measure: (set: SetValues) => number | undefined,
+  tiebreak: (set: SetValues) => number = () => 0,
+): { value: number; set: SetValues } | undefined {
+  let top: { value: number; set: SetValues } | undefined;
+  for (const set of sets) {
+    const value = measure(set);
+    if (value === undefined) continue;
+    if (
+      !top ||
+      value > top.value ||
+      (value === top.value && tiebreak(set) > tiebreak(top.set))
+    ) {
+      top = { value, set };
+    }
   }
-  return best;
+  return top;
 }

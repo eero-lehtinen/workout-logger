@@ -92,6 +92,29 @@ describe("historySeries", () => {
     ]);
   });
 
+  it("keeps the set each point's value comes from", () => {
+    const tie = perf(7, [s(90, 8), s(80, 11), s(90, 8)]);
+    expect(
+      historySeries("weight_reps", [...history, tie], "best_e1rm").map(
+        (p) => p.set,
+      ),
+    ).toEqual([s(100, 5), s(105, 3), s(90, 8)]);
+    expect(historySeries("weight_reps", [tie], "best_e1rm")[0]?.set).toBe(
+      tie.sets[0],
+    );
+    expect(setE1rmSeries(history)[1]?.points.map((p) => p.set)).toEqual([
+      s(100, 4),
+      s(90, 8),
+    ]);
+  });
+
+  it("breaks a top weight tie on reps", () => {
+    const ramp = perf(1, [s(100, 3), s(100, 5), s(100, 4)]);
+    expect(historySeries("weight_reps", [ramp], "top_weight")[0]?.set).toBe(
+      ramp.sets[1],
+    );
+  });
+
   it("plots every set's e1RM as one series per set number", () => {
     const series = setE1rmSeries(history);
     expect(

@@ -15,6 +15,8 @@ export interface TimePoint {
   /** Epoch ms. */
   t: number;
   v: number;
+  /** Tooltip text after the value, e.g. the set behind an e1RM: "100 kg × 6". */
+  detail?: string;
 }
 
 export interface TimeSeries {
