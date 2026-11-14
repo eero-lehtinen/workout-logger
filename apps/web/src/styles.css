@@ -75,6 +75,26 @@
   --color-scrim: var(--scrim);
 }
 
+/* A new month slides in from the side it came from. */
+@theme {
+  --animate-month-next: month-next 180ms ease-out;
+  --animate-month-prev: month-prev 180ms ease-out;
+
+  @keyframes month-next {
+    from {
+      opacity: 0;
+      translate: 24px 0;
+    }
+  }
+
+  @keyframes month-prev {
+    from {
+      opacity: 0;
+      translate: -24px 0;
+    }
+  }
+}
+
 /* Weights and reps: condensed, heavy, tabular, like stamped plate figures. */
 @utility numerals {
   font-stretch: 68%;

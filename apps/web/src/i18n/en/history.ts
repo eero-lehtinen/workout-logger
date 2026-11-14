@@ -34,8 +34,11 @@ export const history = {
   calendar: {
     label: "Calendar",
     today: "Today",
+    chooseMonth: "Choose month",
     previousMonth: "Previous month",
     nextMonth: "Next month",
+    previousYear: "Previous year",
+    nextYear: "Next year",
     more: "more",
   },
   frequency: {

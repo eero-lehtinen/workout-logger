@@ -241,6 +241,32 @@ export const withBusyDays: Fixture = async (db) => {
 };
 
 /**
+ * History plus ad hoc sessions in earlier months, a different number in
+ * each, for the calendar's month picker.
+ */
+export const withMonths: Fixture = async (db) => {
+  const ids = await withHistory(db);
+  for (const [monthsAgo, count] of [
+    [1, 10],
+    [2, 4],
+    [3, 12],
+    [5, 2],
+  ] as const) {
+    for (let i = 0; i < count; i++) {
+      const startedAt = new Date(Date.now());
+      startedAt.setMonth(startedAt.getMonth() - monthsAgo, 1 + 2 * i);
+      await session(db, {
+        routineId: null,
+        dayId: null,
+        startedAt: startedAt.getTime(),
+        sets: { side_plank: [seconds(60)] },
+      });
+    }
+  }
+  return ids;
+};
+
+/**
  * History plus an Upper session in progress: bench has a PR and a weight
  * increase logged and a third set to go, rows have set records. The bench
  * slot has a note.

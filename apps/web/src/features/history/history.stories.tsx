@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react-vite";
 import { localDate } from "@workout-logger/core";
 import { exerciseId } from "@workout-logger/exercises";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import { deviceTimeZone } from "../../lib/format.ts";
 import {
   empty,
@@ -9,6 +9,7 @@ import {
   setRecordHistory,
   withBusyDays,
   withHistory,
+  withMonths,
 } from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 import { choose } from "../../stories/select.ts";
@@ -262,6 +263,103 @@ export const Calendar = pageStory({
     await expect(
       await canvas.findByRole("button", { name: /:\s*Lower$/, pressed: true }),
     ).toBeVisible();
+  },
+});
+
+/** The story clock is June 17 2026. */
+export const CalendarMonthPicker = pageStory({
+  fixture: withMonths,
+  url: () => "/history",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(canvas.queryByRole("button", { name: "Today" })).toBeNull();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "June 2026, Choose month" }),
+    );
+    const picker = await body.findByRole("dialog", { name: "2026" });
+    const shown = within(picker).getByRole("button", {
+      name: "June 2026: 6 sessions",
+      pressed: true,
+    });
+    await waitFor(() => expect(shown).toHaveFocus());
+    await expect(
+      within(picker).getByRole("button", { name: "July 2026: 0 sessions" }),
+    ).toBeDisabled();
+    await expect(
+      within(picker).getByRole("button", { name: "Previous year" }),
+    ).toBeDisabled();
+    await userEvent.click(
+      within(picker).getByRole("button", { name: "March 2026: 12 sessions" }),
+    );
+    await expect(
+      await canvas.findByRole("heading", { name: /^March 2026/ }),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Today" }));
+    await expect(
+      await canvas.findByRole("button", {
+        name: /^Wednesday, June 17/,
+        pressed: true,
+      }),
+    ).toBeInTheDocument();
+  },
+});
+
+export const CalendarMonthsPc = pageStory({
+  fixture: withMonths,
+  url: () => "/history",
+  viewport: "pc",
+});
+
+/** Keys move the selection; leaving the month shows the new one. */
+export const CalendarKeyboard = pageStory({
+  fixture: withHistory,
+  url: () => "/history",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const today = canvas.getByRole("button", { name: /^Wednesday, June 17/ });
+    today.focus();
+    await userEvent.keyboard("{ArrowLeft}{ArrowUp}");
+    await expect(
+      canvas.getByRole("button", { name: /^Tuesday, June 9/, pressed: true }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{PageDown}");
+    await canvas.findByRole("heading", { name: /^July 2026/ });
+    await expect(
+      await canvas.findByRole("button", {
+        name: /^Thursday, July 9/,
+        pressed: true,
+      }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    await expect(
+      canvas.getByRole("button", { name: /^Sunday, July 12/, pressed: true }),
+    ).toHaveFocus();
+  },
+});
+
+/**
+ * A day from the next month, then a swipe back, whose ending click doesn't
+ * choose a day.
+ */
+export const CalendarOutsideDayAndSwipe = pageStory({
+  fixture: withHistory,
+  url: () => "/history",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /^Wednesday, July 1/ }),
+    );
+    await canvas.findByRole("heading", { name: /^July 2026/ });
+    const cell = canvas.getByRole("button", { name: /^Friday, July 10/ });
+    const touch = { pointerType: "touch", clientY: 300 };
+    fireEvent.pointerDown(cell, { ...touch, clientX: 100 });
+    fireEvent.pointerUp(cell, { ...touch, clientX: 260 });
+    fireEvent.click(cell, { detail: 1 });
+    await canvas.findByRole("heading", { name: /^June 2026/ });
+    await expect(
+      canvas.getByRole("button", { name: /^Wednesday, June 17/ }),
+    ).toHaveAttribute("aria-pressed", "true");
   },
 });
 

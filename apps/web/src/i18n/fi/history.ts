@@ -37,8 +37,11 @@ export const history = {
   calendar: {
     label: "Kalenteri",
     today: "Tänään",
+    chooseMonth: "Valitse kuukausi",
     previousMonth: "Edellinen kuukausi",
     nextMonth: "Seuraava kuukausi",
+    previousYear: "Edellinen vuosi",
+    nextYear: "Seuraava vuosi",
     more: "muuta",
   },
   frequency: {

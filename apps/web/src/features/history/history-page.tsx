@@ -29,6 +29,14 @@ export function HistoryPage() {
   const today = todayIso();
   const month = search.month ?? today.slice(0, 7);
   const selected = search.day ?? (month === today.slice(0, 7) ? today : null);
+  const monthCounts = new Map<string, number>();
+  for (const s of stats.sessions) {
+    const m = localDate(s.startedAt, s.tz).slice(0, 7);
+    monthCounts.set(m, (monthCounts.get(m) ?? 0) + 1);
+  }
+  const firstYear = Math.min(
+    ...[...monthCounts.keys(), today].map((d) => Number(d.slice(0, 4))),
+  );
 
   return (
     <Screen
@@ -57,8 +65,13 @@ export function HistoryPage() {
               weekStart={weekStart}
               today={today}
               selected={selected}
+              monthCounts={monthCounts}
+              firstYear={firstYear}
               onSelect={(day) =>
-                navigate({ search: { month, day }, replace: true })
+                navigate({
+                  search: { month: day.slice(0, 7), day },
+                  replace: true,
+                })
               }
               onMonth={(m) => navigate({ search: { month: m }, replace: true })}
             />
@@ -75,6 +88,8 @@ function MonthSessions(props: {
   weekStart: WeekStart;
   today: IsoDate;
   selected: IsoDate | null;
+  monthCounts: ReadonlyMap<string, number>;
+  firstYear: number;
   onSelect: (day: IsoDate) => void;
   onMonth: (month: string) => void;
 }) {
@@ -108,6 +123,8 @@ function MonthSessions(props: {
         month={month}
         weekStart={props.weekStart}
         sessionsByDate={byDate}
+        monthCounts={props.monthCounts}
+        firstYear={props.firstYear}
         today={props.today}
         selected={props.selected}
         onSelect={props.onSelect}
