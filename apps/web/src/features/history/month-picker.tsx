@@ -1,7 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 import { clsx } from "clsx";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../../components/button.tsx";
 import { dateFormat, dateFromIso } from "../../lib/format.ts";
@@ -9,6 +9,39 @@ import { usePopupCollisionPadding } from "../../lib/safe-area.ts";
 
 const utc = (options: Intl.DateTimeFormatOptions) =>
   dateFormat({ ...options, timeZone: "UTC" });
+
+/**
+ * Whether every long month title fits beside "Today" and the arrows, so the
+ * title's form doesn't change with the month. Measured from a hidden copy of
+ * the year's titles (`full`, as wide as the widest) against the heading's
+ * width. CSS can't decide it: Android's font scale enlarges text, but rem
+ * and em lengths, including in container queries, stay at the unscaled size.
+ */
+function useTitleFit() {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const label = useRef<HTMLSpanElement>(null);
+  const full = useRef<HTMLSpanElement>(null);
+  const [fits, setFits] = useState(true);
+  useLayoutEffect(() => {
+    const [h, tr, l, f] = [heading, trigger, label, full].map((r) => r.current);
+    if (!h || !tr || !l || !f) return;
+    const width = (e: Element) => e.getBoundingClientRect().width;
+    const check = () => {
+      // The trigger's padding, gap, and chevron.
+      const chrome = width(tr) - width(l);
+      setFits(width(f) + chrome <= width(h));
+    };
+    check();
+    // The heading resizes with the window, the copy when the year or
+    // language changes or the font loads.
+    const observer = new ResizeObserver(check);
+    observer.observe(h);
+    observer.observe(f);
+    return () => observer.disconnect();
+  }, []);
+  return { heading, trigger, label, full, fits };
+}
 
 /**
  * The calendar's month title, which opens a grid of a year's months with
@@ -34,6 +67,7 @@ export function MonthPicker(props: {
   const shortMonth = utc({ month: "short" });
   const firstDay = dateFromIso(`${props.month}-01`);
   const title = monthTitle.format(firstDay);
+  const fit = useTitleFit();
   const months = Array.from(
     { length: 12 },
     (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`,
@@ -47,18 +81,30 @@ export function MonthPicker(props: {
         setOpen(next);
       }}
     >
-      <h2 className="min-w-0 flex-1">
+      <h2 ref={fit.heading} className="min-w-0 flex-1">
         <Popover.Trigger
+          ref={fit.trigger}
           aria-label={`${title}, ${t("history.calendar.chooseMonth")}`}
           className="inline-flex h-10 max-w-full items-center gap-1 rounded-xl px-2 text-lg font-semibold hover:bg-surface data-popup-open:bg-surface lg:-ml-2"
         >
-          {/* The long name doesn't fit beside "Today" and the arrows on
-              narrow phones: "marraskuu 2026" needs 331px of the row's
-              content width. */}
-          <span className="truncate @min-[21rem]:hidden">
-            {utc({ month: "short", year: "numeric" }).format(firstDay)}
+          <span ref={fit.label} className="truncate">
+            {fit.fits
+              ? title
+              : utc({ month: "short", year: "numeric" }).format(firstDay)}
           </span>
-          <span className="hidden truncate @min-[21rem]:inline">{title}</span>
+          <span
+            ref={fit.full}
+            aria-hidden
+            className="pointer-events-none invisible absolute flex flex-col whitespace-nowrap"
+          >
+            {Array.from({ length: 12 }, (_, i) =>
+              monthTitle.format(
+                Date.UTC(Number(props.month.slice(0, 4)), i, 1),
+              ),
+            ).map((name) => (
+              <span key={name}>{name}</span>
+            ))}
+          </span>
           <ChevronDown
             aria-hidden
             size={18}

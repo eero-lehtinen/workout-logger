@@ -107,7 +107,7 @@ export function MonthCalendar(props: {
 
   return (
     <section aria-label={t("history.calendar.label")}>
-      <div className="@container flex items-center gap-1 px-2 pb-2 lg:px-0">
+      <div className="flex items-center gap-1 px-2 pb-2 lg:px-0">
         <MonthPicker
           month={props.month}
           thisMonth={thisMonth}
@@ -115,15 +115,16 @@ export function MonthCalendar(props: {
           firstYear={props.firstYear}
           onMonth={props.onMonth}
         />
-        {props.selected !== props.today && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => props.onSelect(props.today)}
-          >
-            {t("history.calendar.today")}
-          </Button>
-        )}
+        {/* Hidden rather than removed, so the title's room and the arrows'
+            places don't change with the month. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={clsx(props.selected === props.today && "invisible")}
+          onClick={() => props.onSelect(props.today)}
+        >
+          {t("history.calendar.today")}
+        </Button>
         <IconButton
           label={t("history.calendar.previousMonth")}
           onClick={() => props.onMonth(shiftMonth(props.month, -1))}
