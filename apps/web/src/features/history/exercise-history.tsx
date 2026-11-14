@@ -351,7 +351,7 @@ function chartSeries(
   ];
 }
 
-const CHART_HEIGHT = 360;
+const CHART_HEIGHT = 280;
 
 function MetricChart(props: {
   history: ExerciseHistory;
