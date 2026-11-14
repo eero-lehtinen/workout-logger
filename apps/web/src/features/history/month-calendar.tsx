@@ -107,7 +107,7 @@ export function MonthCalendar(props: {
 
   return (
     <section aria-label={t("history.calendar.label")}>
-      <div className="flex items-center gap-1 px-2 pb-2 lg:px-0">
+      <div className="@container flex items-center gap-1 px-2 pb-2 lg:px-0">
         <MonthPicker
           month={props.month}
           thisMonth={thisMonth}

@@ -32,7 +32,8 @@ export function MonthPicker(props: {
   const lastYear = Number(props.thisMonth.slice(0, 4));
   const monthTitle = utc({ month: "long", year: "numeric" });
   const shortMonth = utc({ month: "short" });
-  const title = monthTitle.format(dateFromIso(`${props.month}-01`));
+  const firstDay = dateFromIso(`${props.month}-01`);
+  const title = monthTitle.format(firstDay);
   const months = Array.from(
     { length: 12 },
     (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`,
@@ -51,7 +52,13 @@ export function MonthPicker(props: {
           aria-label={`${title}, ${t("history.calendar.chooseMonth")}`}
           className="inline-flex h-10 max-w-full items-center gap-1 rounded-xl px-2 text-lg font-semibold hover:bg-surface data-popup-open:bg-surface lg:-ml-2"
         >
-          <span className="truncate">{title}</span>
+          {/* The long name doesn't fit beside "Today" and the arrows on
+              narrow phones: "marraskuu 2026" needs 331px of the row's
+              content width. */}
+          <span className="truncate @min-[21rem]:hidden">
+            {utc({ month: "short", year: "numeric" }).format(firstDay)}
+          </span>
+          <span className="hidden truncate @min-[21rem]:inline">{title}</span>
           <ChevronDown
             aria-hidden
             size={18}
