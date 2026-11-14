@@ -16,7 +16,11 @@ export default defineMain({
   framework: "@storybook/react-vite",
   stories: ["../src/**/*.stories.tsx"],
   addons: ["@storybook/addon-a11y", "@storybook/addon-vitest"],
-  core: { disableTelemetry: true },
+  core: { disableTelemetry: true, disableWhatsNewNotifications: true },
+  features: {
+    sidebarOnboardingChecklist: false,
+    menuOnboardingChecklist: false,
+  },
   viteFinal: (config) => ({
     ...config,
     plugins: withoutServiceWorker(config.plugins ?? []),
