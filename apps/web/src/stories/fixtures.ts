@@ -353,6 +353,38 @@ export const setRecordHistory: Fixture = async (db) => {
   };
 };
 
+/**
+ * History with a record reset 4 days ago, and two lighter bench sessions
+ * after it. The second has a PR and a set record in the new era; against
+ * all history it would only be a weight increase.
+ */
+export const afterRecordReset: Fixture = async (db) => {
+  const ids = await withHistory(db);
+  const now = Date.now();
+  const bench = (daysAgo: number, sets: [number, number][]) =>
+    session(db, {
+      routineId: null,
+      dayId: null,
+      startedAt: now - daysAgo * DAY,
+      sets: { barbell_bench_press: sets },
+    });
+  await bench(2, [
+    [90, 8],
+    [90, 8],
+  ]);
+  await bench(1, [
+    [92.5, 8],
+    [92.5, 7],
+  ]);
+  await db.run("addRecordReset", { date: isoDaysAgo(4) });
+  await db.run("addRecordReset", { date: isoDaysAgo(60) });
+  return ids;
+};
+
+function isoDaysAgo(days: number): string {
+  return Temporal.Now.plainDateISO().subtract({ days }).toString();
+}
+
 /** `running` with dumbbell presses in place of the overhead press. */
 export const substituted: Fixture = async (db) => {
   const ids = await running(db);

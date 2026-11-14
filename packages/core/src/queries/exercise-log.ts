@@ -106,11 +106,7 @@ export const exerciseLog = defineQuery(
       sessionId: row.sessionId,
       startedAt: row.startedAt,
     });
-    const marked = markPerformanceSets(
-      row.type,
-      performances,
-      settings.e1rm_rep_cap,
-    );
+    const marked = markPerformanceSets(row.type, performances, settings);
     const current =
       marked.at(-1)?.sessionId === row.sessionId ? marked.pop() : undefined;
     const sets = (current?.sets ?? []).filter(

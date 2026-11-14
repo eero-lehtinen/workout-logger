@@ -49,7 +49,7 @@ The app is shared with a few other users, each with their own private data. See
 | --- | --- | --- |
 | Built-in exercise list with exercise types and muscle targets | P0 | Seeded from an open dataset and curated. |
 | Custom exercises: create, edit, archive, copy | P0 | Copying prefills a new exercise from any exercise, built-in ones included. |
-| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. Both sort by name, most recently logged, or most logged (logged sets); the order is shared and remembered on the device. A logged exercise's row in the list shows its set count and best set: the set that holds the first record of the records headline, e.g. best e1RM. Of sets with equal e1RM, the one with fewer reps is shown. |
+| Browse and search by name and muscle group | P0 | The exercise picker (adding to a session or routine, substituting) has the same search and muscle group filter. Both sort by name, most recently logged, or most logged (logged sets); the order is shared and remembered on the device. A logged exercise's row in the list shows its set count and best set: the set that holds the first record of the records headline since the latest [record reset](#record-resets), e.g. best e1RM. Of sets with equal e1RM, the one with fewer reps is shown. |
 | Edit an exercise's muscle targets | P1 | |
 | Per-exercise default rest time and notes | P1 | |
 
@@ -98,7 +98,7 @@ The app is shared with a few other users, each with their own private data. See
 | Edit and delete logged sets | P0 | |
 | History graph for the exercise | P1 | Metrics, picked from a dropdown: best e1RM per session, e1RM of each set (one line per set number: set 1 of every session, set 2, ...), top weight, reps at a weight, and sets per week. Bodyweight exercises add most reps without added weight; reps, time, and distance exercises plot the best set. Sets per week are bars over every week since the first session, empty weeks included; the average stops at the last session, so a dropped exercise keeps the average it had. Single-line metrics always show a trend line that fits the points in view and states its rate per month, so zooming shows that stretch's progress. A full-screen view gives the graph the whole window, with the same metric controls; back, including Android's, closes it. Volume (weight × reps) and per-session totals are not shown: they mix heavy and light work into a number nobody trains for. The exercise list and the logging view open the exercise's history screen, which also lists past sessions with their markers. |
 | Records table: best weight for 1..N reps, best e1RM, heaviest weight, most reps at a weight | P1 | Covers sets above the e1RM rep limit. By rep count: the heaviest weight for exactly that many reps. By weight: the most reps at that weight. A row is dimmed when another set had at least as much weight and as many reps. The first session to reach a value holds the record. |
-| Period of the history screens | P1 | 3 months, 6 months, a year, or all, ending today. On an exercise it filters the graph, the records, and the session list; markers still compare with all earlier history. The History tab's frequency stats use the same period. |
+| Period of the history screens | P1 | 3 months, 6 months, a year, or all, ending today. With a [record reset](#record-resets), also "Reset": since the latest reset, which is then the default. On an exercise it filters the graph, the records, and the session list; markers still compare with all earlier history of their record era. The History tab's frequency stats use the same period. |
 | Remembered view choices | P1 | The period, the graph metric, the records table, showing muscles, and the weight for "reps at a weight" (per exercise) are remembered on the device. They are view preferences, not synced settings. |
 | Back returns where you came from | P1 | An exercise's history and editor return to the logging screen, session, or list they were opened from; a session returns to the exercise history or calendar day it was opened from, or to Today. |
 
@@ -151,6 +151,21 @@ don't count.
 - A session that has the exercise twice is one performance, numbered in session order, so its sets don't compete with each other for set records.
 - The first session of an exercise never shows PRs, because everything would be one. For the same reason, a PR needs at least one earlier comparable set: one with an e1RM, or for the other kinds, a value of the same kind.
 - Markers in history are computed against the history before each session, so they show what was achieved at the time.
+- PRs and set records compare only with sessions of the same [record era](#record-resets). The first session of an era gets no PR or set record, like the first session of an exercise. Weight increases still compare with the previous performance, even across a reset.
+
+## Record resets
+
+After a cut or a break, strength is lower and old records would stay out of
+reach for months. Settings → Records → Reset records adds a reset date, today
+by default, and never later. Resets are a synced setting (`record_resets`), a
+list of dates, so each one starts a **record era**:
+
+- A session belongs to the era of the latest reset on or before its local date. A session on the reset date is in the new era.
+- PRs and set records compare only with earlier sessions of the same era ([progress markers](#progress-markers)). Adding a reset never changes the markers of sessions before it; removing one merges its era into the previous one.
+- The history screens' period gets a "Reset" choice next to "All", the default while a reset exists. The header and the records title name the reset's date. It shows the current era: sessions on or after the latest reset, in the graph, the records, the session list, and the frequency stats. "All" shows the older records.
+- The exercise list's best set covers the current era.
+
+Settings lists the resets newest first; removing one offers undo.
 
 ## Rest timer
 

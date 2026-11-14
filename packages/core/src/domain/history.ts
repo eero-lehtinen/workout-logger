@@ -18,6 +18,16 @@ export interface PerformanceSets {
   sets: readonly SetValues[];
 }
 
+/** The performances whose session date is on or after `from`; all for null. */
+export function performancesFrom<T extends { startedAt: number; tz: string }>(
+  performances: readonly T[],
+  from: IsoDate | null,
+): T[] {
+  return from
+    ? performances.filter((p) => localDate(p.startedAt, p.tz) >= from)
+    : [...performances];
+}
+
 /**
  * What the history graph can plot. Which apply depends on the exercise type.
  * `weekly_sets` is per week (`weeklySets`), `set_e1rm` one series per set

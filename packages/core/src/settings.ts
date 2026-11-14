@@ -1,6 +1,8 @@
 import type { Kysely } from "kysely";
 import * as v from "valibot";
+import type { IsoDate } from "./domain/calendar.ts";
 import { DEFAULT_E1RM_REP_CAP } from "./domain/e1rm.ts";
+import { normalizeResets } from "./domain/record-eras.ts";
 import { DEFAULT_IDLE_THRESHOLD_MS } from "./domain/session-end.ts";
 import { DEFAULT_WEIGHT_INCREMENT } from "./domain/units.ts";
 import type { Database } from "./schema/tables.ts";
@@ -12,6 +14,7 @@ const integer = (min: number, max: number) =>
   v.pipe(v.number(), v.integer(), v.minValue(min), v.maxValue(max));
 
 export const ALERT_VOLUME_MIN = 5;
+export const MAX_RECORD_RESETS = 100;
 
 /** The old levels' gains (0.12, 0.35, 1) as percent of loudness. */
 const LEGACY_ALERT_VOLUMES = { low: 30, medium: 55, high: 100 } as const;
@@ -57,6 +60,15 @@ export const SETTINGS = {
     default: DEFAULT_IDLE_THRESHOLD_MS / 1000,
   },
   e1rm_rep_cap: { schema: integer(1, 30), default: DEFAULT_E1RM_REP_CAP },
+  /** Record reset dates, oldest first. See `recordEra`. */
+  record_resets: {
+    schema: v.pipe(
+      v.array(v.pipe(v.string(), v.isoDate(), v.check(isCalendarDate))),
+      v.maxLength(MAX_RECORD_RESETS),
+      v.transform((dates: IsoDate[]) => normalizeResets(dates)),
+    ),
+    default: [] as IsoDate[],
+  },
   /** The calendar's first column and where weekly stats split. */
   week_start: {
     schema: v.picklist(["monday", "sunday"]),
@@ -95,6 +107,16 @@ export async function readSettings(db: Kysely<Database>): Promise<Settings> {
     if (parsed.success) settings[id] = parsed.output;
   }
   return settings as Settings;
+}
+
+/** `isoDate` only checks the pattern, so `2026-02-31` would pass it. */
+function isCalendarDate(date: string): boolean {
+  try {
+    Temporal.PlainDate.from(date);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function parseJson(json: string): unknown {

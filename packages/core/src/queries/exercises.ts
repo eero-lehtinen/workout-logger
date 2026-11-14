@@ -1,6 +1,9 @@
+import { type Kysely, type RawBuilder, sql } from "kysely";
 import { type BestSet, bestSet } from "../domain/best-set.ts";
+import { type IsoDate, startOfDay } from "../domain/calendar.ts";
 import { compareOrder } from "../domain/position.ts";
-import type { ExerciseType } from "../schema/tables.ts";
+import { latestReset } from "../domain/record-eras.ts";
+import type { Database, ExerciseType } from "../schema/tables.ts";
 import { readSettings } from "../settings.ts";
 import { defineQuery } from "./define.ts";
 
@@ -32,7 +35,10 @@ export interface ExerciseItem {
   /** Its latest logged set; null if it was never logged. */
   lastLoggedAt: number | null;
   loggedSets: number;
-  /** Null if it was never logged, or no set has a value for its records. */
+  /**
+   * Since the latest record reset. Null if it wasn't logged since, or no set
+   * has a value for its records.
+   */
   best: BestSet | null;
 }
 
@@ -48,7 +54,8 @@ export const exercises = defineQuery(
     "setting",
   ],
   async (db): Promise<ExerciseItem[]> => {
-    const { e1rm_rep_cap } = await readSettings(db);
+    const { e1rm_rep_cap, record_resets } = await readSettings(db);
+    const inEra = await currentEraCondition(db, latestReset(record_resets));
     const rows = await db
       .selectFrom("exercise")
       .select(["id", "name", "type", "archived", "builtin_key"])
@@ -75,11 +82,12 @@ export const exercises = defineQuery(
         eb.fn.max("sl.weight_kg").as("maxWeightKg"),
         eb.fn.max("sl.duration_s").as("maxDurationS"),
         eb.fn.max("sl.distance_m").as("maxDistanceM"),
+        inEra.as("inEra"),
       ])
       .where("sl.deleted", "=", 0)
       .where("se.deleted", "=", 0)
       .where("s.deleted", "=", 0)
-      .groupBy(["se.exercise_id", "sl.reps"])
+      .groupBy(["se.exercise_id", "sl.reps", inEra])
       .execute();
     const usage = new Map<string, typeof logged>();
     for (const g of logged) {
@@ -106,12 +114,39 @@ export const exercises = defineQuery(
           lastLoggedAt:
             groups.length > 0 ? Math.max(...groups.map((g) => g.last)) : null,
           loggedSets: groups.reduce((sum, g) => sum + g.sets, 0),
-          best: bestSet(r.type, groups, { e1rmRepCap: e1rm_rep_cap }),
+          best: bestSet(
+            r.type,
+            groups.filter((g) => g.inEra === 1),
+            { e1rmRepCap: e1rm_rep_cap },
+          ),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 );
+
+/**
+ * Whether a session (`s`) is on or after `since` by its local date, as SQL
+ * that is 1 when it is. Sessions keep their own zone, so the day's start is
+ * looked up for each zone in use.
+ */
+async function currentEraCondition(
+  db: Kysely<Database>,
+  since: IsoDate | null,
+): Promise<RawBuilder<number>> {
+  if (!since) return sql<number>`1`;
+  const zones = await db
+    .selectFrom("session")
+    .select("tz")
+    .distinct()
+    .where("deleted", "=", 0)
+    .execute();
+  if (zones.length === 0) return sql<number>`1`;
+  const starts = zones.map(
+    ({ tz }) => sql`when ${tz} then ${startOfDay(since, tz)}`,
+  );
+  return sql<number>`(s.started_at >= case s.tz ${sql.join(starts, sql` `)} end)`;
+}
 
 export interface ExerciseDetail {
   id: string;

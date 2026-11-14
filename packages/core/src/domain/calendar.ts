@@ -15,6 +15,11 @@ export function localDate(at: number, tz: string): IsoDate {
     .toString();
 }
 
+/** The instant `date` begins in `tz`, in epoch ms. */
+export function startOfDay(date: IsoDate, tz: string): number {
+  return Temporal.PlainDate.from(date).toZonedDateTime(tz).epochMilliseconds;
+}
+
 /** The first date of the week that holds `date`. */
 export function weekOf(date: IsoDate, weekStart: WeekStart): IsoDate {
   const day = Temporal.PlainDate.from(date);

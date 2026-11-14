@@ -59,9 +59,9 @@ export function FrequencySection(props: {
         <Segmented
           label={t("history.periods.label")}
           size="sm"
-          value={period}
+          value={period.value}
           onChange={setPeriod}
-          options={periodOptions()}
+          options={periodOptions(period.since)}
         />
       </div>
 

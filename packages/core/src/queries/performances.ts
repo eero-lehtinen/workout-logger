@@ -1,11 +1,14 @@
 import type { Kysely } from "kysely";
+import { localDate } from "../domain/calendar.ts";
 import {
   explainPerformances,
   type MarkerMeasure,
   type ProgressMarker,
   type SetValues,
 } from "../domain/markers.ts";
+import { recordEra } from "../domain/record-eras.ts";
 import type { Database, ExerciseType } from "../schema/tables.ts";
+import type { Settings } from "../settings.ts";
 
 export interface LoggedSet extends SetValues {
   id: string;
@@ -111,18 +114,27 @@ export async function loadPerformances(
   return performances;
 }
 
-/** Markers on every set, each judged against the history before it. */
+/**
+ * Markers on every set, each judged against the history before it in its
+ * record era.
+ */
 export function markPerformanceSets(
   type: ExerciseType,
   performances: readonly RawPerformance[],
-  e1rmRepCap: number,
+  settings: Pick<Settings, "e1rm_rep_cap" | "record_resets">,
 ): (Omit<Performance, "sets"> & {
   sets: (LoggedSet & { sessionExerciseId: string })[];
 })[] {
+  const resets = settings.record_resets;
   const bases = explainPerformances(
     type,
     performances.map((p) => p.sets),
-    { e1rmRepCap },
+    {
+      e1rmRepCap: settings.e1rm_rep_cap,
+      eras: performances.map((p) =>
+        recordEra(localDate(p.startedAt, p.tz), resets),
+      ),
+    },
   );
   const explain = (i: number, j: number): MarkerExplanation | null => {
     const basis = bases[i]?.[j];

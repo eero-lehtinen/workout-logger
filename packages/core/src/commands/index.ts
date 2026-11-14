@@ -40,6 +40,8 @@ export const COMMANDS = {
   createExercise: exercises.createExercise,
   updateExercise: exercises.updateExercise,
   setSetting: settings.setSetting,
+  addRecordReset: settings.addRecordReset,
+  removeRecordReset: settings.removeRecordReset,
 } satisfies Record<string, CommandDef<never, unknown>>;
 
 export type Commands = typeof COMMANDS;

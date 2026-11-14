@@ -17,6 +17,12 @@ export type SetValues = Pick<
 
 export interface MarkerOptions {
   e1rmRepCap?: number;
+  /**
+   * The record era of each performance (`recordEra`). PRs and set records
+   * compare only with earlier sets of the same era; weight increases still
+   * compare with the previous performance.
+   */
+  eras?: readonly number[];
 }
 
 /**
@@ -75,11 +81,18 @@ export function explainPerformances(
   const cap = options.e1rmRepCap ?? DEFAULT_E1RM_REP_CAP;
   // Best PR score per comparable kind over all earlier sets, and where it was.
   const best = new Map<ScoreKind, { value: number; at: SetIndex }>();
-  // Every earlier set, grouped by set number.
+  // Every earlier set of the era, grouped by set number.
   const earlierByNumber: EarlierSet[][] = [];
   let previous: readonly SetValues[] | undefined;
+  const eras = options.eras;
+  let eraStart = 0;
 
   return performances.map((sets, index) => {
+    if (eras && index > 0 && eras[index] !== eras[index - 1]) {
+      best.clear();
+      earlierByNumber.length = 0;
+      eraStart = index;
+    }
     const bases = sets.map((set, i): MarkerBasis | null => {
       const score = prScore(type, set, cap);
       const bestBefore = score && best.get(score.kind);
@@ -90,9 +103,9 @@ export function explainPerformances(
         });
       }
 
-      // The first performance would be all PRs.
+      // The first performance of an era would be all PRs.
       const pr =
-        index > 0 && score && bestBefore
+        index > eraStart && score && bestBefore
           ? {
               outcome: compare(score.value, bestBefore.value),
               basis: {

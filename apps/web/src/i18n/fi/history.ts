@@ -12,8 +12,11 @@ export const history = {
     "6m": "6 kk",
     "1y": "1 v",
     all: "Kaikki",
+    reset: "Nollaus",
   },
   periodSessions: {
+    reset_one: "{{count}} treeni {{date}} alkaen",
+    reset_other: "{{count}} treeniä {{date}} alkaen",
     "3m_one": "{{count}} treeni viimeisen 3 kuukauden aikana",
     "3m_other": "{{count}} treeniä viimeisen 3 kuukauden aikana",
     "6m_one": "{{count}} treeni viimeisen 6 kuukauden aikana",
@@ -28,11 +31,13 @@ export const history = {
     "6m": "Ennätykset viimeisen 6 kuukauden ajalta",
     "1y": "Ennätykset viimeisen vuoden ajalta",
     all: "Ennätykset",
+    reset: "Ennätykset {{date}} alkaen",
   },
   periodNoSets: {
     "3m": "Ei sarjoja tästä liikkeestä viimeisen 3 kuukauden aikana.",
     "6m": "Ei sarjoja tästä liikkeestä viimeisen 6 kuukauden aikana.",
     "1y": "Ei sarjoja tästä liikkeestä viimeisen vuoden aikana.",
+    reset: "Ei sarjoja tästä liikkeestä {{date}} jälkeen.",
   },
   calendar: {
     label: "Kalenteri",

@@ -9,6 +9,7 @@ import {
   type IsoDate,
   localDate,
   loggedWeights,
+  performancesFrom,
   setE1rmSeries,
   type WeekStart,
   type WeightUnit,
@@ -98,7 +99,7 @@ export function ExerciseHistoryPage() {
 /**
  * The page over the chosen period: the graph, the records, and the session
  * list all see only the sessions in it. Markers stay as they were at the
- * time, judged against all earlier history.
+ * time, judged against all earlier history of their record era.
  */
 function InPeriod(props: {
   history: ExerciseHistory;
@@ -112,9 +113,7 @@ function InPeriod(props: {
   const [period, setPeriod] = usePeriod();
   const today = todayIso();
   const from = periodStart(period, today);
-  const performances = from
-    ? history.performances.filter((p) => localDate(p.startedAt, p.tz) >= from)
-    : history.performances;
+  const performances = performancesFrom(history.performances, from);
   const view: ExerciseHistory = {
     ...history,
     performances,
@@ -159,9 +158,9 @@ function InPeriod(props: {
             <Segmented
               label={t("history.periods.label")}
               size="sm"
-              value={period}
+              value={period.value}
               onChange={setPeriod}
-              options={periodOptions()}
+              options={periodOptions(period.since)}
             />
           )}
         </PageHeader>
@@ -171,9 +170,9 @@ function InPeriod(props: {
         <Empty>{t("history.exercise.neverLogged")}</Empty>
       ) : performances.length === 0 ? (
         <Empty>
-          {period === "all"
+          {period.value === "all"
             ? t("history.exercise.neverLogged")
-            : periodNoSets(period)}
+            : periodNoSets({ ...period, value: period.value })}
         </Empty>
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">

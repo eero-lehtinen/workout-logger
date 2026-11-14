@@ -97,6 +97,52 @@ describe("history queries", () => {
     expect(history?.records.byReps.map((r) => r.reps)).toEqual([5, 15]);
   });
 
+  it("counts markers and the list's best set only since the latest record reset", async () => {
+    const { store, run, bench, squat, session } = await setup();
+    await session(T0, null, [
+      [bench, 100, 5],
+      [squat, 150, 5],
+    ]);
+    // 23:30 UTC on Jan 6 is already Jan 7 in Helsinki, the reset's date.
+    await session(T0 + DAY + 6.5 * 3_600_000, null, [
+      [bench, 90, 5],
+      [squat, 120, 5],
+    ]);
+    await session(T0 + 3 * DAY, null, [[bench, 95, 5]]);
+    await run("addRecordReset", { date: "2026-01-07" });
+    await run("addRecordReset", { date: "2025-12-01" });
+
+    const settings = await runQuery(store, "settings", undefined);
+    expect(settings.record_resets).toEqual(["2025-12-01", "2026-01-07"]);
+    const history = await runQuery(store, "exerciseHistory", {
+      exerciseId: bench,
+    });
+    expect(
+      history?.performances.map((p) => p.sets.map((s) => s.marker)),
+    ).toEqual([[null], [null], ["pr"]]);
+    const list = await runQuery(store, "exercises", undefined);
+    expect(list.find((e) => e.id === bench)).toMatchObject({
+      loggedSets: 3,
+      best: { kind: "e1rm", set: { weight_kg: 95, reps: 5 } },
+    });
+    expect(list.find((e) => e.id === squat)?.best?.set?.weight_kg).toBe(120);
+    await run("setSetting", {
+      key: "record_resets",
+      value: ["2026-02-31"],
+    }).catch(() => undefined);
+    expect(
+      (await runQuery(store, "settings", undefined)).record_resets,
+    ).toEqual(["2025-12-01", "2026-01-07"]);
+
+    await run("removeRecordReset", { date: "2026-01-07" });
+    const restored = await runQuery(store, "exerciseHistory", {
+      exerciseId: bench,
+    });
+    expect(
+      restored?.performances.map((p) => p.sets.map((s) => s.marker)),
+    ).toEqual([[null], [null], ["weight_increase"]]);
+  });
+
   it("lists sessions in a range with their day's index", async () => {
     const { store, bench, squat, upper, lower, session } = await setup();
     await session(T0, upper, [[bench, 100, 5]]);

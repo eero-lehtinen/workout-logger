@@ -273,6 +273,49 @@ describe("other exercise types", () => {
   });
 });
 
+describe("record eras", () => {
+  it("starts PRs and set records afresh in a new era", () => {
+    const history = [
+      [s(100, 5), s(100, 5)],
+      [s(90, 5), s(85, 5)],
+      [s(92.5, 5), s(85, 6)],
+    ];
+    expect(
+      markPerformances("weight_reps", history, { eras: [0, 1, 1] }),
+    ).toEqual([
+      [null, null],
+      [null, null],
+      ["pr", "set_record"],
+    ]);
+    expect(markPerformances("weight_reps", history)[2]).toEqual([
+      "weight_increase",
+      null,
+    ]);
+  });
+
+  it("marks no PRs in the first performance of an era", () => {
+    const history = [[s(100, 5)], [s(80, 5), s(85, 5)]];
+    expect(last("weight_reps", history, { eras: [0, 1] })).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it("still marks a weight increase over the last performance of the old era", () => {
+    const history = [[s(80, 8)], [s(85, 5)]];
+    expect(last("weight_reps", history, { eras: [0, 1] })).toEqual([
+      "weight_increase",
+    ]);
+  });
+
+  it("never compares with an earlier era, even one that comes back", () => {
+    const history = [[s(100, 5)], [s(90, 5)], [s(95, 5)]];
+    expect(
+      markPerformances("weight_reps", history, { eras: [0, 1, 2] }),
+    ).toEqual([[null], [null], ["weight_increase"]]);
+  });
+});
+
 describe("explainPerformances", () => {
   it("points a PR at the previous best set, wherever it was", () => {
     const history = [[s(100, 8)], [s(90, 8)], [s(102.5, 8)]];

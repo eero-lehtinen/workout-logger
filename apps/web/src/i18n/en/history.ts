@@ -9,8 +9,11 @@ export const history = {
     "6m": "6 mo",
     "1y": "1 yr",
     all: "All",
+    reset: "Reset",
   },
   periodSessions: {
+    reset_one: "{{count}} session since {{date}}",
+    reset_other: "{{count}} sessions since {{date}}",
     "3m_one": "{{count}} session in the last 3 months",
     "3m_other": "{{count}} sessions in the last 3 months",
     "6m_one": "{{count}} session in the last 6 months",
@@ -25,11 +28,13 @@ export const history = {
     "6m": "Records in the last 6 months",
     "1y": "Records in the last year",
     all: "Records",
+    reset: "Records since {{date}}",
   },
   periodNoSets: {
     "3m": "No sets of this exercise in the last 3 months.",
     "6m": "No sets of this exercise in the last 6 months.",
     "1y": "No sets of this exercise in the last year.",
+    reset: "No sets of this exercise since {{date}}.",
   },
   calendar: {
     label: "Calendar",

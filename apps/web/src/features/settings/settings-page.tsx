@@ -18,6 +18,7 @@ import { useTheme } from "../../lib/theme.ts";
 import { AboutSection } from "./about-section.tsx";
 import { AccountSection } from "./account-section.tsx";
 import { DataSection } from "./data-section.tsx";
+import { RecordResets } from "./record-resets.tsx";
 import { Row, Section } from "./settings-rows.tsx";
 
 export function SettingsPage() {
@@ -172,21 +173,6 @@ export function SettingsPage() {
           </Row>
         )}
         <Row
-          label={t("settings.sessions.repLimit")}
-          hint={t("settings.sessions.repLimitHint")}
-        >
-          <SettingInput
-            label={t("settings.sessions.repLimit")}
-            value={settings.e1rm_rep_cap}
-            format={String}
-            parse={(text) => {
-              const reps = parseNumber(text);
-              return reps === null ? null : Math.round(reps);
-            }}
-            onSave={(value) => set({ key: "e1rm_rep_cap", value })}
-          />
-        </Row>
-        <Row
           label={t("settings.sessions.weekStart")}
           hint={t("settings.sessions.weekStartHint")}
         >
@@ -200,6 +186,25 @@ export function SettingsPage() {
             onChange={(value) => set({ key: "week_start", value })}
           />
         </Row>
+      </Section>
+
+      <Section title={t("settings.records.title")}>
+        <Row
+          label={t("settings.records.repLimit")}
+          hint={t("settings.records.repLimitHint")}
+        >
+          <SettingInput
+            label={t("settings.records.repLimit")}
+            value={settings.e1rm_rep_cap}
+            format={String}
+            parse={(text) => {
+              const reps = parseNumber(text);
+              return reps === null ? null : Math.round(reps);
+            }}
+            onSave={(value) => set({ key: "e1rm_rep_cap", value })}
+          />
+        </Row>
+        <RecordResets resets={settings.record_resets} />
       </Section>
 
       <Section title={t("settings.appearance.title")}>

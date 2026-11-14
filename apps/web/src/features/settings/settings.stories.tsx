@@ -6,7 +6,12 @@ import { setOwnerStatusForStory } from "../../lib/server-status.ts";
 import { setSignInProvidersForStory } from "../../lib/sign-in-providers.ts";
 import { type SyncState, setSyncStateForStory } from "../../lib/sync.ts";
 import { setUsageForStory, type Usage } from "../../lib/usage.ts";
-import { empty, inPounds, timersOff } from "../../stories/fixtures.ts";
+import {
+  afterRecordReset,
+  empty,
+  inPounds,
+  timersOff,
+} from "../../stories/fixtures.ts";
 import { pageStory } from "../../stories/page.tsx";
 
 export default {
@@ -64,6 +69,47 @@ export const TimersOff = pageStory({
     await userEvent.click(rest);
     await waitFor(() => expect(rest).toBeChecked());
     await expect(canvas.getByLabelText("Rest time")).toBeVisible();
+  },
+});
+
+/**
+ * Resets are listed newest first. A new one defaults to today; removing one
+ * offers undo.
+ */
+export const RecordResets = pageStory({
+  fixture: afterRecordReset,
+  url: () => "/settings",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const removes = () =>
+      canvas.getAllByRole("button", { name: /^Remove the reset/ });
+    await expect(await canvas.findByText("Current records")).toBeVisible();
+    await expect(removes()).toHaveLength(2);
+
+    await userEvent.click(removes()[0] as HTMLElement);
+    await waitFor(() => expect(removes()).toHaveLength(1));
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await body.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(removes()).toHaveLength(2));
+
+    const date = canvas.getByLabelText("Reset date");
+    await expect(date).toHaveValue(Temporal.Now.plainDateISO().toString());
+    await userEvent.click(canvas.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(removes()).toHaveLength(3));
+    await expect(canvas.getByRole("button", { name: "Reset" })).toBeDisabled();
+  },
+});
+
+export const RecordResetsFinnish = pageStory({
+  fixture: afterRecordReset,
+  url: () => "/settings",
+  language: "fi",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("heading", { name: "Ennätykset" }),
+    ).toBeVisible();
+    await expect(canvas.getByText("Nykyiset ennätykset")).toBeVisible();
   },
 });
 

@@ -23,6 +23,7 @@ export {
   positionsBetween,
 } from "./domain/position.ts";
 export { prefillNextSet } from "./domain/prefill.ts";
+export { latestReset, recordEra } from "./domain/record-eras.ts";
 export {
   DEFAULT_IDLE_THRESHOLD_MS,
   type EffectiveEnd,

@@ -4,6 +4,7 @@ import { exerciseId } from "@workout-logger/exercises";
 import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import { deviceTimeZone } from "../../lib/format.ts";
 import {
+  afterRecordReset,
   empty,
   running,
   setRecordHistory,
@@ -158,6 +159,50 @@ export const ExerciseHistoryFullScreen = pageStory({
       await canvas.findByRole("img", { name: "Sets per week" }),
     ).toBeVisible();
   },
+});
+
+/**
+ * After a record reset, the lighter session is a PR and a set record. The
+ * period defaults to the time since the reset; "All" shows the older records.
+ */
+export const ExerciseHistoryRecordReset = pageStory({
+  fixture: afterRecordReset,
+  url: () => bench,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sessions = canvas
+      .getByRole("heading", { name: "Sessions" })
+      .closest("section");
+    const newest = within(
+      within(sessions as HTMLElement).getAllByRole(
+        "listitem",
+      )[0] as HTMLElement,
+    );
+    await expect(
+      newest.getByRole("img", { name: "Personal record" }),
+    ).toBeVisible();
+    await expect(newest.getByRole("img", { name: "Set record" })).toBeVisible();
+    const period = within(canvas.getByRole("group", { name: "Period" }));
+    await expect(period.getByRole("button", { name: "Reset" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(canvas.getByText(/^2 sessions since /)).toBeVisible();
+    await expect(
+      canvas.getByRole("heading", { name: /^Records since / }),
+    ).toBeVisible();
+    const headline = () =>
+      canvas.getByText("Best e1RM", { selector: "p" }).parentElement;
+    await expect(headline()).toHaveTextContent("92.5 kg × 8");
+    await userEvent.click(period.getByRole("button", { name: "All" }));
+    await waitFor(() => expect(headline()).toHaveTextContent("100 kg × 8"));
+  },
+});
+
+export const ExerciseHistoryRecordResetPc = pageStory({
+  fixture: afterRecordReset,
+  url: () => bench,
+  viewport: "pc",
 });
 
 /** The period filters the page and carries over to the history tab. */

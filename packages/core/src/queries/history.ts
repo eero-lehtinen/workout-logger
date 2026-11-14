@@ -49,7 +49,7 @@ export const exerciseHistory = defineQuery(
     const performances = markPerformanceSets(
       exercise.type,
       await loadPerformances(db, exercise.id),
-      cap,
+      settings,
     ).map((p) => ({ ...p, sets: p.sets.map(stripSessionExercise) }));
     return {
       exercise: { ...exercise, archived: exercise.archived === 1 },

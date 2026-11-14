@@ -354,7 +354,7 @@ async function sessionMarkers(
   startedAt: number,
   exercises: readonly { exerciseId: string; type: ExerciseType }[],
 ): Promise<Map<string, ProgressMarker | null>> {
-  const { e1rm_rep_cap } = await readSettings(db);
+  const settings = await readSettings(db);
   const markers = new Map<string, ProgressMarker | null>();
   const types = new Map(exercises.map((e) => [e.exerciseId, e.type]));
   for (const [exerciseId, type] of types) {
@@ -362,9 +362,7 @@ async function sessionMarkers(
       sessionId,
       startedAt,
     });
-    const current = markPerformanceSets(type, performances, e1rm_rep_cap).at(
-      -1,
-    );
+    const current = markPerformanceSets(type, performances, settings).at(-1);
     if (current?.sessionId !== sessionId) continue;
     for (const set of current.sets) markers.set(set.id, set.marker);
   }

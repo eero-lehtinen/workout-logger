@@ -32,14 +32,28 @@ export const settings = {
     title: "Treenit",
     keepScreenOn: "Pidä näyttö päällä",
     keepScreenOnHint: "Kun treeni on käynnissä.",
-    repLimit: "e1RM-toistoraja",
-    repLimitHint:
-      "Jos toistoja on tätä enemmän, sarjalle ei lasketa e1RM:ää eikä se voi olla ennätys.",
     weekStart: "Viikon ensimmäinen päivä",
     weekStartHint:
       "Kalenterin ensimmäinen sarake ja päivä, josta viikkotilastot alkavat.",
     monday: "ma",
     sunday: "su",
+  },
+  records: {
+    title: "Ennätykset",
+    repLimit: "e1RM-toistoraja",
+    repLimitHint:
+      "Jos toistoja on tätä enemmän, sarjalle ei lasketa e1RM:ää eikä se voi olla ennätys.",
+    reset: "Nollaa ennätykset",
+    resetHint:
+      "Esimerkiksi dieetin tai tauon jälkeen. Ennätykset ja sarjaennätykset huomioivat vain tästä päivästä alkaen tehdyt treenit, ja historiassa voi katsoa pelkästään niitä. Aiemmin saadut merkit pysyvät ennallaan.",
+    resetDate: "Nollauspäivä",
+    add: "Nollaa",
+    added: "Ennätykset nollattu {{date}}",
+    since: "{{date}} alkaen",
+    current: "Nykyiset ennätykset",
+    until: "{{date}} tehtyyn nollaukseen asti",
+    remove: "Poista nollaus {{date}}",
+    removed: "Nollaus {{date}} poistettu",
   },
   appearance: {
     title: "Ulkoasu",
