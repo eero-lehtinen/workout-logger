@@ -576,7 +576,7 @@ function Ledger(props: {
   return (
     <table className="w-full table-fixed border-collapse">
       <thead>
-        <tr className="text-left text-sm text-ink-muted">
+        <tr className="text-left align-bottom text-sm text-ink-muted">
           <th scope="col" className="w-6 pb-1 font-normal">
             <span className="sr-only">{t("session.ledger.set")}</span>
           </th>
@@ -585,9 +585,14 @@ function Ledger(props: {
             {t("session.ledger.today")}
           </th>
           <th scope="col" className="pb-1 pl-2 font-normal">
-            {previous
-              ? formatSessionDate(previous.startedAt, previous.tz)
-              : t("session.ledger.lastTime")}
+            <span className="flex flex-wrap gap-x-1.5">
+              <span>{t("session.ledger.lastTime")}</span>
+              {previous && (
+                <span>
+                  {formatSessionDate(previous.startedAt, previous.tz)}
+                </span>
+              )}
+            </span>
           </th>
         </tr>
       </thead>
