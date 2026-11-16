@@ -87,7 +87,6 @@ export function tooltip(
 ): TooltipComponentOption {
   return {
     trigger: "axis",
-    confine: true,
     transitionDuration: 0,
     backgroundColor: theme.raised,
     borderColor: theme.rule,
