@@ -1,5 +1,5 @@
 import type { StoryObj } from "@storybook/react-vite";
-import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
+import { createMemoryHistory } from "@tanstack/react-router";
 import { useState } from "react";
 import { within } from "storybook/test";
 import type { DbClient } from "../db/client.ts";
@@ -8,7 +8,7 @@ import { DbClientProvider } from "../db/react.tsx";
 import type { Language } from "../i18n/index.ts";
 import { setSignInProvidersForStory } from "../lib/sign-in-providers.ts";
 import { setUsageForStory } from "../lib/usage.ts";
-import { createAppRouter } from "../router.ts";
+import { AppRouterProvider, createAppRouter } from "../router.tsx";
 import type { Fixture, FixtureIds } from "./fixtures.ts";
 
 interface Loaded {
@@ -69,7 +69,7 @@ function Page(props: { client: DbClient; url: string }) {
   );
   return (
     <DbClientProvider client={props.client}>
-      <RouterProvider router={router} />
+      <AppRouterProvider router={router} />
     </DbClientProvider>
   );
 }

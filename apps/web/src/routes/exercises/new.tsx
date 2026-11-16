@@ -7,5 +7,14 @@ const search = v.object({ from: v.optional(v.string()) });
 
 export const Route = createFileRoute("/exercises/new")({
   validateSearch: search,
+  loaderDeps: ({ search }) => ({ from: search.from }),
+  loader: ({ context, deps: { from } }) =>
+    from
+      ? context.preload(
+          ["muscles"],
+          ["settings"],
+          ["exerciseDetail", { exerciseId: from }],
+        )
+      : context.preload(["muscles"], ["settings"]),
   component: NewExercisePage,
 });

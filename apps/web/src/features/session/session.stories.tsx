@@ -1,6 +1,7 @@
 import type { Meta } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { restTimer } from "../../lib/rest-timer.ts";
+import { watchForBlank } from "../../stories/blank.ts";
 import {
   empty,
   idleEnded,
@@ -317,6 +318,29 @@ export const LoggingPc = pageStory({
 
     await userEvent.click(canvas.getByRole("button", { name: /^Edit set 1/ }));
     await expectFooterFits(canvas.getByRole("button", { name: "Delete set" }));
+  },
+});
+
+/** Opening another exercise keeps the screen until the exercise has loaded. */
+export const SwitchExercisesPc = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  viewport: "pc",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: "Log set 3" });
+    const blanked = watchForBlank(canvasElement);
+    for (const name of [
+      "Barbell Row",
+      "Overhead Press",
+      "Barbell Bench Press",
+    ]) {
+      await userEvent.click(
+        canvas.getByRole("link", { name: new RegExp(`^\\D+ ${name}`) }),
+      );
+      await canvas.findByRole("heading", { level: 1, name });
+    }
+    await expect(blanked()).toBe(false);
   },
 });
 

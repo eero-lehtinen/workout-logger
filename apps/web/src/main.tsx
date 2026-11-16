@@ -1,4 +1,3 @@
-import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { DbGate } from "./components/db-gate.tsx";
@@ -11,7 +10,7 @@ import { routeBeforeSwitch, startLiveUpdates } from "./lib/live-update.ts";
 import { isNative } from "./lib/platform.ts";
 import { requestPersistenceOnce } from "./lib/storage.ts";
 import { initTheme } from "./lib/theme.ts";
-import { createAppRouter } from "./router.ts";
+import { AppRouterProvider, createAppRouter } from "./router.tsx";
 import "./styles.css";
 
 const route = routeBeforeSwitch();
@@ -39,7 +38,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <DatabaseProvider fallback={DbGate}>
       <SyncRunner />
-      <RouterProvider router={router} />
+      <AppRouterProvider router={router} />
     </DatabaseProvider>
   </StrictMode>,
 );

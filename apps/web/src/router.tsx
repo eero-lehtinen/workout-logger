@@ -2,9 +2,15 @@ import {
   createBrowserHistory,
   createRouter,
   type RouterHistory,
+  RouterProvider,
 } from "@tanstack/react-router";
+import { type DbPreload, useDbPreload } from "./db/react.tsx";
 import { withBackStack } from "./lib/history-stack.ts";
 import { routeTree } from "./routeTree.gen.ts";
+
+export interface RouterContext {
+  preload: DbPreload;
+}
 
 /**
  * The app's router. Each screen's scrolling body is restored when returning
@@ -20,7 +26,21 @@ export function createAppRouter(history?: RouterHistory) {
     scrollRestoration: true,
     getScrollRestorationKey: (location) => location.pathname,
     history: withBackStack(history ?? createBrowserHistory()),
+    // A screen visited before may have lost its queries from the cache, or
+    // the database may have been reopened with a new cache. Its loader must
+    // finish before the screen shows, or the screen suspends (see DbPreload).
+    defaultStaleReloadMode: "blocking",
+    // AppRouterProvider sets the context before the first load.
+    context: { preload: undefined as unknown as DbPreload },
   });
+}
+
+/** Renders `router` with the open database's preload in its context. */
+export function AppRouterProvider(props: {
+  router: ReturnType<typeof createAppRouter>;
+}) {
+  const preload = useDbPreload();
+  return <RouterProvider router={props.router} context={{ preload }} />;
 }
 
 declare module "@tanstack/react-router" {

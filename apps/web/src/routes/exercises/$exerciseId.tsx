@@ -14,5 +14,11 @@ const search = v.object({
 
 export const Route = createFileRoute("/exercises/$exerciseId")({
   validateSearch: search,
+  loader: ({ context, params }) =>
+    context.preload(
+      ["exerciseDetail", { exerciseId: params.exerciseId }],
+      ["muscles"],
+      ["settings"],
+    ),
   component: EditExercisePage,
 });

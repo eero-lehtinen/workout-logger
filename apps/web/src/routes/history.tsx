@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { WeekStart } from "@workout-logger/core";
 import * as v from "valibot";
-import { HistoryPage } from "../features/history/history-page.tsx";
+import {
+  HistoryPage,
+  monthRange,
+  shownMonth,
+} from "../features/history/history-page.tsx";
+import { todayIso } from "../lib/format.ts";
 
 const search = v.object({
   /** The shown month, `YYYY-MM`; the current month if missing. */
@@ -11,5 +17,12 @@ const search = v.object({
 
 export const Route = createFileRoute("/history")({
   validateSearch: search,
+  loaderDeps: ({ search }) => ({ month: shownMonth(search) }),
+  loader: async ({ context, deps: { month } }) => {
+    const [settings] = await context.preload(["settings"]);
+    const weekStart = settings.week_start as WeekStart;
+    const range = monthRange(month, weekStart, todayIso());
+    await context.preload(["trainingStats"], ["sessionsInRange", range]);
+  },
   component: HistoryPage,
 });

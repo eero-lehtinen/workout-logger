@@ -1,6 +1,8 @@
 import {
   QueryClient,
   QueryClientProvider,
+  queryOptions,
+  useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import type {
@@ -132,17 +134,59 @@ type ArgsParam<N extends QueryName> =
       ? []
       : [QueryArgs<N>];
 
-/** A query against the local database. Suspends on the first load. */
+function dbQueryOptions<N extends QueryName>(
+  db: DbClient,
+  name: N,
+  params: QueryArgs<N> | undefined,
+) {
+  return queryOptions({
+    queryKey: ["db", name, params ?? null],
+    queryFn: () => db.query(name, params as QueryArgs<N>),
+  });
+}
+
+/**
+ * A query against the local database. Suspends on the first load, which
+ * empties the screen: route loaders preload a screen's queries (see
+ * `DbPreload`) so that navigating never suspends.
+ */
 export function useDbQuery<N extends QueryName>(
   name: N,
   ...args: ArgsParam<N>
 ): QueryResult<N> {
   const db = useDb();
-  const params = args[0];
-  return useSuspenseQuery({
-    queryKey: ["db", name, params ?? null],
-    queryFn: () => db.query(name, params as QueryArgs<N>),
-  }).data as QueryResult<N>;
+  return useSuspenseQuery(dbQueryOptions(db, name, args[0]))
+    .data as QueryResult<N>;
+}
+
+/** A query name and its arguments, as `useDbQuery` takes them. */
+export type DbQueryRef = {
+  [N in QueryName]: [name: N, ...args: ArgsParam<N>];
+}[QueryName];
+
+/**
+ * Loads queries into the cache unless they are there already, and resolves
+ * to their results. A route's
+ * loader awaits it with every query its screen reads, so the router keeps
+ * the previous screen until the new one can render without suspending.
+ * React can't keep it otherwise: the router's store updates can't be
+ * deferred, so a screen that suspends replaces the old one with nothing.
+ */
+export type DbPreload = <const Q extends readonly DbQueryRef[]>(
+  ...queries: Q
+) => Promise<{ [K in keyof Q]: QueryResult<Q[K][0]> }>;
+
+export function useDbPreload(): DbPreload {
+  const db = useDb();
+  const queryClient = useQueryClient();
+  return ((...queries: DbQueryRef[]) =>
+    Promise.all(
+      queries.map(([name, params]) =>
+        queryClient.ensureQueryData(
+          dbQueryOptions(db, name, params as QueryArgs<typeof name>),
+        ),
+      ),
+    )) as DbPreload;
 }
 
 export interface CommandOptions {

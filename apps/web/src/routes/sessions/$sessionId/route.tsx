@@ -13,5 +13,10 @@ const search = v.object({
 
 export const Route = createFileRoute("/sessions/$sessionId")({
   validateSearch: search,
+  loader: ({ context, params }) =>
+    context.preload(
+      ["sessionView", { sessionId: params.sessionId }],
+      ["settings"],
+    ),
   component: SessionLayout,
 });

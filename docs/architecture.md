@@ -188,7 +188,8 @@ lib/         formatting, device-only view preferences (`localStorage`, not
              storage persistence, PWA install, the account and sign-in, the
              sync scheduler, and the Android-only parts: snapshot files, the
              APK update check, live updates, the token store
-routes/      TanStack Router file routes; thin, they render feature components
+routes/      TanStack Router file routes; thin, they preload their screen's
+             queries and render feature components
 ```
 
 Entry points: `@workout-logger/core` (browser-safe), `/node` (better-sqlite3
@@ -332,6 +333,7 @@ The weight unit is a per-user display setting. Storage is always kg.
 - After commit, it emits the table names.
 - Each query in `QUERIES` lists the tables it reads. The worker maps changed tables to affected query names and posts those; the main thread invalidates TanStack Query queries keyed `["db", name, args]` by name. This is simple, and coarse enough to be correct.
 - Queries use `networkMode: "always"` and never go stale on their own: the data is local, and only commits change it.
+- Components read with `useDbQuery`, which suspends until a query first has data. A screen must not suspend when it opens: the router's state updates synchronously, so React can't keep the previous screen and shows the shell's empty Suspense fallback instead. Each route's `loader` therefore preloads every query its screen reads, with `context.preload` (`loaderDeps` for queries that depend on search params), and the router keeps the previous screen until the loader is done. Loaders also block when the router revisits a screen it has loaded before (`defaultStaleReloadMode: "blocking"`): the queries may have left the cache since, or the database may have been reopened with a new one. A query missing from a loader shows up as an empty frame; the `Screens/Navigation` story and `SwitchExercisesPc` check for one.
 
 ### Updates and version compatibility
 

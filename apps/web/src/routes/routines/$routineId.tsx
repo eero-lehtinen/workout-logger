@@ -15,5 +15,10 @@ const search = v.object({
 
 export const Route = createFileRoute("/routines/$routineId")({
   validateSearch: search,
+  loader: ({ context, params }) =>
+    context.preload(
+      ["routineDetail", { routineId: params.routineId }],
+      ["settings"],
+    ),
   component: RoutineEditor,
 });

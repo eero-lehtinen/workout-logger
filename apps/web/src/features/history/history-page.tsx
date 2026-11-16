@@ -5,7 +5,6 @@ import {
   localDate,
   type WeekStart,
 } from "@workout-logger/core";
-import { useDeferredValue } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { SectionHeading } from "../../components/headings.tsx";
 import { listClass } from "../../components/list.ts";
@@ -27,7 +26,7 @@ export function HistoryPage() {
   const stats = useDbQuery("trainingStats");
   const weekStart = settings.week_start as WeekStart;
   const today = todayIso();
-  const month = search.month ?? today.slice(0, 7);
+  const month = shownMonth(search);
   const selected = search.day ?? (month === today.slice(0, 7) ? today : null);
   const monthCounts = new Map<string, number>();
   for (const s of stats.sessions) {
@@ -83,6 +82,30 @@ export function HistoryPage() {
   );
 }
 
+/** The calendar's month, `YYYY-MM`: the current month by default. */
+export function shownMonth(search: { month?: string | undefined }): string {
+  return search.month ?? todayIso().slice(0, 7);
+}
+
+/** The times the calendar of `month` shows sessions for. */
+export function monthRange(
+  month: string,
+  weekStart: WeekStart,
+  today: IsoDate,
+): { from: number; to: number } {
+  const grid = monthGrid(month, weekStart);
+  // A day longer on both ends: a session's date is in its own zone, which
+  // may differ from the device's.
+  const tz = deviceTimeZone();
+  const edge = (date: IsoDate, days: number) =>
+    Temporal.PlainDate.from(date).add({ days }).toZonedDateTime(tz)
+      .epochMilliseconds;
+  return {
+    from: edge(grid[0] ?? today, -1),
+    to: edge(grid.at(-1) ?? today, 2),
+  };
+}
+
 function MonthSessions(props: {
   month: string;
   weekStart: WeekStart;
@@ -96,20 +119,11 @@ function MonthSessions(props: {
   const { t } = useTranslation();
   const settings = useDbQuery("settings");
   const now = useNow();
-  // Keeps showing the old month while the new one loads, instead of
-  // suspending the whole screen.
-  const month = useDeferredValue(props.month);
-  const grid = monthGrid(month, props.weekStart);
-  // A day longer on both ends: a session's date is in its own zone, which
-  // may differ from the device's.
-  const tz = deviceTimeZone();
-  const edge = (date: IsoDate, days: number) =>
-    Temporal.PlainDate.from(date).add({ days }).toZonedDateTime(tz)
-      .epochMilliseconds;
-  const sessions = useDbQuery("sessionsInRange", {
-    from: edge(grid[0] ?? props.today, -1),
-    to: edge(grid.at(-1) ?? props.today, 2),
-  });
+  const { month } = props;
+  const sessions = useDbQuery(
+    "sessionsInRange",
+    monthRange(month, props.weekStart, props.today),
+  );
   const byDate = new Map<IsoDate, ListedSession[]>();
   for (const s of sessions) {
     const date = localDate(s.startedAt, s.tz);
