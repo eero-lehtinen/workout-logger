@@ -97,7 +97,7 @@ pinned in `packageManager`). Run from the repo root.
 | `pnpm typecheck` | `tsc` in every package. |
 | `pnpm test` | Vitest across all packages, including every Storybook story as a browser test; `pnpm test <filter>` to narrow by file name, `--project storybook` for stories only. |
 | `pnpm storybook` | Storybook on http://localhost:6006: every screen with fixture data, at phone and PC widths, light and dark. |
-| `pnpm screenshots` | Rerender the README's collages in `docs/screenshots` from Storybook stories, using the Storybook on port 6006 or starting one. The story list and captions are in `apps/web/scripts/screenshots.ts`. |
+| `pnpm screenshots` | Rerender the README's collages in `docs/screenshots` from Storybook stories, using the Storybook on port 6006 or starting one. The story list and captions are in `apps/web/scripts/screenshots.ts`. Run it only when asked: the collages don't need to match the current UI, and every rerender adds binary files to git history. |
 | `pnpm start` | Serve the last `pnpm build` of the web app with the production server on http://localhost:3000, with its database in `apps/server/data/app.db`. `pnpm dev` proxies `/api` to it. Sign-in needs a Google OAuth client or GitHub OAuth app ([docs/deployment.md](docs/deployment.md#google-oauth-client)). |
 | `pnpm --filter @workout-logger/server exec node src/cli.ts create-owner --email <email>` | Create the owner account in the local server database, `apps/server/data/app.db` (`new-epoch` ends a restore). Run from the repo root, `node apps/server/src/cli.ts` would open `data/app.db` there instead. |
 | `pnpm e2e` | Playwright end-to-end tests against a fresh production build, served by `apps/server`. With `CI` set it tests the last `pnpm build` instead. |

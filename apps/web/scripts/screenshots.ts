@@ -5,7 +5,9 @@ import { type Browser, chromium } from "playwright";
 import sharp from "sharp";
 
 // Renders the README's screenshot collages (docs/screenshots) from Storybook
-// stories, so they show fixture data and never a real account's.
+// stories, so they show fixture data and never a real account's. Run it only
+// when asked: the collages may lag behind the UI, and each rerender adds
+// binary files to git history.
 
 interface Shot {
   story: string;
