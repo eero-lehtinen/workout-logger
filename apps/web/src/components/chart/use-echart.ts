@@ -5,7 +5,11 @@ import { echarts } from "./echarts.ts";
 import { chartLocale } from "./locale.ts";
 import { attachPinchZoom, currentWindow } from "./pinch.ts";
 import type { Span } from "./range.ts";
-import { attachTouchTooltip, hideTooltip } from "./touch-tooltip.ts";
+import {
+  attachTouchTooltip,
+  hideTooltip,
+  tooltipPlacement,
+} from "./touch-tooltip.ts";
 
 /**
  * An ECharts instance on `el`, sized to it, disposed with it.
@@ -24,6 +28,7 @@ export function useEChart(el: HTMLElement | null): ECharts | null {
   useEffect(() => {
     if (!el) return;
     const instance = echarts.init(el, null, { locale: chartLocale(language) });
+    instance.setOption({ tooltip: tooltipPlacement(el) });
     const resize = new ResizeObserver(() => instance.resize());
     resize.observe(el);
     const wheel = (e: Event) => {

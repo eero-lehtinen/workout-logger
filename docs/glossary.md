@@ -48,13 +48,12 @@ previous performance, not by prescribing.
 | Term | Meaning |
 | --- | --- |
 | **e1RM** (estimated one-rep max) | The weight you could lift for one rep, estimated from a set's weight and reps. Epley: `w * (1 + reps / 30)`, with `e1RM = w` for 1 rep. Defined only up to the **e1RM rep limit** (default 12 reps; `e1rm_rep_cap` in code); above it the estimate is too unreliable. |
-| **Reference set** | The set with the same index in the previous performance. Set 2 today is compared with set 2 last time for a weight increase. |
 | **Progress marker** | At most one per set: PR, set record, weight increase, or a match of a PR or set record (tying it without beating it). Full rules in [features.md](features.md#progress-markers). |
 | **PR** (personal record, trophy) | A set whose e1RM beats every earlier set of that exercise. Other record kinds (heaviest weight, best weight for N reps) appear in the records table but don't produce a marker. |
 | **Set record** (star) | A set that beats every earlier set of that exercise with the same set number: set 2 today against set 2 of every earlier performance. Beating means a higher e1RM, or, when either set is above the e1RM rep limit, at least as much weight and reps with one of them strictly more. |
-| **Record reset** | A date from which PRs and set records start afresh, e.g. after a cut or a break. A synced list of dates (`record_resets`). Rules in [features.md](features.md#record-resets). |
+| **Record reset** | A date from which progress markers start afresh, e.g. after a cut or a break. A synced list of dates (`record_resets`). Rules in [features.md](features.md#record-resets). |
 | **Record era** | The sessions from one record reset up to the next, by local date. Markers compare only within an era. |
-| **Weight increase** (up arrow) | A set with more weight than its reference set that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
+| **Weight increase** (up arrow) | A set heavier than every earlier set of that exercise with the same set number that is not a set record, typically fewer reps after a weight bump. Marks the double progression step. |
 | **Weight unit** | Display setting, `kg` or `lb`. Storage is always kg. |
 | **Weight step** | The step used by the +/- buttons and for rounding converted values, e.g. 2.5 kg or 5 lb. A global default, overridable per exercise. `weight_increment_kg` and `weight_increment_lb` in code. |
 | **Weighted sets** | A set count per muscle, where each set counts by the muscle target factor. 3 sets of rows = 3 lats, 3 upper back, 1.5 biceps, 1.5 rear delts. For a muscle group, each set counts once, by its largest factor in the group: the same rows are 3 back sets and 1.5 arm sets. |

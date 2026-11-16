@@ -38,7 +38,7 @@ export const settings = {
     repLimitHint: "Sets with more reps get no e1RM and can't be PRs.",
     reset: "Reset records",
     resetHint:
-      "After a cut or a break. PRs and set records count only sessions from this date on, and history can show just those. Earlier markers stay as they were.",
+      "After a cut or a break. PRs and set records compare only sessions from this date on.",
     resetDate: "Reset date",
     add: "Reset",
     added: "Records reset on {{date}}",

@@ -129,7 +129,6 @@ The words the UI uses for each [glossary](glossary.md) term:
 | rep | rep | toisto |
 | weight | weight | paino |
 | previous performance | previous performance | edellinen kerta |
-| reference set | reference set | vertailusarja |
 | PR | PR | ennätys |
 | set record | set record | sarjaennätys |
 | weight increase | weight increase | painonnousu |

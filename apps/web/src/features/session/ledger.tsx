@@ -11,10 +11,9 @@ const subgrid = "col-span-full grid grid-cols-subgrid";
 
 /**
  * Last time's sets beside today's, row by row, read left to right in time
- * order. A weight increase on set n is judged against set n of the previous
- * performance, so the pairing is that comparison; a set record is judged
- * against every earlier set n. Last time's markers are smaller, so they
- * don't read as today's.
+ * order. Set records and weight increases are judged against every earlier
+ * set n, so last time's set n is the most recent of what set n competes
+ * with. Last time's markers are smaller, so they don't read as today's.
  */
 export function Ledger(props: {
   log: ExerciseLog;

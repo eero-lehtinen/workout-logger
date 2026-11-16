@@ -105,7 +105,7 @@ export function historySeries(
 
 /**
  * Each set's e1RM, one series per set number: set 1 of every session, set 2,
- * and so on, like the reference sets of the markers. A session without that
+ * and so on, like the set records of the markers. A session without that
  * set, or with it above the e1RM cap, has no point in its series.
  */
 export function setE1rmSeries(

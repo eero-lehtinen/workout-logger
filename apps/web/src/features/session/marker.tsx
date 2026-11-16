@@ -130,7 +130,7 @@ function Comparison(props: {
       ? t("session.marker.bestBefore")
       : props.marker === "set_record" || props.marker === "set_record_match"
         ? t("session.marker.bestSetBefore", { number: against.setNumber })
-        : t("session.marker.lastTimeSet", { number: against.setNumber });
+        : t("session.marker.heaviestSetBefore", { number: against.setNumber });
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 pt-2 text-sm">
       <dt className="text-ink-muted">{t("session.marker.thisSet")}</dt>

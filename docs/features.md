@@ -114,26 +114,24 @@ Each set gets at most one marker, checked in this order:
 
 A match ties a record instead of beating it: the same comparison, equal
 within the epsilon. A matched set record ties at least one earlier set with
-its set number and beats the rest. Weight increases have no match: the same
-weight as last time is the usual case, not an achievement.
+its set number and beats the rest. Weight increases have no match: repeating
+the heaviest weight is the usual case, not an achievement.
 
-A set record compares against every earlier set with the same set number: set 2
-today against set 2 of every earlier performance of the exercise. A weight
-increase compares against the **reference set**: the set with the same set
-number in the previous performance. Sets are numbered by `position` within the
-performance. Deleted sets, and sets of deleted session exercises or sessions,
-don't count.
+Set records and weight increases compare against every earlier set with the
+same set number: set 2 today against set 2 of every earlier performance of the
+exercise. Sets are numbered by `position` within the performance. Deleted sets,
+and sets of deleted session exercises or sessions, don't count.
 
 ### `weight_reps` and `bodyweight_reps`
 
 - **e1RM** uses Epley and is computed only for 1–12 reps. The cap is a setting. Above the cap, e1RM is undefined: estimates there are unreliable.
-- **PR:** the set's e1RM is greater than the best e1RM of every earlier set of this exercise. Sets above the cap can't be PRs.
+- **PR:** the set's e1RM is greater than the best e1RM of every earlier set of this exercise. Sets above the cap can't be PRs. Tapping the trophy shows the first set to reach the previous best.
 - **Set record:** the set beats every earlier set with its set number. Against each earlier set:
   - if both have an e1RM: this set's e1RM is greater;
   - otherwise (either is above the cap): this set dominates the earlier one, meaning weight ≥ and reps ≥, with at least one strictly greater. This catches high-rep progress without trusting a formula.
 
   Matching an earlier best is a matched set record. Beating last time after a worse session is nothing. Tapping the star shows the earlier set that was hardest to beat: the highest e1RM, or above the cap the heaviest, then the most reps.
-- **Weight increase:** the weight is greater than the reference set's weight, but it isn't a set record. This is the double progression step: more weight, fewer reps.
+- **Weight increase:** the weight is greater than the weight of every earlier set with its set number, but it isn't a set record. This is the double progression step: more weight, fewer reps. Getting back to a weight after a lighter session is nothing. Tapping the arrow shows the first set to reach the previous heaviest weight.
 - `bodyweight_reps` with 0 added weight on both sets is compared like `reps`. For PRs, a set without added weight competes on reps with earlier sets without added weight; a set with added weight competes on the e1RM of the added weight. For set records, a set without added weight is compared only with earlier sets without added weight; a set with added weight is compared with all of them.
 
 ### Other exercise types
@@ -147,11 +145,11 @@ don't count.
 ### Edge cases
 
 - "Greater" means greater by more than an epsilon (1e-6 kg). Values within it tie, which gives a matched PR or set record.
-- No earlier set with the same set number (first session of the exercise, or more sets than ever before): no set record. No reference set (more sets than last time): no weight increase.
+- No earlier set with the same set number (first session of the exercise, or more sets than ever before): no set record or weight increase.
 - A session that has the exercise twice is one performance, numbered in session order, so its sets don't compete with each other for set records.
 - The first session of an exercise never shows PRs, because everything would be one. For the same reason, a PR needs at least one earlier comparable set: one with an e1RM, or for the other kinds, a value of the same kind.
 - Markers in history are computed against the history before each session, so they show what was achieved at the time.
-- PRs and set records compare only with sessions of the same [record era](#record-resets). The first session of an era gets no PR or set record, like the first session of an exercise. Weight increases still compare with the previous performance, even across a reset.
+- All markers compare only with sessions of the same [record era](#record-resets). The first session of an era gets no markers, like the first session of an exercise.
 
 ## Record resets
 
@@ -161,7 +159,7 @@ by default, and never later. Resets are a synced setting (`record_resets`), a
 list of dates, so each one starts a **record era**:
 
 - A session belongs to the era of the latest reset on or before its local date. A session on the reset date is in the new era.
-- PRs and set records compare only with earlier sessions of the same era ([progress markers](#progress-markers)). Adding a reset never changes the markers of sessions before it; removing one merges its era into the previous one.
+- Progress markers compare only with earlier sessions of the same era ([progress markers](#progress-markers)). Adding a reset never changes the markers of sessions before it; removing one merges its era into the previous one.
 - The history screens' period gets a "Reset" choice next to "All", the default while a reset exists. The header and the records title name the reset's date. It shows the current era: sessions on or after the latest reset, in the graph, the records, the session list, and the frequency stats. "All" shows the older records.
 - The exercise list's best set covers the current era.
 
