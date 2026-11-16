@@ -11,6 +11,7 @@
     "dev": "pnpm --filter @workout-logger/web dev",
     "start": "pnpm --filter @workout-logger/server start",
     "storybook": "pnpm --filter @workout-logger/web storybook",
+    "screenshots": "pnpm --filter @workout-logger/web screenshots",
     "build": "pnpm -r build",
     "lint": "biome check .",
     "format": "biome check --write .",

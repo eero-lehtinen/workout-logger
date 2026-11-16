@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "screenshots": "node scripts/screenshots.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -64,6 +65,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "fflate": "^0.8.3",
     "playwright": "^1.65.0",
+    "sharp": "^0.35.5",
     "storybook": "^10.6.6",
     "tailwindcss": "^4.3.5",
     "vite": "^8.3.6",

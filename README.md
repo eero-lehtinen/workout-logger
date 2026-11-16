@@ -10,6 +10,16 @@ updates without a new APK. Both sync through the server after a Google sign-in,
 and the server backs up to R2. Measurements, a CLI, and more analytics are
 future work; see [docs/implementation-plan.md](docs/implementation-plan.md).
 
+## Screenshots
+
+Phone:
+
+![Phone screens: today, session, logging, adding an exercise, exercise history, calendar, routines, exercises, settings, dark theme](docs/screenshots/phone.webp)
+
+Desktop:
+
+![Desktop screens: session and logging, exercise history, calendar and frequency, routines, exercises, today in dark theme](docs/screenshots/pc.webp)
+
 ## Documentation
 
 - [docs/glossary.md](docs/glossary.md) - terms used in the code and docs
