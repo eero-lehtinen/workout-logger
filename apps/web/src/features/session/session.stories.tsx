@@ -204,13 +204,14 @@ export const LoggingWithMarkers = pageStory({
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole("button", { name: /^Edit set 1/ });
+    const set1 = await canvas.findByRole("button", { name: /^Edit set 1/ });
 
     // Today's set 1 is a PR over last time's set 1 (100 × 8).
-    const [todayPr] = canvas.getAllByRole("button", {
-      name: "Personal record",
-    });
-    await userEvent.click(todayPr as HTMLElement);
+    await userEvent.click(
+      within(set1.parentElement as HTMLElement).getByRole("button", {
+        name: "Personal record",
+      }),
+    );
     const pr = await body.findByRole("dialog", { name: /Personal record/ });
     await expect(pr).toHaveTextContent(
       /This set129\.8 kg e1RMPrevious best126\.7 kg e1RM100 kg × 8 on /,
@@ -273,6 +274,12 @@ export const LedgerRows = pageStory({
     await expect(
       before.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Last time's set 1 was a PR, and keeps its marker.
+    await expect(
+      within(before.parentElement as HTMLElement).getByRole("button", {
+        name: "Personal record",
+      }),
+    ).toBeVisible();
 
     await userEvent.click(before);
     await expect(canvas.getByLabelText("Weight in kg")).toHaveValue("100");

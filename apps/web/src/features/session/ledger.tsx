@@ -13,8 +13,8 @@ const subgrid = "col-span-full grid grid-cols-subgrid";
  * Last time's sets beside today's, row by row, read left to right in time
  * order. A weight increase on set n is judged against set n of the previous
  * performance, so the pairing is that comparison; a set record is judged
- * against every earlier set n. Last time's markers are left out: they are
- * about that session, and next to today's they would read as today's.
+ * against every earlier set n. Last time's markers are smaller, so they
+ * don't read as today's.
  */
 export function Ledger(props: {
   log: ExerciseLog;
@@ -86,20 +86,29 @@ export function Ledger(props: {
               <td className="tabular pl-2 text-sm text-ink-muted">{i + 1}</td>
               {previous && (
                 <>
-                  <td className="pr-2">
+                  <td className="pr-1">
                     {before && (
-                      <button
-                        type="button"
-                        onClick={() => props.onCopy(before)}
-                        aria-label={t("session.ledger.useForNext", {
-                          set: formatSet(before, type, unit),
-                        })}
-                        className="-ml-1.5 flex h-12 items-center rounded-xl px-1.5 text-left whitespace-nowrap text-ink-muted hover:bg-ink/8 hover:text-ink"
-                      >
-                        <span className="numerals text-lg">
-                          <SetText set={before} type={type} unit={unit} />
-                        </span>
-                      </button>
+                      <div className="-ml-1.5 flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => props.onCopy(before)}
+                          aria-label={t("session.ledger.useForNext", {
+                            set: formatSet(before, type, unit),
+                          })}
+                          className="flex h-12 items-center rounded-xl px-1.5 text-left whitespace-nowrap text-ink-muted hover:bg-ink/8 hover:text-ink"
+                        >
+                          <span className="numerals text-lg">
+                            <SetText set={before} type={type} unit={unit} />
+                          </span>
+                        </button>
+                        <Marker
+                          marker={before.marker}
+                          basis={before.markerBasis}
+                          type={type}
+                          unit={unit}
+                          size={14}
+                        />
+                      </div>
                     )}
                   </td>
                   <td aria-hidden className="pr-2 text-ink-muted/60">
