@@ -45,7 +45,7 @@ export const settings = {
       "Jos toistoja on tätä enemmän, sarjalle ei lasketa e1RM:ää eikä se voi olla ennätys.",
     reset: "Nollaa ennätykset",
     resetHint:
-      "Esimerkiksi dieetin tai tauon jälkeen. Ennätykset ja sarjaennätykset huomioivat vain tästä päivästä alkaen tehdyt treenit, ja historiassa voi katsoa pelkästään niitä. Aiemmin saadut merkit pysyvät ennallaan.",
+      "Esimerkiksi dieetin tai tauon jälkeen. Ennätykset ja sarjaennätykset huomioivat vain tästä päivästä alkaen tehdyt treenit.",
     resetDate: "Nollauspäivä",
     add: "Nollaa",
     added: "Ennätykset nollattu {{date}}",
