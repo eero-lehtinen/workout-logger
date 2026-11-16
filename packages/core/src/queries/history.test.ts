@@ -138,9 +138,10 @@ describe("history queries", () => {
     const restored = await runQuery(store, "exerciseHistory", {
       exerciseId: bench,
     });
+    // 95 × 5 is heavier than last time, but not than the first session.
     expect(
       restored?.performances.map((p) => p.sets.map((s) => s.marker)),
-    ).toEqual([[null], [null], ["weight_increase"]]);
+    ).toEqual([[null], [null], [null]]);
   });
 
   it("lists sessions in a range with their day's index", async () => {

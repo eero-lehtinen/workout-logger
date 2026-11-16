@@ -40,7 +40,11 @@ export const ExerciseHistory = pageStory({
   },
 });
 
-/** Only today's set 2 beats every earlier set with its number. */
+/**
+ * Only today's set 2 beats every earlier set with its number. The session 2
+ * days ago is heavier than the one before it, but no heavier than the first,
+ * so it has no weight increases either.
+ */
 export const ExerciseHistorySetRecords = pageStory({
   fixture: setRecordHistory,
   url: () => bench,
@@ -49,6 +53,9 @@ export const ExerciseHistorySetRecords = pageStory({
     await expect(
       canvas.getAllByRole("img", { name: "Set record" }),
     ).toHaveLength(1);
+    await expect(
+      canvas.queryAllByRole("img", { name: "Weight increase" }),
+    ).toHaveLength(0);
   },
 });
 

@@ -224,7 +224,7 @@ export const LoggingWithMarkers = pageStory({
       name: /Weight increase/,
     });
     await expect(increase).toHaveTextContent(
-      /This set102\.5 kgLast time, set 2100 kg100 kg × 8 on /,
+      /This set102\.5 kgPrevious heaviest for set 2100 kg100 kg × 8 on /,
     );
     await userEvent.keyboard("{Escape}");
 

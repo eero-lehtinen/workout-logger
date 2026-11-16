@@ -124,7 +124,7 @@ export const session = {
     sameWeightAndReps: "Same weight and reps",
     bestBefore: "Previous best",
     bestSetBefore: "Previous best for set {{number}}",
-    lastTimeSet: "Last time, set {{number}}",
+    heaviestSetBefore: "Previous heaviest for set {{number}}",
     againstEarlierToday: "{{set}} earlier today",
     againstOnDate: "{{set}} on {{date}}",
     reps_one: "{{count}} rep",

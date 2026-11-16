@@ -84,10 +84,10 @@ describe("weight_reps", () => {
   });
 
   it("prefers any colored marker over a match", () => {
-    // Matches the PR from two sessions ago, and is heavier than last time.
-    expect(last("weight_reps", [[s(100, 8)], [s(90, 8)], [s(100, 8)]])).toEqual(
-      ["weight_increase"],
-    );
+    // 100 × 8 ties the e1RM of 95 × 10, and is heavier.
+    expect(last("weight_reps", [[s(95, 10)], [s(100, 8)]])).toEqual([
+      "weight_increase",
+    ]);
   });
 
   it("marks a set record when the e1RM beats every earlier set with its number but not the PR", () => {
@@ -161,7 +161,7 @@ describe("weight_reps", () => {
     // Dominates last time but not an earlier heavier set.
     expect(
       last("weight_reps", [[s(65, 13)], [s(60, 15)], [s(62.5, 15)]]),
-    ).toEqual(["weight_increase"]);
+    ).toEqual([null]);
   });
 
   it("marks a weight increase: more weight, fewer reps, no record", () => {
@@ -173,11 +173,28 @@ describe("weight_reps", () => {
     ).toEqual(["weight_increase", "pr"]);
   });
 
+  it("marks a weight increase only over every earlier set with its number", () => {
+    // Heavier than last time, but not than two sessions ago.
+    expect(last("weight_reps", [[s(100, 8)], [s(90, 8)], [s(95, 8)]])).toEqual([
+      null,
+    ]);
+    expect(
+      last("weight_reps", [[s(100, 8)], [s(90, 8)], [s(102.5, 5)]]),
+    ).toEqual(["weight_increase"]);
+    // Set 2 is compared with earlier sets 2, not with today's set 1.
+    expect(
+      last("weight_reps", [
+        [s(100, 8), s(80, 8)],
+        [s(100, 8), s(85, 5)],
+      ]),
+    ).toEqual(["pr_match", "weight_increase"]);
+  });
+
   it("prefers PR over set record over weight increase", () => {
     expect(last("weight_reps", [[s(100, 5)], [s(110, 5)]])).toEqual(["pr"]);
   });
 
-  it("has no reference for sets beyond the previous set count", () => {
+  it("marks nothing for sets beyond every earlier set count", () => {
     expect(last("weight_reps", [[s(100, 5)], [s(90, 5), s(95, 5)]])).toEqual([
       null,
       null,
@@ -211,7 +228,8 @@ describe("bodyweight_reps", () => {
 
   it("uses the added weight's e1RM when there is one", () => {
     expect(last("bodyweight_reps", [[s(10, 5)], [s(15, 5)]])).toEqual(["pr"]);
-    // 25 × 1 (e1RM 25) doesn't beat 20 × 8 (e1RM 25.3), and has no reference set.
+    // 25 × 1 (e1RM 25) doesn't beat 20 × 8 (e1RM 25.3), and no earlier
+    // session had a set 2.
     expect(last("bodyweight_reps", [[s(20, 8)], [s(10, 8), s(25, 1)]])).toEqual(
       [null, null],
     );
@@ -287,10 +305,15 @@ describe("record eras", () => {
       [null, null],
       ["pr", "set_record"],
     ]);
-    expect(markPerformances("weight_reps", history)[2]).toEqual([
-      "weight_increase",
-      null,
-    ]);
+    expect(markPerformances("weight_reps", history)[2]).toEqual([null, null]);
+  });
+
+  it("starts weight increases afresh in a new era", () => {
+    const history = [[s(100, 5)], [s(80, 8)], [s(85, 5)]];
+    expect(
+      markPerformances("weight_reps", history, { eras: [0, 1, 1] }),
+    ).toEqual([[null], [null], ["weight_increase"]]);
+    expect(last("weight_reps", history)).toEqual([null]);
   });
 
   it("marks no PRs in the first performance of an era", () => {
@@ -301,18 +324,17 @@ describe("record eras", () => {
     ]);
   });
 
-  it("still marks a weight increase over the last performance of the old era", () => {
+  it("marks no weight increase over the old era in the first performance of a new one", () => {
     const history = [[s(80, 8)], [s(85, 5)]];
-    expect(last("weight_reps", history, { eras: [0, 1] })).toEqual([
-      "weight_increase",
-    ]);
+    expect(last("weight_reps", history, { eras: [0, 1] })).toEqual([null]);
   });
 
   it("never compares with an earlier era, even one that comes back", () => {
-    const history = [[s(100, 5)], [s(90, 5)], [s(95, 5)]];
+    // 97.5 × 4 is lighter than era 0's 100 × 5 but heavier than 95 × 5.
+    const history = [[s(100, 5)], [s(90, 8)], [s(95, 5)], [s(97.5, 4)]];
     expect(
-      markPerformances("weight_reps", history, { eras: [0, 1, 2] }),
-    ).toEqual([[null], [null], ["weight_increase"]]);
+      markPerformances("weight_reps", history, { eras: [0, 1, 2, 2] }),
+    ).toEqual([[null], [null], [null], ["weight_increase"]]);
   });
 });
 
@@ -356,7 +378,7 @@ describe("explainPerformances", () => {
     });
   });
 
-  it("points set records and weight increases at the reference set when it is the only one", () => {
+  it("points set records and weight increases at the only earlier set with their number", () => {
     const history = [
       [s(120, 8), s(100, 7), s(100, 6)],
       [s(110, 5), s(100, 8), s(105, 4)],
@@ -390,6 +412,26 @@ describe("explainPerformances", () => {
         against: { performance: 0, set: 0 },
       },
     ]);
+  });
+
+  it("points a weight increase at the first to reach the heaviest earlier weight", () => {
+    const history = [[s(100, 8)], [s(90, 8)], [s(100, 6)], [s(102.5, 5)]];
+    expect(explainPerformances("weight_reps", history).at(-1)).toEqual([
+      {
+        marker: "weight_increase",
+        measure: "weight",
+        value: 102.5,
+        compared: 100,
+        against: { performance: 0, set: 0 },
+      },
+    ]);
+  });
+
+  it("keeps the first set to reach a PR when a later one ties it within the epsilon", () => {
+    const history = [[s(100, 5)], [s(100 + 1e-7, 5)], [s(110, 5)]];
+    const bases = explainPerformances("weight_reps", history);
+    expect(bases[1]?.[0]?.marker).toBe("pr_match");
+    expect(bases[2]?.[0]?.against).toEqual({ performance: 0, set: 0 });
   });
 
   it("points a match at the set it matched", () => {

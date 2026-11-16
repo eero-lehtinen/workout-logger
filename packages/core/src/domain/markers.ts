@@ -1,6 +1,6 @@
 import type { ExerciseType, SetLogTable } from "../schema/tables.ts";
 import { DEFAULT_E1RM_REP_CAP, estimateOneRepMax } from "./e1rm.ts";
-import { WEIGHT_EPSILON_KG } from "./units.ts";
+import { greater, hasWeight } from "./weight-compare.ts";
 
 /** At most one per set. Rules in docs/features.md#progress-markers. */
 export type ProgressMarker =
@@ -18,9 +18,8 @@ export type SetValues = Pick<
 export interface MarkerOptions {
   e1rmRepCap?: number;
   /**
-   * The record era of each performance (`recordEra`). PRs and set records
-   * compare only with earlier sets of the same era; weight increases still
-   * compare with the previous performance.
+   * The record era of each performance (`recordEra`). Every marker compares
+   * only with earlier sets of the same era.
    */
   eras?: readonly number[];
 }
@@ -48,8 +47,8 @@ export interface MarkerBasis {
   /**
    * The set it was compared with, as indexes into the performances: the
    * previous best for a PR, the best earlier set with the same set number for
-   * a set record, the reference set for a weight increase. A match points at
-   * the set it matched.
+   * a set record, the heaviest earlier set with the same set number for a
+   * weight increase. A match points at the set it matched.
    */
   against: SetIndex;
 }
@@ -83,7 +82,6 @@ export function explainPerformances(
   const best = new Map<ScoreKind, { value: number; at: SetIndex }>();
   // Every earlier set of the era, grouped by set number.
   const earlierByNumber: EarlierSet[][] = [];
-  let previous: readonly SetValues[] | undefined;
   const eras = options.eras;
   let eraStart = 0;
 
@@ -96,7 +94,7 @@ export function explainPerformances(
     const bases = sets.map((set, i): MarkerBasis | null => {
       const score = prScore(type, set, cap);
       const bestBefore = score && best.get(score.kind);
-      if (score && (!bestBefore || score.value > bestBefore.value)) {
+      if (score && (!bestBefore || greater(score.value, bestBefore.value))) {
         best.set(score.kind, {
           value: score.value,
           at: { performance: index, set: i },
@@ -121,18 +119,16 @@ export function explainPerformances(
       if (record?.outcome === "beat") {
         return { marker: "set_record", ...record.basis };
       }
-      const reference = previous?.[i];
-      if (
-        reference &&
-        isWeightType(type) &&
-        greater(weight(set), weight(reference))
-      ) {
+      const heaviest = isWeightType(type)
+        ? heaviestEarlier(earlierByNumber[i])
+        : undefined;
+      if (heaviest && greater(weight(set), weight(heaviest.set))) {
         return {
           marker: "weight_increase",
           measure: "weight",
           value: weight(set),
-          compared: weight(reference),
-          against: { performance: index - 1, set: i },
+          compared: weight(heaviest.set),
+          against: heaviest.at,
         };
       }
       if (pr?.outcome === "tie") return { marker: "pr_match", ...pr.basis };
@@ -146,7 +142,6 @@ export function explainPerformances(
       earlier.push({ set, at: { performance: index, set: i } });
       earlierByNumber[i] = earlier;
     });
-    previous = sets;
     return bases;
   });
 }
@@ -154,6 +149,19 @@ export function explainPerformances(
 interface EarlierSet {
   set: SetValues;
   at: SetIndex;
+}
+
+/** The heaviest earlier set, the first to reach that weight on a tie. */
+function heaviestEarlier(
+  earlier: readonly EarlierSet[] | undefined,
+): EarlierSet | undefined {
+  let heaviest: EarlierSet | undefined;
+  for (const e of earlier ?? []) {
+    if (!heaviest || greater(weight(e.set), weight(heaviest.set))) {
+      heaviest = e;
+    }
+  }
+  return heaviest;
 }
 
 /**
@@ -171,8 +179,8 @@ function setRecordOverAll(
   // A set without added weight can never beat a weighted one, so one weighted
   // session would end its set records for good.
   const comparable =
-    type === "bodyweight_reps" && !hasAddedWeight(set)
-      ? earlier?.filter((e) => !hasAddedWeight(e.set))
+    type === "bodyweight_reps" && !hasWeight(set)
+      ? earlier?.filter((e) => !hasWeight(e.set))
       : earlier;
   let outcome: Outcome = "beat";
   let hardest: { comparison: Comparison; earlier: EarlierSet } | undefined;
@@ -230,7 +238,7 @@ function prScore(
     case "weight_reps":
       return score("e1rm", e1rm(set, cap));
     case "bodyweight_reps":
-      return hasAddedWeight(set)
+      return hasWeight(set)
         ? score("e1rm", e1rm(set, cap))
         : score("reps", set.reps);
     case "reps":
@@ -262,7 +270,7 @@ function setRecord(
     case "distance_time":
       return beats("distance", set.distance_m ?? 0, reference.distance_m ?? 0);
     case "bodyweight_reps":
-      if (!hasAddedWeight(set) && !hasAddedWeight(reference)) {
+      if (!hasWeight(set) && !hasWeight(reference)) {
         return beats("reps", set.reps ?? 0, reference.reps ?? 0);
       }
       return weightSetRecord(set, reference, cap);
@@ -313,17 +321,8 @@ function weight(set: SetValues) {
   return set.weight_kg ?? 0;
 }
 
-function hasAddedWeight(set: SetValues) {
-  return greater(weight(set), 0);
-}
-
 function e1rm(set: SetValues, cap: number) {
   return estimateOneRepMax(weight(set), set.reps ?? 0, cap);
-}
-
-/** Greater by more than the epsilon; within it is a tie. */
-function greater(a: number, b: number) {
-  return a > b + WEIGHT_EPSILON_KG;
 }
 
 function compare(value: number, compared: number): Outcome | null {

@@ -356,7 +356,7 @@ export const setRecordHistory: Fixture = async (db) => {
 /**
  * History with a record reset 4 days ago, and two lighter bench sessions
  * after it. The second has a PR and a set record in the new era; against
- * all history it would only be a weight increase.
+ * all history it would have no markers.
  */
 export const afterRecordReset: Fixture = async (db) => {
   const ids = await withHistory(db);
