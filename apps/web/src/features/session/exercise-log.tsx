@@ -275,8 +275,8 @@ function Logger({ log }: { log: ExerciseLog }) {
   );
   const header = (
     <>
-      {/* The name is what must be readable: it may wrap, and the rarer
-          actions wait behind "⋯". */}
+      {/* The name is what must be readable: it may wrap, and the actions wait
+          behind "⋯". History is also next to the ledger, in thumb reach. */}
       <PageHeader
         title={exercise.name}
         wrap
@@ -287,25 +287,27 @@ function Logger({ log }: { log: ExerciseLog }) {
         }}
         className="lg:hidden"
         actions={
-          <>
-            {historyIcon}
-            <MoreMenu
-              label={t("session.log.moreActions")}
-              items={[
-                {
-                  label: t("session.log.editExercise"),
-                  icon: <Pencil size={18} />,
-                  onClick: () => void navigate(settingsLink),
-                },
-                {
-                  label: t("session.log.substitute"),
-                  icon: <ArrowLeftRight size={18} />,
-                  onClick: () => setSubstituting(true),
-                },
-                removeItem,
-              ]}
-            />
-          </>
+          <MoreMenu
+            label={t("session.log.moreActions")}
+            items={[
+              {
+                label: t("session.log.history"),
+                icon: <ChartLine size={18} />,
+                onClick: () => void navigate(historyLink),
+              },
+              {
+                label: t("session.log.editExercise"),
+                icon: <Pencil size={18} />,
+                onClick: () => void navigate(settingsLink),
+              },
+              {
+                label: t("session.log.substitute"),
+                icon: <ArrowLeftRight size={18} />,
+                onClick: () => setSubstituting(true),
+              },
+              removeItem,
+            ]}
+          />
         }
       />
       <div className="hidden items-center gap-1 pt-6 lg:flex">
@@ -347,6 +349,7 @@ function Logger({ log }: { log: ExerciseLog }) {
     <Screen
       header={header}
       scrollId="logging"
+      align="bottom"
       width="logPane"
       footer={
         <div className="flex flex-col gap-3 px-4 py-3 lg:px-0">
@@ -460,6 +463,10 @@ function Logger({ log }: { log: ExerciseLog }) {
           />
         )}
         <div className="mt-3 flex flex-wrap gap-x-5">
+          <Link {...historyLink} className={quietButtonClass}>
+            <ChartLine size={17} />
+            {t("session.log.history")}
+          </Link>
           {!showNotes && (
             <button
               type="button"

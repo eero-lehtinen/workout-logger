@@ -12,7 +12,9 @@ that alone scrolls, and an optional fixed footer (the set entry while
 logging). On phones, a screen's main action goes in the footer or the body
 is aligned to the bottom, so it sits in thumb reach: the Today screen's
 Start session button or running session, the Start screen's days, the
-exercise editor's Save. Scrollbars therefore run only beside what scrolls, and sticky
+exercise editor's Save. The logging screen does both: its ledger, with the
+exercise history button, sits at the bottom right above the set entry.
+Scrollbars therefore run only beside what scrolls, and sticky
 elements never overlap content. Header, body, and footer span the full width,
 so on a wide window the scrollbar stays at the edge; their content is
 centered within the screen's width. The body pads its content at the top
