@@ -42,6 +42,7 @@ import { restTimer } from "../../lib/rest-timer.ts";
 import { ExercisePicker } from "../exercises/picker.tsx";
 import { type Entry, entryFromSet, setFromEntry } from "./entry.ts";
 import { EntryFields } from "./entry-fields.tsx";
+import { Ledger } from "./ledger.tsx";
 import { Marker } from "./marker.tsx";
 import { RestControls } from "./rest-bar.tsx";
 import { wasResumed } from "./running.ts";
@@ -554,136 +555,6 @@ function Logger({ log }: { log: ExerciseLog }) {
     </Screen>
   );
 }
-/**
- * Today's sets next to last time's, row by row. A weight increase on set n
- * is judged against set n of the previous performance, so the pairing is that
- * comparison; a set record is judged against every earlier set n.
- */
-function Ledger(props: {
-  log: ExerciseLog;
-  unit: "kg" | "lb";
-  /** The set being edited in the footer, highlighted here. */
-  editingId: string | null;
-  onEdit: (set: LoggedSet) => void;
-  onStopEditing: () => void;
-  onCopy: (set: LoggedSet) => void;
-}) {
-  const { log, unit } = props;
-  const { t } = useTranslation();
-  const previous = log.previous[0];
-  const rows = Math.max(log.sets.length + 1, previous?.sets.length ?? 0);
-
-  return (
-    <table className="w-full table-fixed border-collapse">
-      <thead>
-        <tr className="text-left align-bottom text-sm text-ink-muted">
-          <th scope="col" className="w-6 pb-1 font-normal">
-            <span className="sr-only">{t("session.ledger.set")}</span>
-          </th>
-          {/* Of the whole table, so wider than last time's column, whose figures are smaller. */}
-          <th scope="col" className="w-1/2 pb-1 font-normal">
-            {t("session.ledger.today")}
-          </th>
-          <th scope="col" className="pb-1 pl-2 font-normal">
-            <span className="flex flex-wrap gap-x-1.5">
-              <span>{t("session.ledger.lastTime")}</span>
-              {previous && (
-                <span>
-                  {formatSessionDate(previous.startedAt, previous.tz)}
-                </span>
-              )}
-            </span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {Array.from({ length: rows }, (_, i) => {
-          const today = log.sets[i];
-          const before = previous?.sets[i];
-          const isNext = i === log.sets.length;
-          return (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are set numbers
-            <tr key={i}>
-              <td className="tabular py-1 text-sm text-ink-muted">{i + 1}</td>
-              <td className="py-1">
-                {today ? (
-                  <div className="-ml-1.5 flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => props.onEdit(today)}
-                      aria-pressed={props.editingId === today.id}
-                      aria-label={t("session.ledger.editSet", {
-                        number: i + 1,
-                        set: formatSet(today, log.exercise.type, unit),
-                      })}
-                      className="flex h-12 min-w-0 items-center rounded-xl px-1.5 text-left hover:bg-surface aria-pressed:bg-selected aria-pressed:ring-2 aria-pressed:ring-ink/50"
-                    >
-                      <span className="numerals truncate text-2xl">
-                        <SetText
-                          set={today}
-                          type={log.exercise.type}
-                          unit={unit}
-                        />
-                      </span>
-                    </button>
-                    <Marker
-                      marker={today.marker}
-                      basis={today.markerBasis}
-                      type={log.exercise.type}
-                      unit={unit}
-                    />
-                  </div>
-                ) : isNext && props.editingId ? (
-                  <button
-                    type="button"
-                    onClick={props.onStopEditing}
-                    aria-label={t("session.ledger.stopEditing")}
-                    className="-ml-1.5 flex h-12 items-center rounded-xl px-1.5 text-2xl text-ink-muted hover:bg-surface hover:text-ink"
-                  >
-                    {t("session.ledger.next")}
-                  </button>
-                ) : (
-                  <span className="flex h-12 items-center text-2xl text-ink-muted">
-                    {isNext ? t("session.ledger.next") : ""}
-                  </span>
-                )}
-              </td>
-              <td className="py-1 pl-2">
-                {before && (
-                  <div className="-ml-1.5 flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => props.onCopy(before)}
-                      aria-label={t("session.ledger.useForNext", {
-                        set: formatSet(before, log.exercise.type, unit),
-                      })}
-                      className="flex h-12 min-w-0 items-center rounded-xl px-1.5 text-left text-ink-muted hover:bg-surface hover:text-ink"
-                    >
-                      <span className="numerals truncate text-xl">
-                        <SetText
-                          set={before}
-                          type={log.exercise.type}
-                          unit={unit}
-                        />
-                      </span>
-                    </button>
-                    <Marker
-                      marker={before.marker}
-                      basis={before.markerBasis}
-                      type={log.exercise.type}
-                      unit={unit}
-                    />
-                  </div>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
 function EarlierPerformance(props: {
   performance: Performance;
   log: ExerciseLog;

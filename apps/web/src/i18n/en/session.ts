@@ -101,7 +101,7 @@ export const session = {
     today: "Today",
     lastTime: "Last time",
     editSet: "Edit set {{number}}: {{set}}",
-    next: "next",
+    next: "Next",
     stopEditing: "Stop editing, back to the next set",
     useForNext: "Use {{set}} for the next set",
     useSetFrom: "Use set {{number}} {{set}} from {{date}}",

@@ -256,6 +256,42 @@ export const SetRecordOverAllEarlier = pageStory({
   },
 });
 
+/**
+ * Each row reads last time, then today. Tapping last time's set fills the
+ * entry; while a set is being edited, "Next" goes back to the next set.
+ */
+export const LedgerRows = pageStory({
+  fixture: running,
+  url: (ids) => `/sessions/${ids.sessionId}/${ids.benchId}`,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const today = await canvas.findByRole("button", { name: /^Edit set 1/ });
+    const before = canvas.getAllByRole("button", {
+      name: "Use 100 kg × 8 for the next set",
+    })[0] as HTMLElement;
+    await expect(today.closest("tr")).toBe(before.closest("tr"));
+    await expect(
+      before.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(before);
+    await expect(canvas.getByLabelText("Weight in kg")).toHaveValue("100");
+    await expect(canvas.getByLabelText("Reps")).toHaveValue("8");
+
+    await userEvent.click(today);
+    await expect(canvas.getByText("Editing set 1")).toBeVisible();
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Stop editing, back to the next set",
+      }),
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Log set 3" }),
+    ).toBeVisible();
+    await expect(canvas.getByLabelText("Weight in kg")).toHaveValue("100");
+  },
+});
+
 /** On PC the header actions are icons named by tooltips. */
 export const LoggingPc = pageStory({
   fixture: running,
