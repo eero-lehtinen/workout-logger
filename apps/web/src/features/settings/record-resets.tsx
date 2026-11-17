@@ -13,7 +13,7 @@ export function RecordResets(props: { resets: readonly IsoDate[] }) {
   const { t } = useTranslation();
   const command = useCommand();
   const today = todayIso();
-  const [date, setDate] = useState<IsoDate>(today);
+  const [date, setDate] = useState<IsoDate | "">("");
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today;
   const format = (d: IsoDate) => dateFormat(SHORT_DATE).format(dateFromIso(d));
   const newestFirst = [...props.resets].reverse();
@@ -36,7 +36,7 @@ export function RecordResets(props: { resets: readonly IsoDate[] }) {
           />
           <Button
             disabled={!valid || props.resets.includes(date)}
-            onClick={() =>
+            onClick={() => {
               command(
                 "addRecordReset",
                 { date },
@@ -45,8 +45,9 @@ export function RecordResets(props: { resets: readonly IsoDate[] }) {
                     date: format(date),
                   }),
                 },
-              )
-            }
+              );
+              setDate("");
+            }}
           >
             {t("settings.records.add")}
           </Button>

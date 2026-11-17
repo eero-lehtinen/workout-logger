@@ -47,7 +47,7 @@ export const settings = {
     resetHint:
       "Esimerkiksi dieetin tai tauon jälkeen. Ennätykset ja sarjaennätykset huomioivat vain tästä päivästä alkaen tehdyt treenit.",
     resetDate: "Nollauspäivä",
-    add: "Nollaa",
+    add: "Lisää",
     added: "Ennätykset nollattu {{date}}",
     since: "{{date}} alkaen",
     current: "Nykyiset ennätykset",

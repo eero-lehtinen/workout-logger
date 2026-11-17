@@ -40,7 +40,7 @@ export const settings = {
     resetHint:
       "After a cut or a break. PRs and set records compare only sessions from this date on.",
     resetDate: "Reset date",
-    add: "Reset",
+    add: "Add",
     added: "Records reset on {{date}}",
     since: "Since {{date}}",
     current: "Current records",

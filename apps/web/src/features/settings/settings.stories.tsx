@@ -73,8 +73,8 @@ export const TimersOff = pageStory({
 });
 
 /**
- * Resets are listed newest first. A new one defaults to today; removing one
- * offers undo.
+ * Resets are listed newest first. The date input starts empty and clears
+ * after adding; removing a reset offers undo.
  */
 export const RecordResets = pageStory({
   fixture: afterRecordReset,
@@ -93,10 +93,14 @@ export const RecordResets = pageStory({
     await waitFor(() => expect(removes()).toHaveLength(2));
 
     const date = canvas.getByLabelText("Reset date");
-    await expect(date).toHaveValue(Temporal.Now.plainDateISO().toString());
-    await userEvent.click(canvas.getByRole("button", { name: "Reset" }));
+    const reset = canvas.getByRole("button", { name: "Add" });
+    await expect(date).toHaveValue("");
+    await expect(reset).toBeDisabled();
+    await userEvent.type(date, Temporal.Now.plainDateISO().toString());
+    await userEvent.click(reset);
     await waitFor(() => expect(removes()).toHaveLength(3));
-    await expect(canvas.getByRole("button", { name: "Reset" })).toBeDisabled();
+    await expect(date).toHaveValue("");
+    await expect(reset).toBeDisabled();
   },
 });
 
