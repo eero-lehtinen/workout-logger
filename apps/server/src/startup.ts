@@ -3,7 +3,9 @@ import { newEpoch } from "@workout-logger/core/sync-server";
 import {
   type Auth,
   createAuth,
+  PRUNE_SESSIONS_JOB,
   PRUNE_VERIFICATIONS_JOB,
+  pruneSessions,
   pruneVerifications,
   authOptions as toAuthOptions,
 } from "./auth/auth.ts";
@@ -121,6 +123,15 @@ export function pruneVerificationsJob(auth: Auth): Job {
     schedule: "15 * * * *",
     maxAgeMs: 60 * 60 * 1000,
     run: () => pruneVerifications(auth, Date.now()),
+  };
+}
+
+export function pruneSessionsJob(auth: Auth): Job {
+  return {
+    name: PRUNE_SESSIONS_JOB,
+    schedule: "40 3 * * *",
+    maxAgeMs: 24 * 60 * 60 * 1000,
+    run: () => pruneSessions(auth, Date.now()),
   };
 }
 

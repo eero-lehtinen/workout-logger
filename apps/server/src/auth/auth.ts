@@ -237,6 +237,21 @@ export async function pruneVerifications(
   });
 }
 
+export const PRUNE_SESSIONS_JOB = "prune-sessions";
+
+/**
+ * Deletes expired sessions. Each holds the IP address and user agent of its
+ * sign-in (docs/privacy.md#what-is-processed), and Better Auth deletes one
+ * only when a request still presents its token.
+ */
+export async function pruneSessions(auth: Auth, now: number): Promise<void> {
+  const ctx = await auth.$context;
+  await ctx.adapter.deleteMany({
+    model: "session",
+    where: [{ field: "expiresAt", operator: "lt", value: new Date(now) }],
+  });
+}
+
 /** The providers sign-in offers, in the order the app shows them. */
 export function signInProviders(auth: Auth): SignInProvider[] {
   const enabled: Record<string, unknown> = auth.options.socialProviders;

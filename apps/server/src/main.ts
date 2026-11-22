@@ -8,6 +8,7 @@ import {
   copyRehearsalJob,
   dailyCopyJob,
   openServer,
+  pruneSessionsJob,
   pruneUsageJob,
   pruneVerificationsJob,
   replicaRehearsalJob,
@@ -20,6 +21,7 @@ const replica = config.litestreamReplica;
 const jobs = await startJobs(database.db, [
   pruneUsageJob(database.db),
   pruneVerificationsJob(auth),
+  pruneSessionsJob(auth),
   ...(backups
     ? [
         dailyCopyJob(database.db, backups),

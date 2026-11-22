@@ -1,5 +1,7 @@
+import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { newEpoch } from "@workout-logger/core/sync-server";
+import { exportAccount } from "./account-export.ts";
 import type { Auth } from "./auth/auth.ts";
 import { unpackCopyFile } from "./backup/db-copy.ts";
 import { readConfig } from "./config.ts";
@@ -14,6 +16,9 @@ const USAGE = `Usage: server <command>
   set-email --user <id or email> --email <email>
       Changes an account's email, marked verified, so the next sign-in with
       a provider reporting <email> links to it.
+  export-account --user <id or email> --out <file>
+      Writes everything the server holds about one person as JSON, to answer
+      an access request. Refuses to overwrite <file>.
   new-epoch
       Ends a whole-database restore: devices re-upload what the server lost.
   unpack-copy <copy.db.br> <out.db>
@@ -71,7 +76,12 @@ export async function setEmail(
   return target.id;
 }
 
-const COMMANDS = ["create-owner", "set-email", "new-epoch"] as const;
+const COMMANDS = [
+  "create-owner",
+  "set-email",
+  "export-account",
+  "new-epoch",
+] as const;
 
 async function main(argv: string[]) {
   const [command, ...rest] = argv;
@@ -95,12 +105,15 @@ async function main(argv: string[]) {
       email: { type: "string" },
       name: { type: "string" },
       user: { type: "string" },
+      out: { type: "string" },
     },
   });
-  if (
-    (command !== "new-epoch" && !values.email) ||
-    (command === "set-email" && !values.user)
-  ) {
+  const required: Record<string, (string | undefined)[]> = {
+    "create-owner": [values.email],
+    "set-email": [values.user, values.email],
+    "export-account": [values.user, values.out],
+  };
+  if (required[command ?? ""]?.some((value) => !value)) {
     process.stderr.write(USAGE);
     return 2;
   }
@@ -108,6 +121,14 @@ async function main(argv: string[]) {
   try {
     if (command === "new-epoch") {
       console.log(`New epoch: ${await newEpoch(syncDb(database.db))}`);
+    } else if (command === "export-account") {
+      const data = await exportAccount(database.db, values.user ?? "");
+      // `wx`: an export is personal data; never replace another file with it.
+      writeFileSync(values.out ?? "", `${JSON.stringify(data, null, 2)}\n`, {
+        flag: "wx",
+        mode: 0o600,
+      });
+      console.log(`Wrote ${values.out}: ${data.rows.length} rows`);
     } else if (command === "set-email") {
       const id = await setEmail(auth, values.user ?? "", values.email ?? "");
       console.log(`Set the email of ${id} to ${values.email}`);

@@ -3,7 +3,7 @@ import { sql } from "kysely";
 import { describe, expect, it } from "vitest";
 import { createOwner, setEmail } from "../cli.ts";
 import { openTestApp } from "../testing.ts";
-import { pruneVerifications } from "./auth.ts";
+import { pruneSessions, pruneVerifications } from "./auth.ts";
 import { challengeOf } from "./native-auth.ts";
 
 const verifier = randomBytes(32).toString("base64url");
@@ -190,6 +190,28 @@ describe("pruneVerifications", () => {
     expect(
       await ctx.internalAdapter.findVerificationValue("live"),
     ).not.toBeNull();
+  });
+});
+
+describe("pruneSessions", () => {
+  it("deletes only expired sessions", async () => {
+    const { app, auth, db, signIn } = await openTestApp();
+    const expired = await signIn("alice@example.com");
+    const live = await signIn("bob@example.com");
+    const now = Date.now();
+    const ctx = await auth.$context;
+    await ctx.internalAdapter.updateSession(expired.token, {
+      expiresAt: new Date(now - 1000),
+    });
+    await pruneSessions(auth, now);
+    const { rows } = await sql<{
+      userId: string;
+    }>`select userId from session`.execute(db);
+    expect(rows).toEqual([{ userId: live.userId }]);
+    const me = await app.request("/api/me", {
+      headers: { authorization: `Bearer ${live.token}` },
+    });
+    expect(me.status).toBe(200);
   });
 });
 
