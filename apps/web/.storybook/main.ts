@@ -23,6 +23,12 @@ export default defineMain({
   },
   viteFinal: (config) => ({
     ...config,
+    define: {
+      ...config.define,
+      // What CI's image build gets from repository variables.
+      "import.meta.env.CONTACT_NAME": JSON.stringify("Alex Example"),
+      "import.meta.env.CONTACT_EMAIL": JSON.stringify("privacy@example.com"),
+    },
     plugins: withoutServiceWorker(config.plugins ?? []),
   }),
 });

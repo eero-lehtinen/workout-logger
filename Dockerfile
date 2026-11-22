@@ -14,10 +14,14 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile
 # The web build shows the commit in Settings; the image has no .git. It also
 # packs itself for the Android app's live updates, signed when the key is
-# given (docs/deployment.md#live-updates).
+# given (docs/deployment.md#live-updates). The privacy notice shows
+# CONTACT_NAME and CONTACT_EMAIL (docs/privacy.md#controller).
 ARG GIT_COMMIT
+ARG CONTACT_NAME
+ARG CONTACT_EMAIL
 RUN --mount=type=secret,id=live_update_private_key,env=LIVE_UPDATE_PRIVATE_KEY \
-  GIT_COMMIT=${GIT_COMMIT} pnpm --filter @workout-logger/web build
+  GIT_COMMIT="${GIT_COMMIT}" CONTACT_NAME="${CONTACT_NAME}" CONTACT_EMAIL="${CONTACT_EMAIL}" \
+  pnpm --filter @workout-logger/web build
 RUN pnpm --filter @workout-logger/server build
 # Not --offline: deploy re-checks the release-age policy against registry
 # metadata, which pnpm fetch doesn't store.

@@ -6,8 +6,10 @@ export function BackupRetention(props: { className?: string }) {
   const { t } = useTranslation();
   // Must match the R2 lifecycle rules in deploy/r2/ and docs/accounts.md#privacy.
   // Pre-migration copies (14 days) are left out: monthly copies outlast them.
+  // The continuous backup's 5 days is its bucket's rule; Litestream deletes
+  // after 3, but R2 can leave its deletes undone.
   const retention = [
-    t("privacy.retention.continuous", { count: 3 }),
+    t("privacy.retention.continuous", { count: 5 }),
     t("privacy.retention.daily", { count: 7 }),
     t("privacy.retention.monthly", { count: 3 }),
   ];

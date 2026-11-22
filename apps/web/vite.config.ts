@@ -10,6 +10,12 @@ export default defineConfig({
   define: {
     "import.meta.env.BUILD_COMMIT": JSON.stringify(buildCommit() ?? ""),
     "import.meta.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
+    "import.meta.env.CONTACT_NAME": JSON.stringify(
+      process.env.CONTACT_NAME ?? "",
+    ),
+    "import.meta.env.CONTACT_EMAIL": JSON.stringify(
+      process.env.CONTACT_EMAIL ?? "",
+    ),
   },
   plugins: [
     // Must run before the React plugin.

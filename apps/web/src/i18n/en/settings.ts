@@ -65,8 +65,9 @@ export const settings = {
     sync: "Sync",
     expiredHint:
       "Your sign-in expired. Sign in again to keep syncing; nothing logged here is lost.",
-    signInHint:
-      "Sign in to sync your devices. Synced data is not encrypted. <privacy>Privacy</privacy>",
+    signInHint: "Sign in to sync your devices.",
+    consent:
+      "I consent to the server storing my workout data, which can say something about my health, as the <privacy>privacy notice</privacy> describes.",
     signIn: "Sign in",
     signInWith: "Sign in with {{provider}}",
     signInFailed: "Couldn't start sign-in",

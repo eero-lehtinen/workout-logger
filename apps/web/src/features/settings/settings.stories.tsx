@@ -266,8 +266,9 @@ function signedIn(user: AccountUser, sync: Partial<SyncState> = {}) {
 }
 
 /**
- * Without an account the app works locally and offers sign-in. Every build
- * shows its commit and build time.
+ * Without an account the app works locally and offers sign-in, once the
+ * person agrees to the server storing their data. Every build shows its
+ * commit and build time.
  */
 export const SignedOut = pageStory({
   fixture: empty,
@@ -276,19 +277,22 @@ export const SignedOut = pageStory({
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Web app build")).toBeVisible();
     await expect(canvas.getByText(/^[0-9a-f]{7}, built /)).toBeVisible();
-    await expect(
-      canvas.getByRole("button", { name: "Sign in with Google" }),
-    ).toBeVisible();
+    const signIn = canvas.getByRole("button", { name: "Sign in with Google" });
+    await expect(signIn).toBeDisabled();
+    const consent = canvas.getByRole("checkbox", {
+      name: /^I consent to the server storing my workout data/,
+    });
+    await expect(consent).not.toBeChecked();
+    await userEvent.click(consent);
+    await expect(signIn).toBeEnabled();
+    await userEvent.click(consent);
+    await expect(signIn).toBeDisabled();
     await expect(
       canvas.queryByRole("button", { name: "Sign in with GitHub" }),
     ).toBeNull();
     await expect(
-      canvas.getByText(/Synced data is not encrypted/),
-    ).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "Privacy" })).toHaveAttribute(
-      "href",
-      "/privacy",
-    );
+      canvas.getByRole("link", { name: "privacy notice" }),
+    ).toHaveAttribute("href", "/privacy");
   },
 });
 
@@ -306,10 +310,49 @@ export const SignedOutFinnish = pageStory({
       canvas.getByRole("button", { name: "Kirjaudu sisään Google-tilillä" }),
     ).toBeVisible();
     await expect(
-      canvas.getByRole("link", { name: "Tietosuoja" }),
+      canvas.getByRole("checkbox", {
+        name: /palvelin tallentaa treenitietoni/,
+      }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "tietosuojaselosteen" }),
     ).toHaveAttribute("href", "/privacy");
   },
 });
+
+/**
+ * A sign-in that expired asks for consent like any other: the next sign-in
+ * can be with another provider account, which signs up. A consent given for
+ * one sign-in doesn't carry over to the next.
+ */
+export const SignInExpired = {
+  ...pageStory({
+    fixture: empty,
+    url: () => "/settings",
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      await expect(await canvas.findByText("Sign-in expired")).toBeVisible();
+      const signIn = canvas.getByRole("button", {
+        name: "Sign in with Google",
+      });
+      await expect(signIn).toBeDisabled();
+      await expect(
+        canvas.getByRole("link", { name: "privacy notice" }),
+      ).toHaveAttribute("href", "/privacy");
+      await userEvent.click(canvas.getByRole("checkbox"));
+      await expect(signIn).toBeEnabled();
+
+      setAccountForStory({ status: "signed-in", user: alice, offline: false });
+      await expect(await canvas.findByText("Alice Example")).toBeVisible();
+      setAccountForStory({ status: "signed-out", expired: true });
+      await expect(await canvas.findByRole("checkbox")).not.toBeChecked();
+    },
+  }),
+  beforeEach: () => {
+    setAccountForStory({ status: "signed-out", expired: true });
+    return () => setAccountForStory({ status: "unknown" });
+  },
+};
 
 /** One button per provider the server has enabled. */
 export const SignedOutTwoProviders = {

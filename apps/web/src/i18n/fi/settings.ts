@@ -72,8 +72,9 @@ export const settings = {
     sync: "Synkronointi",
     expiredHint:
       "Kirjautumisesi on vanhentunut. Kirjaudu uudelleen, niin synkronointi jatkuu. Tällä laitteella kirjatut tiedot säilyvät.",
-    signInHint:
-      "Kirjaudu, niin voit synkronoida laitteesi. Synkronoituja tietoja ei salata. <privacy>Tietosuoja</privacy>",
+    signInHint: "Kirjaudu, niin voit synkronoida laitteesi.",
+    consent:
+      "Annan suostumukseni siihen, että palvelin tallentaa treenitietoni, jotka voivat kertoa jotain terveydestäni, <privacy>tietosuojaselosteen</privacy> mukaisesti.",
     signIn: "Kirjaudu sisään",
     signInWith: "Kirjaudu sisään {{provider}}-tilillä",
     signInFailed: "Kirjautumista ei voitu aloittaa",

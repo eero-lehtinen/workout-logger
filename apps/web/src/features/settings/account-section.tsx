@@ -26,28 +26,9 @@ export function AccountSection() {
   if (account.status !== "signed-in") {
     return (
       <Section title={t("settings.account.title")}>
-        <Row
-          stacked
-          label={
-            account.status === "signed-out" && account.expired
-              ? t("settings.account.signedOut")
-              : t("settings.account.sync")
-          }
-          hint={
-            account.status === "signed-out" && account.expired ? (
-              t("settings.account.expiredHint")
-            ) : (
-              <Trans
-                i18nKey="settings.account.signInHint"
-                components={{
-                  privacy: <Link to="/privacy" className="underline" />,
-                }}
-              />
-            )
-          }
-        >
-          <SignInButtons />
-        </Row>
+        <SignInRow
+          expired={account.status === "signed-out" && account.expired}
+        />
       </Section>
     );
   }
@@ -85,7 +66,53 @@ export function AccountSection() {
   );
 }
 
-function SignInButtons() {
+/**
+ * Sign-in, enabled once the person consents to the server storing their data
+ * (docs/privacy.md#consent). Also after an expired sign-in: the next one can
+ * be with another provider account, which signs up. The answer lives here so
+ * that it is gone after a sign-in, when this row unmounts.
+ */
+function SignInRow(props: { expired: boolean }) {
+  const { t } = useTranslation();
+  const [agreed, setAgreed] = useState(false);
+  return (
+    <Row
+      stacked
+      label={
+        props.expired
+          ? t("settings.account.signedOut")
+          : t("settings.account.sync")
+      }
+      hint={
+        <>
+          {props.expired
+            ? t("settings.account.expiredHint")
+            : t("settings.account.signInHint")}
+          <label className="mt-2 flex items-start gap-2 text-ink">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(event) => setAgreed(event.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-ink"
+            />
+            <span>
+              <Trans
+                i18nKey="settings.account.consent"
+                components={{
+                  privacy: <Link to="/privacy" className="underline" />,
+                }}
+              />
+            </span>
+          </label>
+        </>
+      }
+    >
+      <SignInButtons disabled={!agreed} />
+    </Row>
+  );
+}
+
+function SignInButtons(props: { disabled: boolean }) {
   const { t } = useTranslation();
   const providers = useSignInProviders();
   const [busy, setBusy] = useState(false);
@@ -97,7 +124,7 @@ function SignInButtons() {
           aria-label={t("settings.account.signInWith", {
             provider: PROVIDER_NAMES[provider],
           })}
-          disabled={busy}
+          disabled={busy || props.disabled}
           onClick={async () => {
             setBusy(true);
             try {
