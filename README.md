@@ -43,3 +43,7 @@ Desktop:
 The source is published for reference. Pull requests are not accepted, and
 there is no support. Noncommercial use is allowed under the
 [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+If you run your own server from this code, you are responsible for its
+users' data, and the privacy notice in the app describes this server, not
+yours: see [docs/privacy.md](docs/privacy.md#running-your-own-server).
