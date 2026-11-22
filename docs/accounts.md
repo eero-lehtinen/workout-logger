@@ -30,7 +30,7 @@ The owner account is created once with a server command, never by sign-up. See
   - The owner account is created with `server create-owner --email <email>` ([deployment.md](deployment.md#configuration)), with the email marked verified.
   - `server set-email` changes an account's email, e.g. when the owner's Google email differs from the GitHub one.
 - **Sign-up:** signing in with a provider account that has no account here creates one, until the [account cap](#account-cap) is reached.
-- **Sessions:** 60 days, extended by a day whenever used after a day, so a device that syncs at least every two months stays signed in. Signing out deletes the session on the server.
+- **Sessions:** 60 days, extended by a day whenever used after a day, so a device that syncs at least every two months stays signed in. Signing out deletes the session on the server. Better Auth stores the IP address and user agent of each sign-in in the session row and deletes an expired row only when a request presents its token, so the server deletes expired ones daily ([scheduled jobs](deployment.md#scheduled-jobs)).
 - **Web sessions:** httpOnly, secure, same-site cookies. Over https every cookie is named `__Host-` (Better Auth's `cookiePrefix` is `__Host-better-auth`, with its own `__Secure-` prefixing off), so it has no `Domain` and a page on a sibling `*.eerolehtinen.fi` subdomain can't set one for this host, e.g. a session of its own account that a device without an account would adopt. The web app is served from the API origin (see [deployment.md](deployment.md#topology)), so cookies work without CORS. Sign-in is a redirect to the provider and back to Settings; a failed one comes back with `?error=<code>` and shows a toast.
 - **Android sessions:** a bearer token (Better Auth's bearer plugin: the session token in `Authorization: Bearer`).
   - The WebView can't host the OAuth flow, because the provider's callback would navigate it away from the app's origin. The app opens `/api/native-auth/start?app=<application id>&challenge=<S256 of a verifier>&provider=<provider>` in a Custom Tab (`@capacitor/browser`). The server starts Better Auth's flow for that provider there, with `/api/native-auth/finish` as the callback. A provider that isn't enabled is a 400; without `provider`, as from a web build older than the parameter, the first enabled one is used.
@@ -57,7 +57,7 @@ times into R2.
 - The cap is 100 accounts, the owner included, changeable on the [admin page](#admin-page) without a deploy.
 - `databaseHooks.user.create.before` counts the accounts and refuses at the cap with `signup_closed` ("No new accounts at the moment"; a 403 from id-token sign-in, `?error=signup_closed` on the OAuth redirect). A creation outside a request (`create-owner`) passes. Better Auth creates the user and the provider account in one transaction and runs the hook inside it, on the server's single SQLite connection, so two sign-ups can't both take the last place. That needs `transaction: true` in its database options: without it Better Auth runs the two inserts without a transaction.
 - The hook counts through Better Auth's adapter, which joins the transaction, and reads the cap from the server's in-memory copy of `limits`: a query on the server's own Kysely instance would wait for the connection the transaction holds.
-- The sign-in row says that signing in creates an account, that synced data is not encrypted, and links the [privacy notice](#privacy). The app, browser or Android, signs up the same way it signs in.
+- The sign-in row's buttons are disabled until the person checks that they consent to the server storing their workout data, in a sentence that links the [privacy notice](#privacy) ([privacy.md](privacy.md#consent)). The app, browser or Android, signs up the same way it signs in.
 - Sign-up lands on Settings with a welcome toast: Better Auth sends a new user to `newUserCallbackURL` (`/settings?welcome=1`; for Android, `/finish` passes `welcome=1` on to the deep link). Data logged on the device before sign-up uploads in the first sync, within the [daily limit](#quotas), which fits a whole account.
 
 **Why 100.** The binding limit is R2's free tier, 10 GB of storage, which
@@ -181,10 +181,15 @@ sign-up.
 
 ## Privacy
 
-- Data is stored unencrypted on the owner's VPS and in the owner's R2 buckets, and the owner can technically read it. The sign-in row in Settings says the data is not encrypted and links to a `/privacy` page with this section's content. Settings → About links to it whether signed in or not, and the Google consent screen links to it too.
+What the GDPR requires of the deployed app, the record of what is processed,
+and how to handle requests and breaches are in [privacy.md](privacy.md).
+This section is how the app implements it.
+
+- Data is not end-to-end encrypted: the owner can read it on the VPS and in the R2 buckets, whose encryption at rest is Cloudflare's own. The privacy notice at `/privacy` says so. The sign-in row's consent sentence links to it, and it covers who the controller is, what the server stores, why and on what legal basis, who else handles it, how long it is kept, and the person's rights. Settings → About links to it whether signed in or not, and the Google consent screen links to it too.
+- **Consent:** signing in needs a checked "I consent to the server storing my workout data" in the sign-in row, also after a sign-in expired ([privacy.md](privacy.md#consent)).
 - There is no end-to-end encryption. It would complicate the CLI and server-side restores, and a lost key would mean lost data.
 - Users who don't want their data on the server can use the app without an account. They keep backups with file-based exports instead (see [backups.md](backups.md#user-controlled-destinations)).
-- **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device.
+- **Export:** every user can save a full snapshot of their own data at any time with Settings → Export snapshot. A synced device holds the account's full state, so the export is of the device. What only the server holds (sign-in records, usage) the owner exports on request with `server export-account` ([privacy.md](privacy.md#requests)).
 - **Account deletion**: a user can delete their account in Settings (Delete account, shown while the server can be reached). The dialog states what is deleted and the retention periods below, offers Export snapshot first, and asks for the account's email typed in.
   - `DELETE /api/me` with `{ email }`, which must match the account's (400 otherwise), hard-deletes, in one transaction, the user's `head`, `user_sync`, `usage`, and `quota` rows, then the `user` row, whose foreign keys delete the sessions and provider accounts. Better Auth's own `deleteUser` isn't used: without a password it needs a session younger than a day, and Android sessions last 60 days. The owner's admin page deletes another account the same way (`DELETE /api/admin/users/:id`).
   - The server database runs with `secure_delete`, so the deleted rows don't stay readable in free pages of `app.db`, which Litestream would otherwise copy into each new snapshot until SQLite reuses them ([deployment.md](deployment.md#litestream)).
@@ -192,7 +197,8 @@ sign-up.
   - A [ban](#bans) keeps the name, email, and provider account ids on the server, so sign-up can refuse them, until the owner lifts it.
   - The device keeps its local data and signs out. Signing in with another account later asks to merge or discard, as for any account change.
   - Copies made before the deletion persist until they expire:
-    - Litestream: 3 days
+    - Litestream: 3 days by its own retention; what its deletes leave behind expires by the bucket's lifecycle rule at 5 days. The notice says 5.
+    - These are expiry ages. R2 removes an expired object typically within a day after.
     - daily DB copies: 7 days
     - monthly DB copies: 3 months
     - pre-migration copies: 14 days

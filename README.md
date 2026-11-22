@@ -30,6 +30,7 @@ Desktop:
 - [docs/architecture.md](docs/architecture.md) - tech stack, data model, platform specifics
 - [docs/sync.md](docs/sync.md) - sync protocol
 - [docs/accounts.md](docs/accounts.md) - login, roles, quotas, privacy
+- [docs/privacy.md](docs/privacy.md) - GDPR: what is processed, requests, breaches, keeping it compliant
 - [docs/migrations.md](docs/migrations.md) - schema migrations, data fixes, version compatibility
 - [docs/backups.md](docs/backups.md) - backup layers and restore procedures
 - [docs/deployment.md](docs/deployment.md) - VPS/Dokploy deployment and recovery procedures

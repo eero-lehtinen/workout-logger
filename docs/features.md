@@ -42,6 +42,7 @@ The app is shared with a few other users, each with their own private data. See
 | Owner admin page: users, usage, quotas, disable, delete | P1 | |
 | Personal API keys for the CLI | P1 | |
 | Account deletion and full data export by the user | P1 | |
+| Privacy notice and consent to server storage at sign-in | P1 | [privacy.md](privacy.md) |
 
 ## Exercise catalog
 

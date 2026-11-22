@@ -108,7 +108,7 @@ because this skips CI's checks.
 
 1. Export the commit to a clean directory: `git archive <sha> | tar -x -C <dir>`.
 2. Build the image with the commit and the live-update key, which the
-   Android release notes keep: `LIVE_UPDATE_PRIVATE_KEY=$(cat <key.pem>) docker build --platform linux/amd64 --build-arg GIT_COMMIT=<sha> --secret id=live_update_private_key,env=LIVE_UPDATE_PRIVATE_KEY -t ghcr.io/eero-lehtinen/workout-logger:<sha> <dir>`.
+   Android release notes keep: `LIVE_UPDATE_PRIVATE_KEY=$(cat <key.pem>) docker build --platform linux/amd64 --build-arg GIT_COMMIT=<sha> --build-arg CONTACT_NAME=<name> --build-arg CONTACT_EMAIL=<address> --secret id=live_update_private_key,env=LIVE_UPDATE_PRIVATE_KEY -t ghcr.io/eero-lehtinen/workout-logger:<sha> <dir>`.
    Check that `/app/web/live-bundle/manifest.json` in the image has the
    SHA as `version` and a `signature`.
 3. Load it straight onto the VPS instead of pushing it to GHCR:
@@ -241,6 +241,7 @@ Set in the image:
 | Variable | Purpose |
 | --- | --- |
 | `GIT_COMMIT` | Commit SHA, a build argument; reported by `/api/status`, and baked into the web build for Settings → About and as the version of its live-update bundle |
+| `CONTACT_NAME`, `CONTACT_EMAIL` | Build arguments: the controller's name and the address the privacy notice gives for questions and requests ([privacy.md](privacy.md#controller)), baked into the web build. CI takes them from the repository variables of the same names (Settings → Secrets and variables → Actions → Variables), and the `image` job fails without either. They are variables, not secrets: the notice publishes them. |
 | `PORT` | `3000`; the Dokploy domain points at it |
 | `WEB_ROOT` | Optional; defaults to `web/dist` next to the server, as in the repo |
 | `BUNDLE_ROOT` | Optional; defaults to `web/live-bundle` next to the server, as in the repo |
@@ -340,6 +341,7 @@ needed.
 - `create-owner --email <email> [--name <name>]` creates the owner account once, with the email marked verified. The owner then signs in with the Google account whose email it is (with GitHub: the public profile email, or the primary email when the profile shows none, verified on GitHub). The command refuses to run if an owner exists. No env var grants the owner role, so nobody can claim it by signing in first.
 - `new-epoch` ends a whole-database restore ([sync.md](sync.md#server-restore-and-epoch)).
 - `set-email --user <id or email> --email <email>` changes an account's email, marked verified, so the next sign-in with a provider reporting that email links to it. It refuses an email another account has.
+- `export-account --user <id or email> --out <file>` writes everything the server holds about one person as JSON, for an access request ([privacy.md](privacy.md#requests)): the account, provider accounts, sign-in records, usage, quota overrides, any ban, and every synced row, without session and OAuth tokens. It also finds a deleted account by its ban. It refuses to overwrite `<file>`.
 - `unpack-copy <copy.db.br> <out.db>` decompresses a DB copy downloaded from `wl-backups` (Brotli; `.gz` for copies made before) and runs `PRAGMA integrity_check` on the result. It refuses to overwrite `<out.db>`, deletes it again if the check fails, and doesn't open the server database. While `app` is stopped, run it in a one-off container of the same image with the `data` volume: `docker run --rm -v <volume>:/data -v <dir with the copy>:/copy <image> node server/dist/cli.js unpack-copy /copy/<file> /data/app.db`.
 
 ## Scheduled jobs
@@ -358,6 +360,7 @@ rehearsal restores the copy caught up before it.
 | R2 token separation check (`token-check`) | 04:45 | Runs when `BACKUP_R2_*` and `LITESTREAM_R2_READ_*` are set ([backups.md](backups.md#storage-isolation)) |
 | Prune `usage` rows older than 90 days (`prune-usage`) | 03:30 | Always |
 | Prune expired sign-in state from Better Auth's `verification` table (`prune-verifications`) | Hourly, at :15 | Always |
+| Prune expired sessions, which hold an IP address and user agent (`prune-sessions`) | 03:40 | Always |
 
 Retention of R2 objects is done with R2 lifecycle rules, not app code
 ([R2 buckets](#r2-buckets)).
@@ -379,7 +382,7 @@ Retention of R2 objects is done with R2 lifecycle rules, not app code
 | Bad deploy with a migration | Stop `app`. Restore the deploy's `pre-migration/` copy into the volume with `unpack-copy` ([the server command](#the-server-command)), or restore Litestream to before the deploy. Run `new-epoch` with the previous SHA's image ([the server command](#the-server-command)). Redeploy the previous SHA. |
 | Bad data (wrong edits, buggy client) | Don't restore the DB. Import an earlier snapshot file with "Replace everything" on one device; it syncs out ([backups.md](backups.md#restore-procedures)). |
 | VPS crashed (power loss, kernel panic, hard reset) | Once it is back, run `new-epoch`: the last seconds of commits may be gone ([Litestream](#litestream)), and devices re-upload them. Not needed after a clean reboot or a container restart. |
-| Server DB corrupted | Stop `app` and `litestream`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy: `unpack-copy` it to `/data/app.db`. Either way, first delete the old `app.db-wal`, `app.db-shm`, and `.app.db-litestream` (an old WAL would be applied to the restored file), and create an empty `/data/app.db.restored` so the app starts a new epoch. Start the stack; `litestream-init` hands the files to uid 1000. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). Accounts and sessions created after the copy are gone: users sign in again, and an account created after it must be created again with a new id, so its devices ask to merge (choose Merge). |
+| Server DB corrupted | Stop `app` and `litestream`. Run `litestream restore -timestamp <before corruption>` into the volume. If the replica is unusable, use the newest daily copy: `unpack-copy` it to `/data/app.db`. Either way, first delete the old `app.db-wal`, `app.db-shm`, and `.app.db-litestream` (an old WAL would be applied to the restored file), and create an empty `/data/app.db.restored` so the app starts a new epoch. Start the stack; `litestream-init` hands the files to uid 1000. Devices re-upload whatever the server lost ([sync.md](sync.md#server-restore-and-epoch)). Accounts and sessions created after the copy are gone: users sign in again, and an account created after it must be created again with a new id, so its devices ask to merge (choose Merge). Accounts deleted after the copy are back: as the first thing once the app is up, delete again the ones erased on request ([privacy.md](privacy.md#requests)). |
 | VPS lost | Provision a new VPS, install Dokploy, and run `cloudflared` there with the tunnel token, so the existing DNS and tunnel routes reach it. Create the GHCR registry entry, the CI user and its API key (update `DOKPLOY_API_KEY`), and a raw compose service with the domain and the same env vars; put its id in `ci.yml`. Re-run the last `deploy` job. `litestream-init` restores `app.db` on first start, and the app starts a new epoch itself. |
 | Bad Android release | Delete the GitHub release; within 5 minutes the server offers the previous release again. Deleting only its APK stops all update offers instead. Phones that already installed the bad version can't downgrade: fix forward with a higher version. |
 | Android signing key lost | No update can be installed over the existing app. Create a new keystore and secrets, release, and on each phone: export a snapshot (Settings), uninstall, install the new APK, import the snapshot. |
